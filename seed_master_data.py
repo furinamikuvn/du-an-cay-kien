@@ -6,7 +6,11 @@ django.setup()
 
 from django.contrib.auth.models import User
 from django.utils.text import slugify
-from aquashop.models import UserProfile, Category, Product, ProductReview, InventoryLot, Coupon, Article, FAQ
+from aquashop.models import (
+    UserProfile, Category, Product, ProductVariant, ProductReview,
+    InventoryLot, Coupon, Article, FAQ, LayoutPreset, LayoutPresetItem,
+    Order, OrderItem
+)
 
 print("Starting master data seeding...")
 
@@ -214,5 +218,113 @@ FAQ.objects.get_or_create(
         'answer': 'Bạn nên ưu tiên các dòng cây có sức sống bền bỉ như: Ráy Nana, Dương Xỉ Java, Tiêu Thảo Nâu, Rong Đuôi Chồn hoặc Rêu Java. Những loại cây này phát triển tốt với ánh sáng LED vừa phải và không bắt buộc phải có bình khí CO2.'
     }
 )
+
+# 8. Seed Product Variants (F02 & BR02)
+for p in Product.objects.all():
+    base_price = p.sale_price if p.sale_price else p.regular_price
+    
+    # 1. Cốc cấy mô Invitro (Giá -10%)
+    ProductVariant.objects.get_or_create(
+        product=p,
+        name="Cốc cấy mô Invitro (Sạch ốc hại)",
+        defaults={
+            'sku_code': f"SKU-{p.id}-INVITRO",
+            'price': int(base_price * 9 // 10),
+            'stock': 25,
+            'is_default': False,
+            'is_active': True
+        }
+    )
+
+    # 2. Bụi lá nước thuần dưỡng (Mặc định, 100% giá gốc)
+    ProductVariant.objects.get_or_create(
+        product=p,
+        name="Bụi lá nước thuần dưỡng (Cắm hồ ngay)",
+        defaults={
+            'sku_code': f"SKU-{p.id}-SUBMERGED",
+            'price': int(base_price),
+            'stock': 20,
+            'is_default': True,
+            'is_active': True
+        }
+    )
+
+    # 3. Chậu gốm Wabi-kusa / Gắn lũa đá (+35% giá gốc)
+    ProductVariant.objects.get_or_create(
+        product=p,
+        name="Chậu gốm Wabi-Kusa / Gắn lũa đá",
+        defaults={
+            'sku_code': f"SKU-{p.id}-CERAMIC",
+            'price': int(base_price * 135 // 100),
+            'stock': 10,
+            'is_default': False,
+            'is_active': True
+        }
+    )
+print("Product variants initialized!")
+
+# 9. Seed Layout Preset Items (F10 & TC10)
+iwagumi = LayoutPreset.objects.filter(name__icontains='Iwagumi').first()
+nature_wood = LayoutPreset.objects.filter(name__icontains='Rừng Lũa').first()
+all_plants = list(Product.objects.all())
+
+if iwagumi and len(all_plants) >= 3:
+    LayoutPresetItem.objects.get_or_create(
+        preset=iwagumi, product=all_plants[1], # Trân châu
+        defaults={'quantity': 3, 'layer_role': 'Tiền cảnh (Thảm nền)'}
+    )
+    LayoutPresetItem.objects.get_or_create(
+        preset=iwagumi, product=all_plants[0], # Ráy Nana
+        defaults={'quantity': 2, 'layer_role': 'Trung cảnh (Kẽ đá)'}
+    )
+    LayoutPresetItem.objects.get_or_create(
+        preset=iwagumi, product=all_plants[2], # Tiêu thảo
+        defaults={'quantity': 1, 'layer_role': 'Hậu cảnh (Chân đá)'}
+    )
+
+if nature_wood and len(all_plants) >= 4:
+    LayoutPresetItem.objects.get_or_create(
+        preset=nature_wood, product=all_plants[0], # Ráy Nana
+        defaults={'quantity': 2, 'layer_role': 'Gắn thân lũa'}
+    )
+    LayoutPresetItem.objects.get_or_create(
+        preset=nature_wood, product=all_plants[3], # Vảy Ốc
+        defaults={'quantity': 3, 'layer_role': 'Hậu cảnh (Tạo tán đỏ)'}
+    )
+    LayoutPresetItem.objects.get_or_create(
+        preset=nature_wood, product=all_plants[2], # Tiêu Thảo
+        defaults={'quantity': 2, 'layer_role': 'Trung cảnh (Gốc lũa)'}
+    )
+print("Layout preset items initialized!")
+
+# 10. Seed Sample Order with customer_note (F05 & F06)
+if not Order.objects.filter(customer_note__icontains="bọc ẩm").exists():
+    sample_order = Order.objects.create(
+        order_code="AQ-SAMPLE-2026",
+        customer_name="Trần Minh Triết",
+        email="triet.tran@gmail.com",
+        phone="0918889999",
+        shipping_address="Số 45, Đường D2, Phường 25, Quận Bình Thạnh, TP. Hồ Chí Minh",
+        customer_note="Giao vào buổi chiều sau 15h, nhờ shop bọc thêm mút giữ ẩm 2 lớp vì chuyển đi xa.",
+        subtotal_amount=260000,
+        discount_amount=26000,
+        shipping_fee=0,
+        total_amount=234000,
+        status="confirmed",
+        tracking_note="Đơn hàng đã được kiểm duyệt sinh học và chuyển sang bộ phận đóng gói bọc ẩm."
+    )
+    if all_plants:
+        p1 = all_plants[0]
+        v1 = p1.variants.filter(is_default=True).first()
+        OrderItem.objects.create(
+            order=sample_order,
+            product=p1,
+            variant=v1,
+            variant_name=v1.name if v1 else "Bụi lá nước",
+            quantity=2,
+            unit_price=p1.current_price,
+            subtotal=p1.current_price * 2
+        )
+    print("Sample order with customer_note initialized!")
 
 print("Master data seeded 100% successfully!")

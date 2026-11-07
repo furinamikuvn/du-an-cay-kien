@@ -206,6 +206,11 @@
                                     <tr class="hover:bg-slate-50 transition">
                                         <td class="py-3 px-3">
                                             <p class="font-bold text-slate-900">{{ item.product.name }}</p>
+                                            {% if item.variant_name %}
+                                            <span class="inline-block mt-0.5 px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                                {{ item.variant_name }}
+                                            </span>
+                                            {% endif %}
                                             {% if item.product.scientific_name %}
                                             <p class="text-[11px] text-slate-400 italic">{{ item.product.scientific_name }}</p>
                                             {% endif %}
@@ -250,6 +255,12 @@
                                 <p><span class="text-slate-400">Số điện thoại:</span> <strong class="text-slate-900">{{ order.phone }}</strong></p>
                                 <p><span class="text-slate-400">Email:</span> <span class="text-slate-700">{{ order.email }}</span></p>
                                 <p class="pt-1"><span class="text-slate-400 block text-[11px]">Địa chỉ:</span> <span class="text-slate-800 font-medium">{{ order.shipping_address }}</span></p>
+                                {% if order.customer_note %}
+                                <div class="mt-2.5 pt-2 border-t border-slate-100 bg-amber-50 p-2.5 border border-amber-200">
+                                    <span class="text-[10px] font-bold uppercase tracking-wider text-amber-800 block"><i class="fa-solid fa-note-sticky mr-1"></i> Ghi chú đóng gói:</span>
+                                    <p class="text-[11px] text-amber-950 mt-0.5 leading-relaxed font-medium">{{ order.customer_note }}</p>
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
 

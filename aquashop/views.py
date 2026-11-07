@@ -1,4 +1,5 @@
 from django.shortcuts import render, redirect, get_object_or_404
+from django.contrib import messages
 from .models import Category, Product, LayoutPreset, Order
 import random
 
@@ -113,8 +114,44 @@ def plant_quantity_view(request):
 
 def layout_presets_view(request):
     """Tính năng: Mua combo trọn gói theo bố cục hồ mẫu chuẩn."""
-    layouts = LayoutPreset.objects.all()
+    layouts = LayoutPreset.objects.all().prefetch_related('preset_items__product')
     return render(request, 'aquashop/layout_presets.html', {'layouts': layouts})
+
+def add_combo_to_cart_view(request):
+    """
+    Thêm toàn bộ hoặc một phần cây trong Combo Bố Cục Hồ Mẫu vào giỏ hàng.
+    Hỗ trợ cả POST và GET cho kiểm thử tự động linh hoạt (TC10).
+    """
+    if request.method == 'POST':
+        product_ids = request.POST.getlist('selected_products')
+    else:
+        product_ids = request.GET.getlist('selected_products')
+
+    cart = request.session.get('cart', {})
+    added_count = 0
+
+    for pid_str in product_ids:
+        try:
+            pid = int(pid_str)
+            product = Product.objects.get(id=pid)
+            qty_key = f"qty_{pid}"
+            qty = int(request.POST.get(qty_key, request.GET.get(qty_key, 1)))
+            if qty < 1:
+                qty = 1
+            key = str(pid)
+            cart[key] = cart.get(key, 0) + qty
+            added_count += 1
+        except (ValueError, Product.DoesNotExist):
+            continue
+
+    if added_count > 0:
+        request.session['cart'] = cart
+        request.session.modified = True
+        messages.success(request, f"Đã thêm {added_count} loài cây từ bố cục mẫu vào giỏ hàng của bạn!")
+    else:
+        messages.warning(request, "Vui lòng chọn ít nhất 1 loại cây trong combo để thêm vào giỏ hàng.")
+
+    return redirect('cart')
 
 def cart_view(request):
     """Xem và quản lý giỏ hàng."""

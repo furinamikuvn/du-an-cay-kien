@@ -52,12 +52,17 @@
                                 </div>
                                 <div class="min-w-0">
                                     <p class="font-bold text-sm text-slate-900 leading-snug">{{ item.product.name }}</p>
+                                    {% if item.variant_name %}
+                                    <span class="inline-block mt-0.5 px-2 py-0.5 text-[10px] font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                                        {{ item.variant_name }}
+                                    </span>
+                                    {% endif %}
                                     <p class="text-slate-400 text-[11px] mt-0.5">
                                         {{ item.product.get_leaf_state_display|default:"100% Cây thuần lá nước" }}
                                     </p>
                                     <p class="text-xs text-slate-500 mt-1">
                                         Đơn giá: 
-                                        {% if item.product.sale_price %}
+                                        {% if item.product.sale_price and not item.variant %}
                                             <span class="line-through text-slate-400 mr-1">{{ item.regular_price|floatformat:0 }}₫</span>
                                             <span class="font-bold text-[#B91C1C]">{{ item.unit_price|floatformat:0 }}₫</span>
                                         {% else %}
@@ -70,13 +75,13 @@
                             <!-- Số lượng (Bộ đếm tăng giảm góc vuông) -->
                             <td class="py-4 text-center">
                                 <div class="inline-flex items-center border border-slate-300 rounded-none bg-white">
-                                    <a href="{% url 'update_cart_quantity' item.product.id 'decrease' %}" class="w-7 h-7 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition font-bold text-sm" title="Giảm 1">
+                                    <a href="{% url 'update_cart_quantity' item.key 'decrease' %}" class="w-7 h-7 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition font-bold text-sm" title="Giảm 1">
                                         -
                                     </a>
                                     <span class="w-9 h-7 flex items-center justify-center font-bold text-xs text-slate-900 border-x border-slate-200 bg-slate-50">
                                         {{ item.quantity }}
                                     </span>
-                                    <a href="{% url 'update_cart_quantity' item.product.id 'increase' %}" class="w-7 h-7 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition font-bold text-sm" title="Tăng 1">
+                                    <a href="{% url 'update_cart_quantity' item.key 'increase' %}" class="w-7 h-7 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition font-bold text-sm" title="Tăng 1">
                                         +
                                     </a>
                                 </div>
@@ -87,7 +92,7 @@
                                 <span class="font-black text-sm text-[#B91C1C] block">
                                     {{ item.subtotal|floatformat:0 }}₫
                                 </span>
-                                {% if item.product.sale_price %}
+                                {% if item.product.sale_price and not item.variant %}
                                 <span class="text-[10px] text-[#2F5C3E] font-semibold">
                                     Ưu đãi trực tiếp
                                 </span>
@@ -96,7 +101,7 @@
 
                             <!-- Nút xóa -->
                             <td class="py-4 text-center">
-                                <a href="{% url 'remove_from_cart' item.product.id %}" 
+                                <a href="{% url 'remove_from_cart' item.key %}" 
                                    class="inline-flex items-center justify-center w-7 h-7 text-slate-400 hover:text-white hover:bg-[#B91C1C] transition rounded-none text-xs" 
                                    title="Xóa hẳn sản phẩm khỏi giỏ hàng">
                                     <i class="fa-regular fa-trash-can"></i>

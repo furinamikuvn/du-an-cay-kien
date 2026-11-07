@@ -216,3 +216,53 @@ class OrderTrackingForm(forms.Form):
             'placeholder': 'Nhập mã đơn hàng (ví dụ: AQ-88912) hoặc số điện thoại...'
         })
     )
+
+
+class CustomPasswordChangeForm(forms.Form):
+    old_password = forms.CharField(
+        label="Mật khẩu hiện tại",
+        widget=forms.PasswordInput(attrs={
+            'class': 'w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-none text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7AA88B] transition',
+            'placeholder': 'Nhập mật khẩu đang sử dụng...'
+        })
+    )
+    new_password = forms.CharField(
+        min_length=6,
+        label="Mật khẩu mới",
+        widget=forms.PasswordInput(attrs={
+            'class': 'w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-none text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7AA88B] transition',
+            'placeholder': 'Tối thiểu 6 ký tự...'
+        })
+    )
+    confirm_password = forms.CharField(
+        min_length=6,
+        label="Xác nhận mật khẩu mới",
+        widget=forms.PasswordInput(attrs={
+            'class': 'w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-none text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7AA88B] transition',
+            'placeholder': 'Nhập lại chính xác mật khẩu mới...'
+        })
+    )
+
+    def __init__(self, *args, **kwargs):
+        self.user = kwargs.pop('user', None)
+        super().__init__(*args, **kwargs)
+
+    def clean_old_password(self):
+        old_password = self.cleaned_data.get('old_password')
+        if self.user and not self.user.check_password(old_password):
+            raise ValidationError("Mật khẩu hiện tại không chính xác.")
+        return old_password
+
+    def clean(self):
+        cleaned_data = super().clean()
+        new_password = cleaned_data.get("new_password")
+        confirm_password = cleaned_data.get("confirm_password")
+        if new_password and confirm_password and new_password != confirm_password:
+            self.add_error('confirm_password', "Mật khẩu xác nhận không khớp.")
+        return cleaned_data
+
+    def save(self):
+        new_password = self.cleaned_data['new_password']
+        self.user.set_password(new_password)
+        self.user.save()
+        return self.user

@@ -7,13 +7,15 @@ from django.db.models import Sum, Count, Q
 from decimal import Decimal
 import random
 
-from .models import Product, Coupon, InventoryLot, Order, OrderItem, UserProfile
+from .models import Product, ProductVariant, Coupon, InventoryLot, Order, OrderItem, UserProfile
 from .forms_commerce import CouponApplyForm
 
 def get_cart_items(request):
     """
     Trích xuất danh sách sản phẩm trong giỏ hàng từ session.
-    Nếu giỏ hàng rỗng, khởi tạo mặc định sản phẩm sẵn có để phục vụ trải nghiệm người dùng liền mạch.
+    Hỗ trợ cơ chế lưỡng tính (Dual-Mode):
+    - Key 'product_id': Sản phẩm theo quy cách mặc định.
+    - Key 'product_id:variant_id': Sản phẩm theo biến thể quy cách cụ thể (ProductVariant).
     """
     cart = request.session.get('cart', {})
     if not isinstance(cart, dict):
@@ -23,17 +25,51 @@ def get_cart_items(request):
     subtotal = Decimal('0')
     savings = Decimal('0')
 
-    for prod_id_str, qty in list(cart.items()):
+    for cart_key, qty in list(cart.items()):
+        cart_key_str = str(cart_key)
+        prod_id = None
+        var_id = None
+        if ':' in cart_key_str:
+            parts = cart_key_str.split(':', 1)
+            try:
+                prod_id = int(parts[0])
+                var_id = int(parts[1])
+            except ValueError:
+                continue
+        else:
+            try:
+                prod_id = int(cart_key_str)
+            except ValueError:
+                continue
+
         try:
-            prod = Product.objects.get(id=int(prod_id_str))
-            unit_price = prod.current_price
-            regular_price = prod.regular_price
+            prod = Product.objects.get(id=prod_id)
+            variant = None
+            if var_id:
+                try:
+                    variant = ProductVariant.objects.get(id=var_id, product=prod)
+                except ProductVariant.DoesNotExist:
+                    variant = None
+
+            if variant:
+                unit_price = variant.price
+                regular_price = variant.price
+                variant_name = variant.name
+            else:
+                unit_price = prod.current_price
+                regular_price = prod.regular_price
+                variant_name = "Mặc định (Lá nước)"
+
             item_subtotal = unit_price * qty
-            if prod.sale_price and prod.sale_price < prod.regular_price:
+            if not variant and prod.sale_price and prod.sale_price < prod.regular_price:
                 savings += (prod.regular_price - prod.sale_price) * qty
             subtotal += item_subtotal
+
             items.append({
+                'key': cart_key_str,
                 'product': prod,
+                'variant': variant,
+                'variant_name': variant_name,
                 'quantity': qty,
                 'unit_price': unit_price,
                 'regular_price': regular_price,
@@ -108,11 +144,22 @@ def cart_view(request):
 
 def add_to_cart_view(request, product_id):
     """
-    Thêm sản phẩm vào giỏ hàng session (hỗ trợ số lượng tùy chọn).
+    Thêm sản phẩm hoặc biến thể quy cách vào giỏ hàng session.
     """
     product = get_object_or_404(Product, id=product_id)
     cart = request.session.get('cart', {})
-    key = str(product_id)
+    
+    variant_id = request.POST.get('variant_id') or request.GET.get('variant_id')
+    variant = None
+    if variant_id:
+        try:
+            variant = ProductVariant.objects.get(id=int(variant_id), product=product)
+            key = f"{product_id}:{variant.id}"
+        except (ValueError, ProductVariant.DoesNotExist):
+            key = str(product_id)
+    else:
+        key = str(product_id)
+
     try:
         qty = int(request.POST.get('quantity', request.GET.get('quantity', 1)))
         if qty < 1:
@@ -120,40 +167,70 @@ def add_to_cart_view(request, product_id):
     except (ValueError, TypeError):
         qty = 1
 
+    # Kiểm tra tồn kho quy cách nếu có
+    if variant and variant.stock < (cart.get(key, 0) + qty):
+        messages.warning(request, f"Quy cách '{variant.name}' chỉ còn {variant.stock} phần sẵn có.")
+        qty = max(1, variant.stock - cart.get(key, 0)) if variant.stock > cart.get(key, 0) else 0
+        if qty == 0:
+            return redirect('cart')
+
     cart[key] = cart.get(key, 0) + qty
     request.session['cart'] = cart
     request.session.modified = True
-    messages.success(request, f"Đã thêm {qty} {product.name} vào giỏ hàng.")
+    display_title = f"{product.name} ({variant.name})" if variant else product.name
+    messages.success(request, f"Đã thêm {qty} {display_title} vào giỏ hàng.")
     return redirect('cart')
 
-def remove_from_cart_view(request, product_id):
+def remove_from_cart_view(request, item_key):
     """
-    Xóa sản phẩm khỏi giỏ hàng session.
+    Xóa sản phẩm hoặc biến thể khỏi giỏ hàng session.
+    item_key có thể là ID dạng int ('1') hoặc key dạng '1:2'.
     """
     cart = request.session.get('cart', {})
-    key = str(product_id)
+    key = str(item_key)
+    deleted = False
+
     if key in cart:
         del cart[key]
+        deleted = True
+    else:
+        # Nếu truyền vào product_id dạng số, xóa tất cả item liên quan đến product đó
+        keys_to_del = [k for k in cart.keys() if k == key or k.startswith(f"{key}:")]
+        for k in keys_to_del:
+            del cart[k]
+            deleted = True
+
+    if deleted:
         request.session['cart'] = cart
         request.session.modified = True
         messages.info(request, "Đã xóa sản phẩm khỏi giỏ hàng.")
     return redirect('cart')
 
-def update_cart_quantity_view(request, product_id, action):
+def update_cart_quantity_view(request, item_key, action):
     """
-    Tăng, giảm hoặc cập nhật số lượng sản phẩm trong giỏ hàng.
+    Tăng, giảm hoặc cập nhật số lượng sản phẩm/biến thể trong giỏ hàng.
     action: 'increase', 'decrease'
     """
     cart = request.session.get('cart', {})
-    key = str(product_id)
+    key = str(item_key)
+    
+    target_key = None
     if key in cart:
+        target_key = key
+    else:
+        for k in cart.keys():
+            if k == key or k.startswith(f"{key}:"):
+                target_key = k
+                break
+
+    if target_key:
         if action == 'increase':
-            cart[key] += 1
+            cart[target_key] += 1
             messages.success(request, "Đã tăng số lượng sản phẩm.")
         elif action == 'decrease':
-            cart[key] -= 1
-            if cart[key] <= 0:
-                del cart[key]
+            cart[target_key] -= 1
+            if cart[target_key] <= 0:
+                del cart[target_key]
                 messages.info(request, "Đã xóa sản phẩm khỏi giỏ hàng.")
             else:
                 messages.success(request, "Đã giảm số lượng sản phẩm.")
@@ -309,6 +386,7 @@ def enhanced_checkout_view(request):
         email = request.POST.get('email', '').strip() or user_initial['email']
         phone = request.POST.get('phone', '').strip() or user_initial['phone']
         address = request.POST.get('address', '').strip() or user_initial['address']
+        customer_note = request.POST.get('customer_note', '').strip()[:500]
 
         order_code = f"AQ-{timezone.now().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
 
@@ -321,6 +399,7 @@ def enhanced_checkout_view(request):
                 email=email,
                 phone=phone,
                 shipping_address=address,
+                customer_note=customer_note,
                 subtotal_amount=subtotal_amount,
                 coupon=coupon,
                 discount_amount=discount_amount,
@@ -337,6 +416,8 @@ def enhanced_checkout_view(request):
             # 2. Tạo OrderItem & Thực hiện khấu trừ kho FIFO
             for item in items:
                 prod = item['product']
+                variant = item.get('variant')
+                variant_name = item.get('variant_name', '')
                 qty_needed = item['quantity']
                 unit_price = item['unit_price']
                 item_subtotal = item['subtotal']
@@ -344,10 +425,17 @@ def enhanced_checkout_view(request):
                 OrderItem.objects.create(
                     order=order,
                     product=prod,
+                    variant=variant,
+                    variant_name=variant_name,
                     quantity=qty_needed,
                     unit_price=unit_price,
                     subtotal=item_subtotal
                 )
+
+                # Giảm tồn kho biến thể quy cách nếu có
+                if variant:
+                    variant.stock = max(0, variant.stock - qty_needed)
+                    variant.save(update_fields=['stock'])
 
                 # Giảm tổng tồn kho hiển thị của sản phẩm
                 prod.stock_quantity = max(0, prod.stock_quantity - qty_needed)
@@ -508,3 +596,27 @@ def update_order_status(request, order_id):
         messages.error(request, "Trạng thái đơn hàng không hợp lệ.")
 
     return redirect('staff_dashboard')
+
+
+def print_packing_slip_view(request, order_id):
+    """
+    Trang in Phiếu giao hàng & Đóng gói bọc ẩm chuyên dụng thực vật thủy sinh (chuẩn A4/A5).
+    Chỉ cho phép tài khoản Staff / Admin truy cập (kiểm soát phân quyền RBAC chặt chẽ).
+    """
+    if not request.user.is_authenticated or not (
+        request.user.is_staff or 
+        request.user.is_superuser or 
+        (hasattr(request.user, 'profile') and request.user.profile.role in ['staff', 'admin'])
+    ):
+        messages.error(request, "Quyền truy cập bị từ chối: Chỉ nhân viên kho và quản trị viên mới có quyền in phiếu đóng gói.")
+        return redirect('login')
+
+    order = get_object_or_404(Order.objects.prefetch_related('items__product', 'items__variant'), id=order_id)
+    items = order.items.all()
+    
+    context = {
+        'order': order,
+        'items': items,
+        'print_timestamp': timezone.now(),
+    }
+    return render(request, 'aquashop/commerce/print_packing_slip.html', context)

@@ -126,9 +126,9 @@
                 </div>
 
                 <!-- Khối Giá Bán Sắc Nét -->
-                <div class="bg-slate-50 border border-slate-200 rounded-none p-4 mb-6">
+                <div class="bg-slate-50 border border-slate-200 rounded-none p-4 mb-4">
                     <div class="flex items-baseline gap-3">
-                        <span class="text-3xl font-black text-[#B91C1C]">
+                        <span id="main-product-price" class="text-3xl font-black text-[#B91C1C]">
                             {{ product.current_price|floatformat:0 }}₫
                         </span>
                         {% if product.sale_price %}
@@ -145,6 +145,29 @@
                         <span>Miễn phí vận chuyển cho đơn hàng cây từ <strong>300.000₫</strong> toàn quốc</span>
                     </div>
                 </div>
+
+                <!-- Lựa Chọn Quy Cách & Biến Thể Cây (F02 & BR02) -->
+                {% if product.variants.exists %}
+                <div class="mb-5 space-y-2">
+                    <label class="block text-xs font-bold text-slate-800 uppercase tracking-wider text-[11px]">
+                        <i class="fa-solid fa-layer-group text-[#7AA88B] mr-1"></i> Lựa Chọn Quy Cách Cây:
+                    </label>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5" id="variant-selector-group">
+                        {% for var in product.variants.all %}
+                        <div class="variant-card cursor-pointer border p-3 rounded-none transition {% if forloop.first %}border-[#7AA88B] bg-[#EEF5F0]/60 ring-1 ring-[#7AA88B]{% else %}border-slate-200 bg-white hover:border-slate-300{% endif %}"
+                             onclick="selectVariant(this, '{{ var.id }}', '{{ var.price|floatformat:0 }}', '{{ var.stock }}')">
+                            <div class="flex items-center justify-between">
+                                <span class="font-bold text-xs text-slate-900">{{ var.name }}</span>
+                                <span class="text-[10px] text-slate-500 font-mono">Còn {{ var.stock }}</span>
+                            </div>
+                            <div class="text-sm font-black text-[#B91C1C] mt-1 font-mono">
+                                {{ var.price|floatformat:0 }}₫
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% endif %}
 
                 <!-- Bảng Tóm Tắt Nhanh Tiêu Chuẩn Nước -->
                 <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-6 text-xs">
@@ -167,9 +190,10 @@
                 </div>
 
                 <!-- Bộ Chọn Số Lượng & Nút Thêm Giỏ Hàng -->
-                <form method="POST" action="{% url 'cart' %}" class="space-y-4">
+                <form method="POST" action="{% url 'add_to_cart' product.id %}" class="space-y-4">
                     {% csrf_token %}
                     <input type="hidden" name="product_id" value="{{ product.id }}">
+                    <input type="hidden" name="variant_id" id="selected-variant-id" value="{% if product.variants.exists %}{{ product.variants.first.id }}{% endif %}">
                     
                     <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
                         <!-- Bộ đếm số lượng góc vuông -->
@@ -702,6 +726,23 @@ function switchTab(tabId) {
     const activeBtn = document.getElementById('btn-' + tabId);
     activeBtn.classList.remove('border-transparent', 'text-slate-600');
     activeBtn.classList.add('border-[#7AA88B]', 'text-[#2F5C3E]', 'bg-[#EEF5F0]');
+}
+
+function selectVariant(el, varId, price, stock) {
+    document.querySelectorAll('.variant-card').forEach(card => {
+        card.classList.remove('border-[#7AA88B]', 'bg-[#EEF5F0]/60', 'ring-1', 'ring-[#7AA88B]');
+        card.classList.add('border-slate-200', 'bg-white');
+    });
+    el.classList.add('border-[#7AA88B]', 'bg-[#EEF5F0]/60', 'ring-1', 'ring-[#7AA88B]');
+    el.classList.remove('border-slate-200', 'bg-white');
+    
+    const hiddenInput = document.getElementById('selected-variant-id');
+    if (hiddenInput) hiddenInput.value = varId;
+    
+    const priceDisplay = document.getElementById('main-product-price');
+    if (priceDisplay) {
+        priceDisplay.textContent = new Intl.NumberFormat('vi-VN').format(price) + '₫';
+    }
 }
 </script>
 {% endblock %}

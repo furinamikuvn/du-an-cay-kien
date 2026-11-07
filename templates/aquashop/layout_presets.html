@@ -8,13 +8,13 @@
 <div class="bg-white border border-slate-200 p-6 sm:p-8 mb-8 rounded-none">
     <div class="max-w-3xl">
         <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-[#F4F8F5] text-[#2F5C3E] border border-[#DFECE3] text-xs font-bold mb-3 rounded-none">
-            <i class="fa-solid fa-layer-group text-[#7AA88B]"></i> TRỌN GÓI TIẾT KIỆM
+            <i class="fa-solid fa-layer-group text-[#7AA88B]"></i> TRỌN GÓI TIẾT KIỆM (F10 & TC10)
         </span>
         <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
             Set Cây Phối Sẵn Theo Bố Cục Hồ Chuẩn Nghệ Thuật
         </h1>
         <p class="text-sm text-slate-600 leading-relaxed">
-            Các set phối cảnh tuyển chọn từ nghệ nhân thủy sinh. Đầy đủ danh mục cây tiền cảnh, trung cảnh và hậu cảnh được cân đối tỉ lệ hoàn hảo cho từng kích thước hồ.
+            Các set phối cảnh tuyển chọn từ nghệ nhân thủy sinh. Bạn có thể <strong>tùy chọn hoặc bỏ bớt từng loại cây</strong> theo nhu cầu; tổng tiền sẽ tự động cập nhật thời gian thực và cho phép thêm thẳng vào giỏ hàng.
         </p>
     </div>
 </div>
@@ -23,40 +23,124 @@
 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
     {% for layout in layouts %}
     <div class="bg-white border border-slate-200 overflow-hidden hover:border-[#7AA88B] transition-all duration-300 flex flex-col justify-between group rounded-none">
-        <div>
-            <!-- Preset Image -->
-            <div class="relative aspect-16/9 bg-slate-100 overflow-hidden rounded-none">
-                <img src="{% if 'Iwagumi' in layout.name %}{% static 'images/iwagumi_60cm.jpg' %}{% else %}{% static 'images/nature_wood_90cm.png' %}{% endif %}" 
-                     alt="{{ layout.name }}" 
-                     class="w-full h-56 object-cover group-hover:scale-102 transition duration-500">
-                <span class="absolute top-3 left-3 bg-[#7AA88B] text-white text-xs font-bold px-3 py-1 rounded-none shadow-sm">
-                    {{ layout.style|upper }}
-                </span>
-                <span class="absolute bottom-3 right-3 bg-white/95 text-slate-800 text-xs font-bold px-2.5 py-1 border border-slate-200 shadow-xs rounded-none">
-                    {{ layout.tank_size }}
-                </span>
-            </div>
-            <div class="p-6">
-                <h2 class="text-lg font-bold text-slate-900 group-hover:text-[#7AA88B] transition mb-2">{{ layout.name }}</h2>
-                <p class="text-xs text-slate-600 leading-relaxed mb-4">{{ layout.description }}</p>
+        
+        <form method="POST" action="{% url 'add_combo_to_cart' %}" class="flex flex-col h-full justify-between">
+            {% csrf_token %}
+            <div>
+                <!-- Preset Image -->
+                <div class="relative aspect-16/9 bg-slate-100 overflow-hidden rounded-none">
+                    <img src="{% if 'Iwagumi' in layout.name %}{% static 'images/iwagumi_60cm.jpg' %}{% else %}{% static 'images/nature_wood_90cm.png' %}{% endif %}" 
+                         alt="{{ layout.name }}" 
+                         class="w-full h-56 object-cover group-hover:scale-102 transition duration-500">
+                    <span class="absolute top-3 left-3 bg-[#7AA88B] text-white text-xs font-bold px-3 py-1 rounded-none shadow-sm">
+                        {{ layout.style|upper }}
+                    </span>
+                    <span class="absolute bottom-3 right-3 bg-white/95 text-slate-800 text-xs font-bold px-2.5 py-1 border border-slate-200 shadow-xs rounded-none">
+                        {{ layout.tank_size }}
+                    </span>
+                </div>
 
-                <div class="bg-slate-50 border border-slate-200 p-4 mb-4 rounded-none">
-                    <span class="text-xs font-bold text-slate-800 block mb-2">Danh mục cây thành phần trong gói:</span>
-                    <p class="text-xs text-slate-600 whitespace-pre-line leading-relaxed">{{ layout.plant_list_text }}</p>
+                <div class="p-6">
+                    <h2 class="text-lg font-bold text-slate-900 group-hover:text-[#7AA88B] transition mb-1">{{ layout.name }}</h2>
+                    <p class="text-xs text-slate-600 leading-relaxed mb-4">{{ layout.description }}</p>
+
+                    <!-- Danh sách cây thành phần có Checkbox tương tác (TC10) -->
+                    <div class="bg-slate-50 border border-slate-200 p-4 mb-4 rounded-none">
+                        <div class="flex items-center justify-between mb-3 border-b border-slate-200 pb-2">
+                            <span class="text-xs font-black uppercase tracking-wider text-slate-800 flex items-center gap-1.5">
+                                <i class="fa-solid fa-list-check text-[#7AA88B]"></i> Cây thành phần trong set:
+                            </span>
+                            <span class="text-[11px] text-slate-400 italic">Tích chọn để thêm vào giỏ</span>
+                        </div>
+
+                        <div class="space-y-2.5">
+                            {% for item in layout.get_combo_items %}
+                            <label class="flex items-center justify-between gap-3 p-2.5 bg-white border border-slate-200 hover:border-[#7AA88B] transition cursor-pointer select-none">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <input type="checkbox" 
+                                           name="selected_products" 
+                                           value="{{ item.product.id }}"
+                                           data-preset="{{ layout.id }}"
+                                           data-price="{{ item.product.current_price|floatformat:0 }}"
+                                           data-qty="{{ item.quantity }}"
+                                           checked
+                                           onchange="recalculateComboTotal('{{ layout.id }}')"
+                                           class="combo-checkbox w-4 h-4 text-[#7AA88B] border-slate-300 rounded-none focus:ring-0">
+                                    <input type="hidden" name="qty_{{ item.product.id }}" value="{{ item.quantity }}">
+                                    <div class="truncate">
+                                        <span class="font-bold text-xs text-slate-900 block truncate">{{ item.product.name }}</span>
+                                        <span class="text-[10px] text-slate-500 font-medium">
+                                            {{ item.layer_role }} · SL: <strong>x{{ item.quantity }}</strong> cốc
+                                        </span>
+                                    </div>
+                                </div>
+                                <div class="text-right flex-shrink-0">
+                                    <span class="font-mono font-bold text-xs text-[#B91C1C]">
+                                        {{ item.subtotal|floatformat:0 }}₫
+                                    </span>
+                                </div>
+                            </label>
+                            {% empty %}
+                            <p class="text-xs text-slate-500 italic">Đang cập nhật danh mục cây chi tiết.</p>
+                            {% endfor %}
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="p-6 pt-0 border-t border-slate-100 flex items-center justify-between">
-            <div>
-                <span class="text-xs text-slate-400 block">Trọn bộ combo cây:</span>
-                <span class="text-2xl font-black text-[#B91C1C]">{{ layout.total_price }}₫</span>
+            <!-- Card Bottom Bar: Dynamic Total & Add to Cart -->
+            <div class="p-6 pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white">
+                <div>
+                    <span class="text-[11px] uppercase font-bold text-slate-400 block tracking-wider">Tổng Chi Phí Đã Chọn:</span>
+                    <span id="combo-total-{{ layout.id }}" class="text-2xl font-black text-[#B91C1C] font-mono">
+                        {{ layout.total_price|floatformat:0 }}₫
+                    </span>
+                </div>
+                <button type="submit" 
+                        id="combo-submit-{{ layout.id }}" 
+                        class="bg-[#7AA88B] hover:bg-[#638F73] text-white font-bold text-xs px-5 py-3 transition flex items-center justify-center gap-2 rounded-none shadow-sm">
+                    <i class="fa-solid fa-cart-plus"></i> Thêm Các Cây Đã Chọn Vào Giỏ
+                </button>
             </div>
-            <a href="{% url 'cart' %}" class="bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs px-4 py-2.5 transition flex items-center gap-2 rounded-none">
-                <i class="fa-solid fa-cart-shopping"></i> Mua Trọn Bộ Combo
-            </a>
-        </div>
+        </form>
+
     </div>
     {% endfor %}
 </div>
+
+<!-- JavaScript Tính Tổng Tiền Realtime Khi Bỏ Tích Checkbox (TC10) -->
+<script>
+function recalculateComboTotal(presetId) {
+    const checkboxes = document.querySelectorAll(`.combo-checkbox[data-preset="${presetId}"]`);
+    let total = 0;
+    let checkedCount = 0;
+
+    checkboxes.forEach(cb => {
+        if (cb.checked) {
+            const price = parseFloat(cb.getAttribute('data-price')) || 0;
+            const qty = parseInt(cb.getAttribute('data-qty')) || 1;
+            total += (price * qty);
+            checkedCount++;
+        }
+    });
+
+    const totalEl = document.getElementById(`combo-total-${presetId}`);
+    if (totalEl) {
+        totalEl.textContent = new Intl.NumberFormat('vi-VN').format(total) + '₫';
+    }
+
+    const submitBtn = document.getElementById(`combo-submit-${presetId}`);
+    if (submitBtn) {
+        if (checkedCount === 0) {
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            submitBtn.innerHTML = '<i class="fa-solid fa-ban"></i> Chưa Chọn Cây Nào';
+        } else {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            submitBtn.innerHTML = '<i class="fa-solid fa-cart-plus"></i> Thêm Các Cây Đã Chọn Vào Giỏ';
+        }
+    }
+}
+</script>
 {% endblock %}

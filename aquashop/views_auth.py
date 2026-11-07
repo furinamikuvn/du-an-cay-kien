@@ -1,10 +1,10 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db.models import Q, Sum
 from .models import Order, UserProfile
-from .forms_auth import RegisterForm, LoginForm, ProfileUpdateForm, OrderTrackingForm
+from .forms_auth import RegisterForm, LoginForm, ProfileUpdateForm, OrderTrackingForm, CustomPasswordChangeForm
 
 
 def register_view(request):
@@ -126,8 +126,11 @@ def profile_view(request):
     completed_orders = user_orders.filter(status='completed')
     total_spent = completed_orders.aggregate(total=Sum('total_amount'))['total'] or 0
 
+    password_form = CustomPasswordChangeForm(user=user)
+
     context = {
         'form': form,
+        'password_form': password_form,
         'profile': profile,
         'recent_orders': recent_orders,
         'total_orders_count': total_orders_count,
@@ -136,6 +139,31 @@ def profile_view(request):
         'title': 'Hồ Sơ Tài Khoản Cá Nhân',
     }
     return render(request, 'aquashop/auth/profile.html', context)
+
+
+@login_required(login_url='login')
+def change_password_view(request):
+    """
+    Xử lý đổi mật khẩu an toàn cho tài khoản thành viên.
+    Sử dụng update_session_auth_hash để không làm gián đoạn phiên làm việc.
+    """
+    if request.method == 'POST':
+        form = CustomPasswordChangeForm(request.POST, user=request.user)
+        if form.is_valid():
+            form.save()
+            update_session_auth_hash(request, request.user)
+            messages.success(request, "Đổi mật khẩu bảo mật thành công! Mật khẩu mới của bạn đã có hiệu lực.")
+            return redirect('profile')
+        else:
+            messages.error(request, "Đổi mật khẩu thất bại. Vui lòng kiểm tra lại thông tin bên dưới.")
+    else:
+        form = CustomPasswordChangeForm(user=request.user)
+
+    context = {
+        'form': form,
+        'title': 'Đổi Mật Khẩu Bảo Mật',
+    }
+    return render(request, 'aquashop/auth/change_password.html', context)
 
 
 def order_tracking_view(request):

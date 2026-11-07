@@ -67,7 +67,7 @@
                         <label for="{{ form.password.id_for_label }}" class="block text-xs font-bold text-slate-700 uppercase tracking-wide">
                             {{ form.password.label }} <span class="text-rose-600">*</span>
                         </label>
-                        <a href="javascript:void(0)" onclick="alert('Vui lòng liên hệ bộ phận hỗ trợ Hotline 1900000 để được cấp lại mật khẩu tài khoản.')" class="text-[11px] font-semibold text-[#7AA88B] hover:underline">
+                        <a href="{% url 'password_reset' %}" class="text-[11px] font-semibold text-[#7AA88B] hover:text-[#2F5C3E] hover:underline">
                             Quên mật khẩu?
                         </a>
                     </div>

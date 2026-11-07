@@ -126,6 +126,50 @@ class ProductReview(models.Model):
         return f"{self.reviewer_name} - {self.product.name} ({self.rating}★)"
 
 
+class ProductVariant(models.Model):
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="variants",
+        verbose_name="Sản phẩm cây gốc"
+    )
+    name = models.CharField(
+        max_length=100,
+        verbose_name="Tên quy cách (Cốc mô, Bụi cạn, Chậu gốm)"
+    )
+    sku_code = models.CharField(
+        max_length=50,
+        blank=True,
+        default="",
+        verbose_name="Mã SKU quy cách"
+    )
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=0,
+        verbose_name="Đơn giá theo quy cách (VNĐ)"
+    )
+    stock = models.PositiveIntegerField(
+        default=20,
+        verbose_name="Tồn kho quy cách"
+    )
+    is_default = models.BooleanField(
+        default=False,
+        verbose_name="Quy cách mặc định"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Đang kinh doanh"
+    )
+
+    class Meta:
+        ordering = ['-is_default', 'price']
+        verbose_name = "Biến thể quy cách cây"
+        verbose_name_plural = "Quản lý biến thể quy cách cây"
+
+    def __str__(self):
+        return f"{self.product.name} - {self.name} ({self.price:,.0f}₫)"
+
+
 class InventoryLot(models.Model):
     STATUS_CHOICES = [
         ('healthy_submerged', 'Lá nước khỏe mạnh (Sẵn sàng bán)'),
@@ -184,6 +228,67 @@ class LayoutPreset(models.Model):
     def __str__(self):
         return f"{self.name} ({self.tank_size})"
 
+    def get_combo_items(self):
+        """
+        Trả về danh sách cây thành phần liên kết qua LayoutPresetItem.
+        Nếu chưa có dữ liệu LayoutPresetItem, tự động fallback từ danh sách cây Product.
+        """
+        items = list(self.preset_items.select_related('product').all())
+        if items:
+            return items
+
+        # Fallback cho trường hợp dữ liệu cũ chưa khởi tạo LayoutPresetItem
+        fallback_products = list(Product.objects.all()[:3])
+        dummy_items = []
+        roles = ['Tiền cảnh', 'Trung cảnh', 'Hậu cảnh']
+        for i, prod in enumerate(fallback_products):
+            qty = 2 if i == 0 else 1
+            price = prod.sale_price if prod.sale_price else prod.regular_price
+            dummy_items.append({
+                'product': prod,
+                'quantity': qty,
+                'layer_role': roles[i % len(roles)],
+                'subtotal': price * qty,
+            })
+        return dummy_items
+
+
+class LayoutPresetItem(models.Model):
+    preset = models.ForeignKey(
+        LayoutPreset,
+        on_delete=models.CASCADE,
+        related_name="preset_items",
+        verbose_name="Bố cục mẫu"
+    )
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="in_presets",
+        verbose_name="Cây thành phần"
+    )
+    quantity = models.PositiveIntegerField(
+        default=1,
+        verbose_name="Số lượng khuyên dùng"
+    )
+    layer_role = models.CharField(
+        max_length=50,
+        default="Trung cảnh",
+        verbose_name="Vị trí trong bố cục (Tiền/Trung/Hậu cảnh)"
+    )
+
+    class Meta:
+        unique_together = ('preset', 'product')
+        verbose_name = "Cây trong bố cục mẫu"
+        verbose_name_plural = "Danh sách cây trong bố cục mẫu"
+
+    def __str__(self):
+        return f"{self.preset.name} - {self.product.name} (x{self.quantity})"
+
+    @property
+    def subtotal(self):
+        price = self.product.sale_price if self.product.sale_price else self.product.regular_price
+        return price * self.quantity
+
 
 class Order(models.Model):
     STATUS_CHOICES = [
@@ -199,6 +304,13 @@ class Order(models.Model):
     email = models.EmailField(verbose_name="Hộp thư điện tử")
     phone = models.CharField(max_length=20, verbose_name="Số điện thoại liên hệ")
     shipping_address = models.TextField(verbose_name="Địa chỉ nhận hàng chi tiết")
+    customer_note = models.TextField(
+        blank=True,
+        null=True,
+        default="",
+        max_length=500,
+        verbose_name="Ghi chú đơn hàng (Bọc ẩm / Giờ giao)"
+    )
     
     subtotal_amount = models.DecimalField(max_digits=12, decimal_places=0, default=0, verbose_name="Tạm tính tiền hàng (VNĐ)")
     coupon = models.ForeignKey(Coupon, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Mã ưu đãi áp dụng")
@@ -222,8 +334,23 @@ class Order(models.Model):
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items", verbose_name="Đơn hàng")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, verbose_name="Sản phẩm cây cảnh")
+    variant = models.ForeignKey(
+        ProductVariant,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="order_items",
+        verbose_name="Biến thể đã chọn"
+    )
+    variant_name = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        verbose_name="Tên quy cách lúc mua"
+    )
     quantity = models.PositiveIntegerField(default=1, verbose_name="Số lượng")
     unit_price = models.DecimalField(max_digits=10, decimal_places=0, default=0, verbose_name="Đơn giá tại thời điểm mua (VNĐ)")
+    subtotal = models.DecimalField(max_digits=12, decimal_places=0, default=0, verbose_name="Thành tiền (VNĐ)")
     subtotal = models.DecimalField(max_digits=12, decimal_places=0, default=0, verbose_name="Thành tiền (VNĐ)")
 
     class Meta:
