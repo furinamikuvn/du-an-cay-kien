@@ -134,9 +134,12 @@
                             <a href="{% url 'order_tracking' %}" class="block px-3.5 py-2 text-xs text-slate-700 hover:bg-[#EEF5F0] hover:text-[#2F5C3E] border-b border-slate-100 transition">
                                 <i class="fa-solid fa-truck-fast text-[#7AA88B] mr-2"></i> Tra cứu đơn hàng
                             </a>
-                            {% if request.user.is_staff or request.user.profile.role == 'staff' or request.user.profile.role == 'admin' %}
+                            {% if request.user.is_staff or request.user.is_superuser or request.user.profile.role == 'staff' or request.user.profile.role == 'admin' %}
+                            <a href="{% url 'staff_dashboard' %}" class="block px-3.5 py-2 text-xs text-[#2F5C3E] hover:bg-[#EEF5F0] border-b border-slate-100 transition">
+                                <i class="fa-solid fa-boxes-stacked text-[#7AA88B] mr-2"></i> Quản Trị Kho & Đơn
+                            </a>
                             <a href="/admin/" class="block px-3.5 py-2 text-xs text-amber-700 hover:bg-amber-50 border-b border-slate-100 transition">
-                                <i class="fa-solid fa-gear text-amber-600 mr-2"></i> Quản trị hệ thống
+                                <i class="fa-solid fa-gear text-amber-600 mr-2"></i> Quản trị hệ thống (Django)
                             </a>
                             {% endif %}
                             <a href="{% url 'logout' %}" class="block px-3.5 py-2 text-xs text-rose-700 hover:bg-rose-50 transition">
@@ -184,9 +187,11 @@
                     <a href="{% url 'order_tracking' %}" class="px-4 py-2.5 transition rounded-none {% if request.resolver_match.url_name == 'order_tracking' %}text-[#2F5C3E] font-bold bg-white border-b-2 border-[#7AA88B]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-b-2 border-transparent{% endif %}">
                         Tra Cứu Đơn Hàng
                     </a>
+                    {% if request.user.is_staff or request.user.is_superuser or request.user.profile.role == 'staff' or request.user.profile.role == 'admin' %}
                     <a href="{% url 'staff_dashboard' %}" class="px-4 py-2.5 transition rounded-none {% if request.resolver_match.url_name == 'staff_dashboard' %}text-[#2F5C3E] font-bold bg-white border-b-2 border-[#7AA88B]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-b-2 border-transparent{% endif %}">
                         Quản Trị Kho & Đơn
                     </a>
+                    {% endif %}
                     <a href="{% url 'article_list' %}" class="px-4 py-2.5 transition rounded-none {% if request.resolver_match.url_name == 'article_list' or request.resolver_match.url_name == 'article_detail' %}text-[#2F5C3E] font-bold bg-white border-b-2 border-[#7AA88B]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-b-2 border-transparent{% endif %}">
                         Cẩm Nang Thủy Sinh
                     </a>

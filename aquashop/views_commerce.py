@@ -407,12 +407,21 @@ def enhanced_checkout_view(request):
 def staff_dashboard_view(request):
     """
     Bảng điều khiển quản trị thống kê cho Nhân viên kho & Quản trị:
-    - Tổng doanh thu các đơn hàng thành công / đã xác nhận.
-    - Tổng số lượng đơn theo từng trạng thái.
-    - Danh sách cảnh báo các lô hàng InventoryLot đang ở trạng thái quarantined (úng lá/hư hỏng).
-    - Top các cây bán chạy nhất.
-    - Danh sách 10 đơn hàng gần nhất kèm chức năng cập nhật trạng thái nhanh.
+    Chỉ cho phép tài khoản Admin / Staff truy cập.
     """
+    if not request.user.is_authenticated:
+        messages.warning(request, "Vui lòng đăng nhập với tài khoản Quản trị viên hoặc Nhân viên để truy cập.")
+        return redirect('login')
+
+    is_admin_or_staff = (
+        request.user.is_staff or 
+        request.user.is_superuser or 
+        (hasattr(request.user, 'profile') and request.user.profile.role in ['staff', 'admin'])
+    )
+    if not is_admin_or_staff:
+        messages.error(request, "Quyền truy cập bị từ chối: Khu vực này chỉ dành riêng cho Quản trị viên và Nhân viên kho vận.")
+        return redirect('home')
+
     # 1. Thống kê doanh thu thực nhận (đơn xác nhận, đang giao, hoàn tất)
     revenue_statuses = ['confirmed', 'shipping', 'completed']
     revenue_data = Order.objects.filter(status__in=revenue_statuses).aggregate(total_rev=Sum('total_amount'))
@@ -471,7 +480,16 @@ def staff_dashboard_view(request):
 def update_order_status(request, order_id):
     """
     Cập nhật trạng thái đơn hàng nhanh từ Dashboard.
+    Chỉ cho phép tài khoản Admin / Staff.
     """
+    if not request.user.is_authenticated or not (
+        request.user.is_staff or 
+        request.user.is_superuser or 
+        (hasattr(request.user, 'profile') and request.user.profile.role in ['staff', 'admin'])
+    ):
+        messages.error(request, "Quyền truy cập bị từ chối: Bạn không có quyền cập nhật đơn hàng.")
+        return redirect('home')
+
     if request.method != 'POST':
         return redirect('staff_dashboard')
 
