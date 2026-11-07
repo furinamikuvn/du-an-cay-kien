@@ -1,0 +1,294 @@
+{% extends 'aquashop/base.html' %}
+{% load static %}
+
+{% block title %}Hồ Sơ Cá Nhân & Quản Lý Đơn Hàng - AquaPlant{% endblock %}
+{% block section_name %}Trung Tâm Quản Lý Tài Khoản Hội Viên{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto py-4 sm:py-6 space-y-6">
+
+    <!-- Header Profile Bar -->
+    <div class="bg-white border border-slate-200 p-6 rounded-none flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm">
+        <div class="flex items-center gap-4">
+            <div class="w-14 h-14 bg-[#EEF5F0] border-2 border-[#C5DEC9] text-[#2F5C3E] flex items-center justify-center text-2xl font-black rounded-none flex-shrink-0">
+                <i class="fa-solid fa-user-gear"></i>
+            </div>
+            <div>
+                <div class="flex items-center gap-2.5 flex-wrap">
+                    <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">
+                        {{ request.user.get_full_name|default:request.user.username }}
+                    </h1>
+                    <span class="inline-flex items-center gap-1 px-2.5 py-0.5 text-[11px] font-bold uppercase rounded-none bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9]">
+                        <i class="fa-solid fa-id-badge text-[10px]"></i> {{ profile.get_role_display|default:'Hội Viên Thân Thiết' }}
+                    </span>
+                    {% if request.user.is_staff or profile.role == 'staff' or profile.role == 'admin' %}
+                    <span class="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold uppercase rounded-none bg-amber-50 text-amber-800 border border-amber-200">
+                        <i class="fa-solid fa-shield-halved text-[9px]"></i> Ban Quản Trị
+                    </span>
+                    {% endif %}
+                </div>
+                <p class="text-xs text-slate-500 mt-1 flex items-center gap-3">
+                    <span><i class="fa-solid fa-envelope text-slate-400 mr-1"></i> {{ request.user.email }}</span>
+                    <span>·</span>
+                    <span><i class="fa-solid fa-calendar-days text-slate-400 mr-1"></i> Tham gia từ: {{ request.user.date_joined|date:"d/m/Y" }}</span>
+                </p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <a href="{% url 'my_orders' %}" class="px-4 py-2 bg-slate-100 hover:bg-[#EEF5F0] hover:text-[#2F5C3E] border border-slate-300 text-xs font-bold text-slate-700 rounded-none transition flex items-center gap-1.5">
+                <i class="fa-solid fa-box-archive text-[#7AA88B]"></i> Đơn Hàng Của Tôi
+            </a>
+            <a href="{% url 'logout' %}" class="px-3.5 py-2 bg-white hover:bg-rose-50 border border-slate-300 hover:border-rose-300 text-xs font-bold text-rose-700 rounded-none transition flex items-center gap-1.5">
+                <i class="fa-solid fa-arrow-right-from-bracket"></i> Đăng Xuất
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Stats Cards (Thẳng tắp, Không bo góc) -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <!-- Card 1: Tổng đơn -->
+        <div class="bg-white border border-slate-200 p-5 rounded-none flex items-center justify-between shadow-sm">
+            <div>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Tổng Đơn Đặt Hàng</p>
+                <p class="text-2xl font-black text-slate-900 mt-1">{{ total_orders_count }}</p>
+                <p class="text-[11px] text-slate-500 mt-0.5">Lịch sử giao dịch tích lũy</p>
+            </div>
+            <div class="w-11 h-11 bg-slate-50 border border-slate-200 text-slate-600 flex items-center justify-center text-lg rounded-none">
+                <i class="fa-solid fa-bag-shopping"></i>
+            </div>
+        </div>
+
+        <!-- Card 2: Đơn hoàn tất -->
+        <div class="bg-white border border-slate-200 p-5 rounded-none flex items-center justify-between shadow-sm">
+            <div>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-[#2F5C3E]">Đơn Hoàn Tất An Toàn</p>
+                <p class="text-2xl font-black text-[#2F5C3E] mt-1">{{ completed_orders_count }}</p>
+                <p class="text-[11px] text-[#7AA88B] mt-0.5">Bảo hiểm sống khỏe đã xác nhận</p>
+            </div>
+            <div class="w-11 h-11 bg-[#EEF5F0] border border-[#C5DEC9] text-[#2F5C3E] flex items-center justify-center text-lg rounded-none">
+                <i class="fa-solid fa-circle-check"></i>
+            </div>
+        </div>
+
+        <!-- Card 3: Tổng chi tiêu -->
+        <div class="bg-white border border-slate-200 p-5 rounded-none flex items-center justify-between shadow-sm">
+            <div>
+                <p class="text-[11px] font-bold uppercase tracking-wider text-rose-800">Tổng Tiền Đã Thanh Toán</p>
+                <p class="text-2xl font-black text-[#B91C1C] mt-1">{{ total_spent|floatformat:0 }}₫</p>
+                <p class="text-[11px] text-slate-500 mt-0.5">Hạng hội viên: <strong class="text-[#2F5C3E]">Bạc</strong></p>
+            </div>
+            <div class="w-11 h-11 bg-rose-50 border border-rose-200 text-rose-700 flex items-center justify-center text-lg rounded-none">
+                <i class="fa-solid fa-receipt"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Grid: Cập nhật thông tin & Đơn hàng gần đây -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+        
+        <!-- Cột Trái (5 col): Form Cập Nhật Hồ Sơ -->
+        <div class="lg:col-span-5 bg-white p-6 border border-slate-200 rounded-none shadow-sm">
+            <div class="border-b border-slate-100 pb-4 mb-5">
+                <h2 class="text-sm font-extrabold uppercase tracking-wide text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-user-pen text-[#7AA88B]"></i> Cập Nhật Hồ Sơ Hội Viên
+                </h2>
+                <p class="text-xs text-slate-500 mt-1">Thông tin này được dùng để tự động điền khi bạn đặt mua cây cảnh.</p>
+            </div>
+
+            <form method="POST" action="{% url 'profile' %}" class="space-y-4">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                <div class="p-3 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-none">
+                    {% for error in form.non_field_errors %}
+                    <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Tên đăng nhập cố định -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 uppercase tracking-wide mb-1">
+                        Tên Đăng Nhập (Cố định)
+                    </label>
+                    <input type="text" 
+                           value="{{ request.user.username }}" 
+                           disabled 
+                           class="w-full px-3 py-2 bg-slate-100 border border-slate-200 rounded-none text-xs text-slate-500 cursor-not-allowed">
+                </div>
+
+                <!-- Họ và tên -->
+                <div>
+                    <label for="{{ form.full_name.id_for_label }}" class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+                        {{ form.full_name.label }} <span class="text-rose-600">*</span>
+                    </label>
+                    <input type="text" 
+                           name="{{ form.full_name.name }}" 
+                           id="{{ form.full_name.id_for_label }}"
+                           value="{{ form.full_name.value|default:'' }}"
+                           class="w-full px-3 py-2 bg-white border border-slate-300 rounded-none text-xs text-slate-800 focus:outline-none focus:border-[#7AA88B] transition"
+                           required>
+                    {% if form.full_name.errors %}
+                    <p class="text-[11px] text-rose-600 mt-1">{{ form.full_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Email -->
+                <div>
+                    <label for="{{ form.email.id_for_label }}" class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+                        {{ form.email.label }} <span class="text-rose-600">*</span>
+                    </label>
+                    <input type="email" 
+                           name="{{ form.email.name }}" 
+                           id="{{ form.email.id_for_label }}"
+                           value="{{ form.email.value|default:'' }}"
+                           class="w-full px-3 py-2 bg-white border border-slate-300 rounded-none text-xs text-slate-800 focus:outline-none focus:border-[#7AA88B] transition"
+                           required>
+                    {% if form.email.errors %}
+                    <p class="text-[11px] text-rose-600 mt-1">{{ form.email.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Điện thoại -->
+                <div>
+                    <label for="{{ form.phone.id_for_label }}" class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+                        {{ form.phone.label }}
+                    </label>
+                    <input type="text" 
+                           name="{{ form.phone.name }}" 
+                           id="{{ form.phone.id_for_label }}"
+                           value="{{ form.phone.value|default:'' }}"
+                           class="w-full px-3 py-2 bg-white border border-slate-300 rounded-none text-xs text-slate-800 focus:outline-none focus:border-[#7AA88B] transition"
+                           placeholder="0912345678">
+                    {% if form.phone.errors %}
+                    <p class="text-[11px] text-rose-600 mt-1">{{ form.phone.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Địa chỉ -->
+                <div>
+                    <label for="{{ form.address.id_for_label }}" class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1">
+                        {{ form.address.label }}
+                    </label>
+                    <textarea name="{{ form.address.name }}" 
+                              id="{{ form.address.id_for_label }}"
+                              rows="3"
+                              class="w-full px-3 py-2 bg-white border border-slate-300 rounded-none text-xs text-slate-800 focus:outline-none focus:border-[#7AA88B] transition resize-none"
+                              placeholder="Số nhà, đường, phường/xã, quận/huyện...">{{ form.address.value|default:'' }}</textarea>
+                    {% if form.address.errors %}
+                    <p class="text-[11px] text-rose-600 mt-1">{{ form.address.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Submit Button -->
+                <div class="pt-2">
+                    <button type="submit" class="w-full bg-[#7AA88B] hover:bg-[#638F73] text-white py-2.5 px-4 rounded-none text-xs font-bold uppercase tracking-wider transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-floppy-disk text-xs"></i> Lưu Cập Nhật Thông Tin
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Cột Phải (7 col): Đơn Hàng Gần Đây -->
+        <div class="lg:col-span-7 bg-white p-6 border border-slate-200 rounded-none shadow-sm space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                <div>
+                    <h2 class="text-sm font-extrabold uppercase tracking-wide text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-[#7AA88B]"></i> Đơn Hàng Đặt Mua Gần Đây
+                    </h2>
+                    <p class="text-xs text-slate-500 mt-0.5">5 đơn hàng phát sinh gần nhất của bạn</p>
+                </div>
+                <a href="{% url 'my_orders' %}" class="text-xs font-bold text-[#7AA88B] hover:underline flex items-center gap-1">
+                    Xem tất cả ({{ total_orders_count }}) <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+
+            {% if recent_orders %}
+            <div class="space-y-4">
+                {% for ord in recent_orders %}
+                <div class="border border-slate-200 p-4 rounded-none hover:border-[#7AA88B] transition bg-white">
+                    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2.5 mb-2.5 text-xs">
+                        <div class="flex items-center gap-2">
+                            <span class="font-extrabold text-slate-900">{{ ord.order_code }}</span>
+                            <span class="text-slate-400">·</span>
+                            <span class="text-slate-500">{{ ord.created_at|date:"d/m/Y H:i" }}</span>
+                        </div>
+                        <div>
+                            {% if ord.status == 'pending' %}
+                            <span class="px-2 py-0.5 text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 rounded-none">
+                                <i class="fa-solid fa-clock mr-1"></i> {{ ord.get_status_display }}
+                            </span>
+                            {% elif ord.status == 'confirmed' %}
+                            <span class="px-2 py-0.5 text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200 rounded-none">
+                                <i class="fa-solid fa-box-open mr-1"></i> {{ ord.get_status_display }}
+                            </span>
+                            {% elif ord.status == 'shipping' %}
+                            <span class="px-2 py-0.5 text-[10px] font-bold bg-purple-50 text-purple-800 border border-purple-200 rounded-none">
+                                <i class="fa-solid fa-truck-fast mr-1"></i> {{ ord.get_status_display }}
+                            </span>
+                            {% elif ord.status == 'completed' %}
+                            <span class="px-2 py-0.5 text-[10px] font-bold bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] rounded-none">
+                                <i class="fa-solid fa-circle-check mr-1"></i> {{ ord.get_status_display }}
+                            </span>
+                            {% else %}
+                            <span class="px-2 py-0.5 text-[10px] font-bold bg-rose-50 text-rose-800 border border-rose-200 rounded-none">
+                                <i class="fa-solid fa-xmark mr-1"></i> {{ ord.get_status_display }}
+                            </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Items Preview -->
+                    <div class="space-y-2 mb-3">
+                        {% for item in ord.items.all|slice:":3" %}
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="text-slate-700 flex items-center gap-2 truncate max-w-xs">
+                                <i class="fa-solid fa-seedling text-[#7AA88B] text-[10px]"></i>
+                                {{ item.product.name }}
+                            </span>
+                            <span class="text-slate-500 font-semibold">x{{ item.quantity }} ({{ item.subtotal|floatformat:0 }}₫)</span>
+                        </div>
+                        {% endfor %}
+                        {% if ord.items.count > 3 %}
+                        <p class="text-[11px] text-slate-400 italic">+ và {{ ord.items.count|add:"-3" }} loại cây khác...</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- Footer card đơn -->
+                    <div class="flex items-center justify-between pt-2.5 border-t border-slate-100 text-xs">
+                        <div>
+                            <span class="text-slate-500 text-[11px]">Tổng thanh toán:</span>
+                            <span class="font-black text-sm text-[#B91C1C] ml-1">{{ ord.total_amount|floatformat:0 }}₫</span>
+                        </div>
+                        <a href="{% url 'order_tracking' %}?q={{ ord.order_code }}" class="inline-flex items-center gap-1.5 px-3 py-1 bg-[#EEF5F0] hover:bg-[#7AA88B] text-[#2F5C3E] hover:text-white border border-[#C5DEC9] text-xs font-bold rounded-none transition">
+                            <i class="fa-solid fa-route text-xs"></i> Xem Hành Trình
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <!-- Trống đơn hàng -->
+            <div class="text-center py-10 border border-dashed border-slate-200 rounded-none p-6">
+                <div class="w-12 h-12 bg-slate-50 border border-slate-200 text-slate-400 flex items-center justify-center text-xl mx-auto rounded-none mb-3">
+                    <i class="fa-solid fa-box-open"></i>
+                </div>
+                <p class="text-xs font-bold text-slate-700">Bạn chưa có đơn đặt hàng nào gần đây</p>
+                <p class="text-xs text-slate-500 mt-1 max-w-sm mx-auto">Hãy ghé qua cửa hàng cây cấy mô hoặc dùng trợ lý chọn cây để thiết kế bể thủy sinh theo ý bạn.</p>
+                <div class="mt-4 flex justify-center gap-3">
+                    <a href="{% url 'home' %}" class="px-4 py-2 bg-[#7AA88B] hover:bg-[#638F73] text-white text-xs font-bold rounded-none transition">
+                        Khám Phá Cửa Hàng
+                    </a>
+                    <a href="{% url 'plant_assistant' %}" class="px-4 py-2 bg-[#EEF5F0] hover:bg-[#C5DEC9] text-[#2F5C3E] text-xs font-bold border border-[#C5DEC9] rounded-none transition">
+                        Trợ Lý Chọn Cây
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}

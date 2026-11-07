@@ -1,0 +1,330 @@
+{% extends 'aquashop/base.html' %}
+{% load static %}
+
+{% block title %}Tra Cứu Tiến Trình Vận Chuyển Đơn Hàng - AquaPlant{% endblock %}
+{% block section_name %}Tra Cứu Tiến Độ Bọc Ẩm & Giao Nhận Cây Cảnh{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto py-4 sm:py-6 space-y-8">
+
+    <!-- Hero Search Card -->
+    <div class="bg-white border border-slate-200 p-6 sm:p-8 rounded-none shadow-sm">
+        <div class="max-w-2xl mx-auto text-center space-y-2 mb-6">
+            <span class="inline-block text-[10px] font-extrabold uppercase tracking-widest text-[#2F5C3E] bg-[#EEF5F0] border border-[#C5DEC9] px-2.5 py-1 rounded-none">
+                Hệ Thống Theo Dõi Vận Đơn Trực Tuyến
+            </span>
+            <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                Tra Cứu Trạng Thái & Nhật Ký Bọc Ẩm Cây
+            </h1>
+            <p class="text-xs text-slate-500">
+                Nhập mã đơn hàng (ví dụ: <strong class="text-slate-700">AQ-88912</strong>) hoặc số điện thoại đặt hàng để kiểm tra tiến độ đóng gói và lộ trình giao hàng trực tiếp.
+            </p>
+        </div>
+
+        <!-- Search Form -->
+        <form method="GET" action="{% url 'order_tracking' %}" class="max-w-2xl mx-auto">
+            <div class="flex flex-col sm:flex-row items-stretch gap-2">
+                <div class="relative flex-grow">
+                    <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400 text-sm">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input type="text" 
+                           name="q" 
+                           value="{{ query }}" 
+                           placeholder="Nhập mã đơn hàng hoặc số điện thoại người nhận..."
+                           class="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-none text-xs sm:text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#7AA88B] focus:bg-white transition"
+                           required>
+                </div>
+                <button type="submit" class="bg-[#7AA88B] hover:bg-[#638F73] text-white py-3 px-6 rounded-none text-xs sm:text-sm font-extrabold uppercase tracking-wider transition flex items-center justify-center gap-2 shadow-sm flex-shrink-0">
+                    <i class="fa-solid fa-route"></i> Tra Cứu Ngay
+                </button>
+            </div>
+            <div class="flex items-center justify-between text-[11px] text-slate-400 mt-2 px-1">
+                <span>Gợi ý tra cứu mẫu: <a href="{% url 'order_tracking' %}?q=AQ-88912" class="text-[#7AA88B] underline font-semibold">AQ-88912</a></span>
+                <span>Hỗ trợ tra cứu cả đơn mua không cần tài khoản</span>
+            </div>
+        </form>
+    </div>
+
+    <!-- Kết Quả Tìm Kiếm -->
+    {% if has_searched %}
+        {% if order %}
+            
+            <!-- Danh sách đơn nếu tìm bằng SĐT có nhiều đơn -->
+            {% if orders_list|length > 1 %}
+            <div class="bg-[#EEF5F0] border border-[#C5DEC9] p-4 rounded-none">
+                <p class="text-xs font-bold text-[#2F5C3E] mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-list-check"></i> 
+                    Tìm thấy {{ orders_list|length }} đơn hàng khớp với số điện thoại <strong class="text-slate-900">{{ query }}</strong>. Chọn đơn để xem chi tiết:
+                </p>
+                <div class="flex flex-wrap gap-2">
+                    {% for item_ord in orders_list %}
+                    <a href="{% url 'order_tracking' %}?q={{ query }}&code={{ item_ord.order_code }}" 
+                       class="px-3 py-1.5 text-xs font-bold border rounded-none transition flex items-center gap-2 {% if item_ord.order_code == order.order_code %}bg-[#7AA88B] text-white border-[#7AA88B]{% else %}bg-white text-slate-700 border-slate-300 hover:border-[#7AA88B]{% endif %}">
+                        <span>{{ item_ord.order_code }}</span>
+                        <span class="text-[10px] font-normal">({{ item_ord.get_status_display }})</span>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Order Detail Container -->
+            <div class="bg-white border border-slate-200 p-6 sm:p-8 rounded-none shadow-sm space-y-8">
+                
+                <!-- Order Header Info -->
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 pb-5">
+                    <div>
+                        <div class="flex items-center gap-3">
+                            <h2 class="text-xl font-black text-slate-900 tracking-tight">
+                                Đơn Hàng: <span class="text-[#7AA88B]">{{ order.order_code }}</span>
+                            </h2>
+                            {% if order.status == 'pending' %}
+                            <span class="px-3 py-1 text-xs font-extrabold bg-amber-50 text-amber-800 border border-amber-300 rounded-none">
+                                <i class="fa-solid fa-clock mr-1"></i> {{ order.get_status_display }}
+                            </span>
+                            {% elif order.status == 'confirmed' %}
+                            <span class="px-3 py-1 text-xs font-extrabold bg-blue-50 text-blue-800 border border-blue-300 rounded-none">
+                                <i class="fa-solid fa-box-open mr-1"></i> {{ order.get_status_display }}
+                            </span>
+                            {% elif order.status == 'shipping' %}
+                            <span class="px-3 py-1 text-xs font-extrabold bg-purple-50 text-purple-800 border border-purple-300 rounded-none">
+                                <i class="fa-solid fa-truck-fast mr-1"></i> {{ order.get_status_display }}
+                            </span>
+                            {% elif order.status == 'completed' %}
+                            <span class="px-3 py-1 text-xs font-extrabold bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] rounded-none">
+                                <i class="fa-solid fa-circle-check mr-1"></i> {{ order.get_status_display }}
+                            </span>
+                            {% else %}
+                            <span class="px-3 py-1 text-xs font-extrabold bg-rose-50 text-rose-800 border border-rose-300 rounded-none">
+                                <i class="fa-solid fa-xmark mr-1"></i> {{ order.get_status_display }}
+                            </span>
+                            {% endif %}
+                        </div>
+                        <p class="text-xs text-slate-500 mt-1">
+                            Đặt lúc: <strong class="text-slate-700">{{ order.created_at|date:"d/m/Y H:i" }}</strong> · Cập nhật trạng thái mới nhất: <strong class="text-slate-700">{{ order.updated_at|date:"d/m/Y H:i" }}</strong>
+                        </p>
+                    </div>
+
+                    <div class="text-left sm:text-right">
+                        <span class="text-[11px] uppercase tracking-wider font-bold text-slate-400 block">Tổng Thanh Toán</span>
+                        <span class="text-xl sm:text-2xl font-black text-[#B91C1C]">{{ order.total_amount|floatformat:0 }}₫</span>
+                    </div>
+                </div>
+
+                <!-- 4-Step Process Timeline (Thẳng tắp, Không bo góc) -->
+                {% if order.status != 'cancelled' %}
+                <div class="space-y-4">
+                    <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-bars-progress text-[#7AA88B]"></i> Lộ Trình Xử Lý & Đóng Gói Sinh Học
+                    </h3>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <!-- Bước 1: Tiếp nhận -->
+                        <div class="p-3.5 border rounded-none transition {% if status_step >= 1 %}bg-[#EEF5F0] border-[#C5DEC9] text-[#2F5C3E]{% else %}bg-slate-50 border-slate-200 text-slate-400{% endif %}">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-[10px] font-black uppercase tracking-wider">Bước 1</span>
+                                <i class="fa-solid fa-file-invoice text-xs"></i>
+                            </div>
+                            <p class="font-bold text-xs">Tiếp Nhận Đơn Hàng</p>
+                            <p class="text-[11px] mt-1 text-slate-600">Đơn đã ghi nhận vào kho dữ liệu</p>
+                        </div>
+
+                        <!-- Bước 2: Bọc ẩm -->
+                        <div class="p-3.5 border rounded-none transition {% if status_step >= 2 %}bg-[#EEF5F0] border-[#C5DEC9] text-[#2F5C3E]{% else %}bg-slate-50 border-slate-200 text-slate-400{% endif %}">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-[10px] font-black uppercase tracking-wider">Bước 2</span>
+                                <i class="fa-solid fa-box-open text-xs"></i>
+                            </div>
+                            <p class="font-bold text-xs">Kiểm Định & Bọc Ẩm</p>
+                            <p class="text-[11px] mt-1 text-slate-600">Bông ẩm khoáng & đệm khí túi CO2</p>
+                        </div>
+
+                        <!-- Bước 3: Đang giao -->
+                        <div class="p-3.5 border rounded-none transition {% if status_step >= 3 %}bg-[#EEF5F0] border-[#C5DEC9] text-[#2F5C3E]{% else %}bg-slate-50 border-slate-200 text-slate-400{% endif %}">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-[10px] font-black uppercase tracking-wider">Bước 3</span>
+                                <i class="fa-solid fa-truck-fast text-xs"></i>
+                            </div>
+                            <p class="font-bold text-xs">Vận Chuyển Hỏa Tốc</p>
+                            <p class="text-[11px] mt-1 text-slate-600">Shipper chuyên chở cây tươi</p>
+                        </div>
+
+                        <!-- Bước 4: Hoàn tất -->
+                        <div class="p-3.5 border rounded-none transition {% if status_step >= 4 %}bg-[#EEF5F0] border-[#C5DEC9] text-[#2F5C3E]{% else %}bg-slate-50 border-slate-200 text-slate-400{% endif %}">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-[10px] font-black uppercase tracking-wider">Bước 4</span>
+                                <i class="fa-solid fa-shield-heart text-xs"></i>
+                            </div>
+                            <p class="font-bold text-xs">Giao Thành Công</p>
+                            <p class="text-[11px] mt-1 text-slate-600">Kích hoạt bảo hiểm 1 đổi 1 24H</p>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <div class="p-4 bg-rose-50 border border-rose-200 text-rose-800 rounded-none text-xs flex items-center gap-3">
+                    <i class="fa-solid fa-ban text-rose-600 text-lg"></i>
+                    <div>
+                        <strong class="font-bold block">Đơn hàng này đã bị hủy bỏ</strong>
+                        <span>Nếu có thắc mắc hoặc cần khôi phục lại đơn hàng, vui lòng liên hệ nhân viên hỗ trợ.</span>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- Nhật ký hành trình (Tracking Note) -->
+                <div class="bg-slate-50 border border-slate-200 p-5 rounded-none space-y-2">
+                    <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-800 flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-[#7AA88B]"></i> Nhật Ký Lộ Trình & Ghi Chú Kỹ Thuật
+                    </h3>
+                    <div class="p-3.5 bg-white border border-slate-200 text-xs text-slate-700 leading-relaxed font-mono whitespace-pre-line rounded-none">
+                        {{ order.tracking_note|default:"Hệ thống đang chuẩn bị tiến trình đóng gói bọc ẩm cho đơn hàng." }}
+                    </div>
+                </div>
+
+                <!-- Mặt hàng & Chi tiết chi phí -->
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                    
+                    <!-- Bảng Mặt Hàng (8 col) -->
+                    <div class="lg:col-span-8 space-y-3">
+                        <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-seedling text-[#7AA88B]"></i> Danh Sách Cây Cảnh & Sản Phẩm Trong Đơn
+                        </h3>
+
+                        <div class="border border-slate-200 overflow-x-auto rounded-none">
+                            <table class="w-full text-left text-xs">
+                                <thead class="bg-slate-100 text-slate-600 font-bold uppercase border-b border-slate-200">
+                                    <tr>
+                                        <th class="py-2.5 px-3">Sản phẩm cây</th>
+                                        <th class="py-2.5 px-3 text-center">Đặc tính</th>
+                                        <th class="py-2.5 px-3 text-center">Số lượng</th>
+                                        <th class="py-2.5 px-3 text-right">Đơn giá</th>
+                                        <th class="py-2.5 px-3 text-right">Thành tiền</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100">
+                                    {% for item in order.items.all %}
+                                    <tr class="hover:bg-slate-50 transition">
+                                        <td class="py-3 px-3">
+                                            <p class="font-bold text-slate-900">{{ item.product.name }}</p>
+                                            {% if item.product.scientific_name %}
+                                            <p class="text-[11px] text-slate-400 italic">{{ item.product.scientific_name }}</p>
+                                            {% endif %}
+                                        </td>
+                                        <td class="py-3 px-3 text-center">
+                                            <span class="inline-block px-2 py-0.5 text-[10px] bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] rounded-none">
+                                                {{ item.product.get_leaf_state_display|default:'Thuần lá nước' }}
+                                            </span>
+                                        </td>
+                                        <td class="py-3 px-3 text-center font-bold text-slate-800">
+                                            {{ item.quantity }}
+                                        </td>
+                                        <td class="py-3 px-3 text-right text-slate-600 font-mono">
+                                            {{ item.unit_price|floatformat:0 }}₫
+                                        </td>
+                                        <td class="py-3 px-3 text-right font-black text-slate-900 font-mono">
+                                            {{ item.subtotal|floatformat:0 }}₫
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="py-4 text-center text-slate-500">
+                                            Chưa có thông tin dòng sản phẩm chi tiết cho đơn hàng này.
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Thông Tin Người Nhận & Thanh Toán (4 col) -->
+                    <div class="lg:col-span-4 space-y-4">
+                        
+                        <!-- Box Địa Chỉ Người Nhận -->
+                        <div class="bg-white border border-slate-200 p-4 rounded-none space-y-2">
+                            <h4 class="text-xs font-extrabold uppercase tracking-wide text-slate-800 pb-2 border-b border-slate-100 flex items-center gap-2">
+                                <i class="fa-solid fa-location-dot text-[#7AA88B]"></i> Địa Chỉ Nhận Hàng
+                            </h4>
+                            <div class="text-xs space-y-1.5 text-slate-700">
+                                <p><span class="text-slate-400">Người nhận:</span> <strong class="text-slate-900">{{ order.customer_name }}</strong></p>
+                                <p><span class="text-slate-400">Số điện thoại:</span> <strong class="text-slate-900">{{ order.phone }}</strong></p>
+                                <p><span class="text-slate-400">Email:</span> <span class="text-slate-700">{{ order.email }}</span></p>
+                                <p class="pt-1"><span class="text-slate-400 block text-[11px]">Địa chỉ:</span> <span class="text-slate-800 font-medium">{{ order.shipping_address }}</span></p>
+                            </div>
+                        </div>
+
+                        <!-- Box Tổng Hóa Đơn -->
+                        <div class="bg-[#EEF5F0] border border-[#C5DEC9] p-4 rounded-none space-y-2.5 text-xs">
+                            <h4 class="text-xs font-black uppercase tracking-wide text-[#2F5C3E] pb-2 border-b border-[#C5DEC9] flex items-center gap-2">
+                                <i class="fa-solid fa-receipt text-[#7AA88B]"></i> Chi Tiết Thanh Toán
+                            </h4>
+                            <div class="space-y-1.5 text-slate-700">
+                                <div class="flex justify-between">
+                                    <span class="text-slate-600">Tiền hàng tạm tính:</span>
+                                    <span class="font-bold text-slate-900 font-mono">{{ order.subtotal_amount|default:order.total_amount|floatformat:0 }}₫</span>
+                                </div>
+                                {% if order.discount_amount and order.discount_amount > 0 %}
+                                <div class="flex justify-between text-[#2F5C3E]">
+                                    <span>Chiết khấu mã ưu đãi:</span>
+                                    <span class="font-bold font-mono">-{{ order.discount_amount|floatformat:0 }}₫</span>
+                                </div>
+                                {% endif %}
+                                <div class="flex justify-between">
+                                    <span class="text-slate-600">Phí bọc ẩm & đệm khí:</span>
+                                    <span class="font-bold text-slate-900 font-mono">{{ order.shipping_fee|floatformat:0 }}₫</span>
+                                </div>
+                                <div class="flex justify-between pt-2 border-t border-[#C5DEC9] text-sm">
+                                    <strong class="text-slate-900">Tổng thanh toán:</strong>
+                                    <strong class="font-black text-[#B91C1C] font-mono">{{ order.total_amount|floatformat:0 }}₫</strong>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+
+                <!-- Footer Bảo Hiểm 24H -->
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-none flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-[#7AA88B] text-white flex items-center justify-center font-bold rounded-none flex-shrink-0">
+                            <i class="fa-solid fa-shield-halved"></i>
+                        </div>
+                        <div>
+                            <span class="font-bold text-slate-900 block">Chính sách bảo hiểm cây cảnh tận nơi</span>
+                            <span class="text-slate-500 text-[11px]">Nếu cây bị dập rữa khi mở hộp, vui lòng chụp ảnh và gọi ngay hotline để được hoàn tiền hoặc giao bù trong 24 giờ.</span>
+                        </div>
+                    </div>
+                    <a href="tel:1900000" class="px-4 py-2 bg-white hover:bg-rose-50 border border-slate-300 text-rose-700 font-bold rounded-none transition flex-shrink-0">
+                        <i class="fa-solid fa-phone mr-1"></i> 1900000
+                    </a>
+                </div>
+
+            </div>
+
+        {% else %}
+            <!-- Không tìm thấy kết quả -->
+            <div class="bg-white border border-slate-200 p-8 sm:p-12 text-center rounded-none shadow-sm space-y-4">
+                <div class="w-16 h-16 bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center text-2xl mx-auto rounded-none">
+                    <i class="fa-solid fa-magnifying-glass-arrow-right"></i>
+                </div>
+                <div>
+                    <h2 class="text-base font-extrabold text-slate-900">Không tìm thấy đơn hàng phù hợp</h2>
+                    <p class="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                        Không có dữ liệu cho từ khóa: <strong class="text-rose-700 font-bold">{{ query }}</strong>. Vui lòng kiểm tra lại chính xác mã đơn hàng (ví dụ: AQ-88912) hoặc số điện thoại đã dùng khi đặt mua.
+                    </p>
+                </div>
+                <div class="pt-2 flex justify-center gap-3">
+                    <a href="{% url 'order_tracking' %}" class="px-5 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 text-xs font-bold rounded-none transition">
+                        Nhập Lại Từ Khóa
+                    </a>
+                    <a href="tel:1900000" class="px-5 py-2.5 bg-[#EEF5F0] hover:bg-[#C5DEC9] text-[#2F5C3E] border border-[#C5DEC9] text-xs font-bold rounded-none transition">
+                        Gọi Tổng Đài Hỗ Trợ 1900000
+                    </a>
+                </div>
+            </div>
+        {% endif %}
+    {% endif %}
+
+</div>
+{% endblock %}

@@ -1,0 +1,259 @@
+{% extends 'aquashop/base.html' %}
+{% load static %}
+
+{% block title %}Giỏ Hàng Mua Sắm - AquaPlant Thủy Sinh{% endblock %}
+{% block section_name %}Giỏ Hàng Mua Sắm Trực Tuyến{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto space-y-6">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-200 pb-4">
+        <div>
+            <h1 class="text-2xl font-black text-slate-900 flex items-center gap-2.5">
+                <i class="fa-solid fa-cart-shopping text-[#7AA88B]"></i> Giỏ Hàng Trồng Cây Của Bạn
+            </h1>
+            <p class="text-xs text-slate-500 mt-1">
+                Các cây trong giỏ được tự động kiểm định sinh học và trừ kho theo lô FIFO khi thanh toán.
+            </p>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-xs px-2.5 py-1 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] font-bold rounded-none flex items-center gap-1.5">
+                <i class="fa-solid fa-shield-halved"></i> Bảo hiểm bọc ẩm 24H
+            </span>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- Cart Items Table (2/3 chiều rộng) -->
+        <div class="lg:col-span-2 space-y-4">
+            <div class="bg-white p-6 border border-slate-200 rounded-none shadow-none">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-200 text-slate-400 font-bold uppercase pb-3 text-[11px]">
+                            <th class="pb-3">Sản phẩm cây cảnh</th>
+                            <th class="pb-3 text-center">Số lượng</th>
+                            <th class="pb-3 text-right">Tổng tiền</th>
+                            <th class="pb-3 text-center w-12">Xóa</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for item in cart_items %}
+                        <tr class="hover:bg-slate-50/60 transition">
+                            <!-- Thông tin sản phẩm -->
+                            <td class="py-4 flex items-center gap-3">
+                                <div class="w-16 h-16 bg-slate-50 overflow-hidden flex-shrink-0 border border-slate-200 rounded-none">
+                                    {% if item.product.image_url %}
+                                        <img src="{% static item.product.image_url %}" alt="{{ item.product.name }}" class="w-full h-full object-cover">
+                                    {% else %}
+                                        <div class="w-full h-full flex items-center justify-center text-slate-300">
+                                            <i class="fa-solid fa-seedling text-lg"></i>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="font-bold text-sm text-slate-900 leading-snug">{{ item.product.name }}</p>
+                                    <p class="text-slate-400 text-[11px] mt-0.5">
+                                        {{ item.product.get_leaf_state_display|default:"100% Cây thuần lá nước" }}
+                                    </p>
+                                    <p class="text-xs text-slate-500 mt-1">
+                                        Đơn giá: 
+                                        {% if item.product.sale_price %}
+                                            <span class="line-through text-slate-400 mr-1">{{ item.regular_price|floatformat:0 }}₫</span>
+                                            <span class="font-bold text-[#B91C1C]">{{ item.unit_price|floatformat:0 }}₫</span>
+                                        {% else %}
+                                            <span class="font-bold text-[#B91C1C]">{{ item.unit_price|floatformat:0 }}₫</span>
+                                        {% endif %}
+                                    </p>
+                                </div>
+                            </td>
+
+                            <!-- Số lượng (Bộ đếm tăng giảm góc vuông) -->
+                            <td class="py-4 text-center">
+                                <div class="inline-flex items-center border border-slate-300 rounded-none bg-white">
+                                    <a href="{% url 'update_cart_quantity' item.product.id 'decrease' %}" class="w-7 h-7 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition font-bold text-sm" title="Giảm 1">
+                                        -
+                                    </a>
+                                    <span class="w-9 h-7 flex items-center justify-center font-bold text-xs text-slate-900 border-x border-slate-200 bg-slate-50">
+                                        {{ item.quantity }}
+                                    </span>
+                                    <a href="{% url 'update_cart_quantity' item.product.id 'increase' %}" class="w-7 h-7 flex items-center justify-center text-slate-500 hover:bg-slate-100 hover:text-slate-900 transition font-bold text-sm" title="Tăng 1">
+                                        +
+                                    </a>
+                                </div>
+                            </td>
+
+                            <!-- Tổng tiền từng món -->
+                            <td class="py-4 text-right">
+                                <span class="font-black text-sm text-[#B91C1C] block">
+                                    {{ item.subtotal|floatformat:0 }}₫
+                                </span>
+                                {% if item.product.sale_price %}
+                                <span class="text-[10px] text-[#2F5C3E] font-semibold">
+                                    Ưu đãi trực tiếp
+                                </span>
+                                {% endif %}
+                            </td>
+
+                            <!-- Nút xóa -->
+                            <td class="py-4 text-center">
+                                <a href="{% url 'remove_from_cart' item.product.id %}" 
+                                   class="inline-flex items-center justify-center w-7 h-7 text-slate-400 hover:text-white hover:bg-[#B91C1C] transition rounded-none text-xs" 
+                                   title="Xóa hẳn sản phẩm khỏi giỏ hàng">
+                                    <i class="fa-regular fa-trash-can"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="4" class="py-12 text-center text-slate-400 space-y-2">
+                                <i class="fa-solid fa-basket-shopping text-3xl text-slate-300"></i>
+                                <p class="text-xs">Giỏ hàng của bạn đang trống.</p>
+                                <a href="{% url 'home' %}" class="inline-block mt-2 px-4 py-2 bg-[#7AA88B] text-white font-bold text-xs rounded-none">
+                                    Khám Phá Cây Thủy Sinh Ngay
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+
+                <div class="mt-6 flex flex-col sm:flex-row justify-between items-start sm:items-center border-t border-slate-100 pt-4 gap-3">
+                    <a href="{% url 'home' %}" class="text-xs font-bold text-[#7AA88B] hover:text-[#638F73] flex items-center gap-1.5 transition">
+                        <i class="fa-solid fa-arrow-left"></i> Tiếp tục chọn thêm cây khác
+                    </a>
+                    <span class="text-[11px] text-slate-400">
+                        * Kho tự động trừ số lượng theo lô sớm nhất (FIFO) khi bạn hoàn tất đặt hàng
+                    </span>
+                </div>
+            </div>
+
+            <!-- Khối Nhập Mã Giảm Giá Voucher Trong Giỏ Hàng -->
+            <div class="bg-white p-5 border border-slate-200 rounded-none space-y-3">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                    <h3 class="font-bold text-xs text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-ticket text-[#7AA88B]"></i> Mã Khuyến Mãi / Voucher Ưu Đãi
+                    </h3>
+                    <span class="text-[10px] text-slate-400">Nhập mã để hưởng chiết khấu trực tiếp</span>
+                </div>
+
+                {% if coupon %}
+                <!-- Trạng thái đã áp dụng mã coupon -->
+                <div class="bg-[#EEF5F0] border border-[#C5DEC9] p-3.5 rounded-none flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 bg-[#7AA88B] text-white flex items-center justify-center font-bold text-xs rounded-none flex-shrink-0">
+                            <i class="fa-solid fa-check"></i>
+                        </div>
+                        <div>
+                            <div class="text-xs font-bold text-[#2F5C3E] flex items-center gap-2">
+                                <span>Mã ưu đãi đã áp dụng:</span>
+                                <span class="font-mono bg-white px-2 py-0.5 border border-[#C5DEC9] text-[#2F5C3E] font-black uppercase">{{ coupon.code }}</span>
+                            </div>
+                            <p class="text-[11px] text-slate-600 mt-0.5">
+                                Khấu trừ: <strong class="text-[#B91C1C]">-{{ discount|floatformat:0 }}₫</strong> trên tổng đơn hàng.
+                            </p>
+                        </div>
+                    </div>
+                    <form method="POST" action="{% url 'remove_coupon' %}" class="flex-shrink-0">
+                        {% csrf_token %}
+                        <button type="submit" class="px-3 py-1.5 bg-white hover:bg-red-50 text-slate-600 hover:text-[#B91C1C] text-xs font-bold border border-slate-300 hover:border-red-300 rounded-none transition flex items-center gap-1">
+                            <i class="fa-solid fa-xmark"></i> Xóa mã
+                        </button>
+                    </form>
+                </div>
+                {% else %}
+                <!-- Form nhập mã coupon -->
+                <form method="POST" action="{% url 'apply_coupon' %}" class="flex flex-col sm:flex-row gap-2">
+                    {% csrf_token %}
+                    <div class="flex-grow">
+                        {{ coupon_form.coupon_code }}
+                    </div>
+                    <button type="submit" class="bg-[#7AA88B] hover:bg-[#638F73] text-white px-5 py-2.5 font-bold text-xs uppercase tracking-wider rounded-none transition flex items-center justify-center gap-1.5 flex-shrink-0">
+                        <i class="fa-solid fa-arrow-right"></i> Áp Dụng Mã
+                    </button>
+                </form>
+                {% endif %}
+
+                <!-- Gợi ý voucher có sẵn trong hệ thống -->
+                <div class="flex flex-wrap items-center gap-2 pt-2 text-[11px] text-slate-500">
+                    <span class="font-semibold text-slate-600">Gợi ý mã ưu đãi:</span>
+                    <button type="button" onclick="document.getElementById('id_coupon_code') ? document.getElementById('id_coupon_code').value='AQUA2026' : null;" class="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-50 hover:bg-[#EEF5F0] border border-dashed border-slate-300 hover:border-[#7AA88B] text-slate-700 font-mono text-[10px] rounded-none transition">
+                        <strong>AQUA2026</strong> (Giảm 10% từ 100k)
+                    </button>
+                    <button type="button" onclick="document.getElementById('id_coupon_code') ? document.getElementById('id_coupon_code').value='FREESHIP' : null;" class="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-50 hover:bg-[#EEF5F0] border border-dashed border-slate-300 hover:border-[#7AA88B] text-slate-700 font-mono text-[10px] rounded-none transition">
+                        <strong>FREESHIP</strong> (Giảm 30k từ 200k)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Order Summary Box (1/3 chiều rộng) -->
+        <div class="space-y-4">
+            <div class="bg-white p-6 border border-slate-200 rounded-none space-y-4">
+                <h2 class="font-bold text-sm text-slate-900 border-b border-slate-100 pb-3 flex items-center justify-between">
+                    <span class="flex items-center gap-2">
+                        <i class="fa-solid fa-receipt text-[#7AA88B]"></i> Tóm Tắt Đơn Hàng
+                    </span>
+                    <span class="text-[11px] font-normal text-slate-400">{{ cart_items|length }} sản phẩm</span>
+                </h2>
+
+                <div class="space-y-3 text-xs">
+                    <div class="flex justify-between text-slate-600">
+                        <span>Tạm tính tiền hàng:</span>
+                        <span class="font-bold text-slate-900">{{ subtotal|floatformat:0 }}₫</span>
+                    </div>
+
+                    {% if coupon %}
+                    <div class="flex justify-between text-[#2F5C3E] font-bold bg-[#EEF5F0] p-2 border border-[#C5DEC9] rounded-none">
+                        <span class="flex items-center gap-1">
+                            <i class="fa-solid fa-ticket text-[#7AA88B]"></i> Voucher ({{ coupon.code }}):
+                        </span>
+                        <span class="text-[#B91C1C]">-{{ discount|floatformat:0 }}₫</span>
+                    </div>
+                    {% endif %}
+
+                    {% if savings > 0 %}
+                    <div class="flex justify-between text-slate-500">
+                        <span>Khuyến mãi theo sản phẩm:</span>
+                        <span class="text-[#2F5C3E] font-semibold">-{{ savings|floatformat:0 }}₫</span>
+                    </div>
+                    {% endif %}
+
+                    <div class="flex justify-between text-slate-600">
+                        <span class="flex items-center gap-1">
+                            <span>Bảo hiểm bọc ẩm vận chuyển:</span>
+                            <i class="fa-solid fa-circle-info text-slate-300 text-[10px]" title="Đóng túi khí và bông giữ ẩm chuyên dụng"></i>
+                        </span>
+                        <span class="text-[#2F5C3E] font-bold">Miễn phí 0₫</span>
+                    </div>
+
+                    <div class="border-t border-slate-200 pt-3 flex justify-between items-baseline font-bold text-slate-900">
+                        <span class="text-xs uppercase tracking-wide">TỔNG THANH TOÁN:</span>
+                        <span class="text-2xl font-black text-[#B91C1C]">{{ total|floatformat:0 }}₫</span>
+                    </div>
+                </div>
+
+                {% if cart_items %}
+                <a href="{% url 'checkout' %}" class="w-full bg-[#7AA88B] hover:bg-[#638F73] text-white py-3.5 font-bold text-xs uppercase tracking-wider flex items-center justify-center gap-2 transition block text-center mt-3 rounded-none">
+                    <i class="fa-solid fa-lock"></i> Tiến Hành Đặt Hàng Ngay
+                </a>
+                {% else %}
+                <button disabled class="w-full bg-slate-300 text-slate-500 py-3.5 font-bold text-xs uppercase tracking-wider block text-center mt-3 rounded-none cursor-not-allowed">
+                    Giỏ Hàng Đang Trống
+                </button>
+                {% endif %}
+
+                <div class="bg-slate-50 border border-slate-200 p-3 rounded-none text-[11px] text-slate-500 space-y-1.5 leading-relaxed">
+                    <div class="flex items-center gap-1.5 font-bold text-slate-800">
+                        <i class="fa-solid fa-shield-heart text-[#7AA88B]"></i>
+                        <span>Bảo hiểm rủi ro vận chuyển:</span>
+                    </div>
+                    <p>
+                        Cam kết 1 đổi 1 bù cây hoặc hoàn tiền 100% nếu cây bị dập nát, vàng úa khi mở hộp trong 24 giờ đầu.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+{% endblock %}

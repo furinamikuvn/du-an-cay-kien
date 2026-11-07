@@ -1,0 +1,191 @@
+{% extends 'aquashop/base.html' %}
+{% load static %}
+
+{% block title %}Cẩm Nang Thủy Sinh - Kiến Thức Trồng Cây & Setup Hồ Đẹp | AquaPlant{% endblock %}
+
+{% block section_name %}
+<a href="{% url 'home' %}" class="hover:text-[#7AA88B]">Trang Chủ</a>
+<span class="mx-1.5 text-slate-300">/</span>
+<span class="text-slate-900 font-bold">Cẩm Nang Kiến Thức Thủy Sinh</span>
+{% endblock %}
+
+{% block content %}
+<!-- Banner Hero Cẩm Nang Thủy Sinh -->
+<div class="bg-white border border-slate-200 rounded-none p-6 sm:p-8 mb-8">
+    <div class="max-w-3xl">
+        <div class="inline-flex items-center gap-2 px-2.5 py-1 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] text-[11px] font-bold mb-3 tracking-wider uppercase rounded-none">
+            <i class="fa-solid fa-book-bookmark text-[#7AA88B]"></i> TÀI LIỆU KỸ THUẬT NÔNG HỌC THỦY SINH
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug mb-3">
+            Cẩm Nang Trồng Cây & Kiểm Soát Hệ Sinh Thái Bể Cá
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal mb-6">
+            Tổng hợp các hướng dẫn chuyên sâu từ chuyên gia AquaPlant: kỹ thuật cắm cây rễ trần, cân bằng chu trình Nitơ vi sinh, kiểm soát rêu chùm đen rêu tóc, và bí quyết phối đèn quang hợp giúp cây lên màu rực rỡ.
+        </p>
+    </div>
+
+    <!-- Thanh Tìm Kiếm Bài Viết & Bộ Lọc Chuyên Mục -->
+    <div class="pt-5 border-t border-slate-100 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        <!-- Bộ lọc chuyên mục dạng nút góc vuông -->
+        <div class="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0">
+            <a href="{% url 'article_list' %}" 
+               class="px-3.5 py-2 text-xs font-bold rounded-none whitespace-nowrap transition {% if not selected_category %}bg-[#7AA88B] text-white{% else %}bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200{% endif %}">
+                Tất Cả Chuyên Mục
+            </a>
+            {% for cat in categories %}
+            <a href="{% url 'article_list' %}?category={{ cat }}" 
+               class="px-3.5 py-2 text-xs font-bold rounded-none whitespace-nowrap transition {% if selected_category == cat %}bg-[#7AA88B] text-white{% else %}bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200{% endif %}">
+                {{ cat }}
+            </a>
+            {% endfor %}
+        </div>
+
+        <!-- Ô tìm kiếm bài viết -->
+        <form method="GET" action="{% url 'article_list' %}" class="flex items-center gap-0 w-full md:w-80">
+            {% if selected_category %}
+            <input type="hidden" name="category" value="{{ selected_category }}">
+            {% endif %}
+            <input type="text" 
+                   name="q" 
+                   value="{{ search_query|default:'' }}" 
+                   placeholder="Tìm bài viết, rêu hại, phân nền..." 
+                   class="w-full bg-slate-50 border border-slate-300 rounded-none px-3.5 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7AA88B] focus:bg-white transition">
+            <button type="submit" 
+                    class="bg-[#7AA88B] hover:bg-[#638F73] text-white text-xs font-bold px-4 py-2 rounded-none transition flex items-center justify-center flex-shrink-0">
+                <i class="fa-solid fa-magnifying-glass"></i>
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Bài Viết Tiêu Điểm Nổi Bật (Featured Article) -->
+{% if featured_article and not search_query and not selected_category %}
+<div class="bg-white border border-slate-200 rounded-none overflow-hidden mb-8 group">
+    <div class="grid grid-cols-1 lg:grid-cols-12 items-stretch">
+        <div class="lg:col-span-7 relative aspect-16/9 lg:aspect-auto overflow-hidden bg-slate-100 min-h-[280px]">
+            <img src="{% if 'nana' in featured_article.thumbnail %}{% static 'images/anubias_nana.jpg' %}{% elif 'rotala' in featured_article.thumbnail %}{% static 'images/rotala_hra.jpg' %}{% elif 'monte' in featured_article.thumbnail %}{% static 'images/monte_carlo.jpg' %}{% else %}{% static 'images/iwagumi_60cm.jpg' %}{% endif %}" 
+                 alt="{{ featured_article.title }}" 
+                 class="w-full h-full object-cover group-hover:scale-102 transition duration-500">
+            <span class="absolute top-3 left-3 bg-[#2F5C3E] text-white text-[10px] font-bold px-2.5 py-1 tracking-wider uppercase rounded-none">
+                <i class="fa-solid fa-star text-amber-300 mr-1"></i> BÀI VIẾT TIÊU ĐIỂM
+            </span>
+        </div>
+        <div class="lg:col-span-5 p-6 sm:p-8 flex flex-col justify-between">
+            <div>
+                <div class="flex items-center gap-2 text-xs text-slate-400 mb-2">
+                    <span class="font-bold text-[#7AA88B] uppercase">{{ featured_article.category }}</span>
+                    <span>·</span>
+                    <span>{{ featured_article.published_at|date:"d/m/Y" }}</span>
+                </div>
+                <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 leading-snug group-hover:text-[#7AA88B] transition mb-3">
+                    <a href="{% url 'article_detail' slug=featured_article.slug %}">{{ featured_article.title }}</a>
+                </h2>
+                <p class="text-xs sm:text-sm text-slate-600 leading-relaxed line-clamp-3 mb-6">
+                    {{ featured_article.summary }}
+                </p>
+            </div>
+            <div class="pt-4 border-t border-slate-100 flex items-center justify-between">
+                <span class="text-xs text-slate-400 flex items-center gap-1.5">
+                    <i class="fa-regular fa-clock"></i> 5 phút đọc
+                </span>
+                <a href="{% url 'article_detail' slug=featured_article.slug %}" 
+                   class="bg-[#7AA88B] hover:bg-[#638F73] text-white text-xs font-bold px-4 py-2 rounded-none transition flex items-center gap-1.5">
+                    Đọc Chi Tiết <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Lưới Thẻ Bài Viết Kiến Thức (Grid 3 Cột Sắc Nét) -->
+<div class="mb-12">
+    <div class="flex items-center justify-between pb-3 mb-6 border-b border-slate-200">
+        <h2 class="text-sm font-extrabold uppercase tracking-tight text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-newspaper text-[#7AA88B]"></i> 
+            {% if selected_category %}
+                Chuyên Mục: {{ selected_category }}
+            {% elif search_query %}
+                Kết quả tìm kiếm cho: "{{ search_query }}"
+            {% else %}
+                Tất Cả Bài Viết Kiến Thức Mới Nhất
+            {% endif %}
+        </h2>
+        <span class="text-xs text-slate-500">Tổng cộng: <strong>{{ total_articles }}</strong> bài viết</span>
+    </div>
+
+    {% if articles %}
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        {% for art in articles %}
+        <div class="bg-white border border-slate-200 rounded-none overflow-hidden hover:border-slate-400 transition flex flex-col justify-between group">
+            <div>
+                <!-- Thumbnail -->
+                <div class="relative aspect-16/10 overflow-hidden bg-slate-100 border-b border-slate-100">
+                    <a href="{% url 'article_detail' slug=art.slug %}">
+                        <img src="{% if 'nana' in art.thumbnail %}{% static 'images/anubias_nana.jpg' %}{% elif 'rotala' in art.thumbnail %}{% static 'images/rotala_hra.jpg' %}{% elif 'monte' in art.thumbnail %}{% static 'images/monte_carlo.jpg' %}{% elif 'soil' in art.thumbnail %}{% static 'images/aquasoil.jpg' %}{% else %}{% static 'images/cryptocoryne_brown.jpg' %}{% endif %}" 
+                             alt="{{ art.title }}" 
+                             class="w-full h-48 object-cover group-hover:scale-105 transition duration-300">
+                    </a>
+                    <span class="absolute top-2.5 left-2.5 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] text-[10px] font-bold px-2 py-0.5 rounded-none uppercase">
+                        {{ art.category }}
+                    </span>
+                </div>
+
+                <!-- Info -->
+                <div class="p-5">
+                    <div class="flex items-center gap-2 text-[11px] text-slate-400 mb-2">
+                        <span><i class="fa-regular fa-calendar mr-1"></i>{{ art.published_at|date:"d/m/Y" }}</span>
+                        <span>·</span>
+                        <span><i class="fa-solid fa-user-pen mr-1"></i>AquaPlant Team</span>
+                    </div>
+                    <h3 class="font-bold text-sm text-slate-900 group-hover:text-[#7AA88B] transition leading-snug mb-2 line-clamp-2">
+                        <a href="{% url 'article_detail' slug=art.slug %}">{{ art.title }}</a>
+                    </h3>
+                    <p class="text-xs text-slate-500 leading-relaxed line-clamp-3 font-normal">
+                        {{ art.summary }}
+                    </p>
+                </div>
+            </div>
+
+            <div class="p-5 pt-0 border-t border-slate-100 mt-2 flex items-center justify-between">
+                <span class="text-[11px] text-slate-400">4-6 phút đọc</span>
+                <a href="{% url 'article_detail' slug=art.slug %}" 
+                   class="text-xs font-bold text-[#7AA88B] hover:text-[#638F73] flex items-center gap-1 group-hover:translate-x-1 transition-transform">
+                    Xem bài viết <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="bg-white border border-slate-200 rounded-none p-12 text-center text-slate-500 text-xs">
+        <i class="fa-regular fa-folder-open text-4xl text-slate-300 mb-3 block"></i>
+        <p class="text-slate-700 font-bold mb-1">Không tìm thấy bài viết nào phù hợp.</p>
+        <p class="text-slate-400 mb-4">Thử thay đổi từ khóa tìm kiếm hoặc chọn chuyên mục khác.</p>
+        <a href="{% url 'article_list' %}" class="inline-block bg-[#7AA88B] text-white font-bold text-xs px-4 py-2 rounded-none">
+            Xem Tất Cả Bài Viết
+        </a>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Banner Hỗ Trợ Kỹ Thuật Hồ Thủy Sinh -->
+<div class="bg-[#EEF5F0] border border-[#C5DEC9] rounded-none p-6 sm:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
+    <div class="space-y-1.5 text-center md:text-left">
+        <h3 class="text-base font-extrabold text-[#2F5C3E]">
+            Bạn Cần Tư Vấn Thiết Lập Bể Cá & Trị Rêu Hại Tận Nơi?
+        </h3>
+        <p class="text-xs text-slate-600 max-w-xl">
+            Đội ngũ chuyên viên sinh thái hồ tự nhiên của AquaPlant sẵn sàng hỗ trợ bạn kiểm tra chất lượng nước, đo TDS, pH và tư vấn giải pháp dinh dưỡng miễn phí.
+        </p>
+    </div>
+    <div class="flex items-center gap-3 flex-shrink-0">
+        <a href="tel:1900000" class="bg-[#7AA88B] hover:bg-[#638F73] text-white text-xs font-bold px-5 py-3 rounded-none transition flex items-center gap-2">
+            <i class="fa-solid fa-phone-volume"></i> Gọi Ngay 1900000
+        </a>
+        <a href="{% url 'faq' %}" class="bg-white hover:bg-slate-50 text-[#2F5C3E] border border-[#C5DEC9] text-xs font-bold px-5 py-3 rounded-none transition">
+            Xem Hỏi Đáp FAQ
+        </a>
+    </div>
+</div>
+{% endblock %}

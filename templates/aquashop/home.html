@@ -1,0 +1,305 @@
+{% extends 'aquashop/base.html' %}
+{% load static %}
+
+{% block section_name %}Cửa Hàng Cây Thủy Sinh Tươi Sống{% endblock %}
+
+{% block content %}
+<!-- Split Hero Banner -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8 items-stretch">
+    
+    <!-- Promotion Content & Quick Feature Tiles -->
+    <div class="lg:col-span-7 bg-white border border-slate-200 rounded-none p-6 sm:p-8 flex flex-col justify-between">
+        <div>
+            <div class="inline-flex items-center gap-2 px-2.5 py-1 bg-stone-100 text-[#6B997C] border border-stone-200 text-[11px] font-bold mb-4 tracking-wider uppercase rounded-none">
+                <span class="w-1.5 h-1.5 bg-[#7AA88B]"></span>
+                MÙA SETUP BỂ THỦY SINH 2026 · GIẢM ĐẾN 20%
+            </div>
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug mb-3">
+                Thế Giới Cây Thủy Sinh & Thảm Thực Vật Tự Nhiên
+            </h1>
+            <p class="text-xs sm:text-sm text-slate-600 leading-relaxed mb-6 font-normal">
+                Cung cấp các giống cây nuôi cấy mô thuần lá nước: Trân Châu Ngọc Trai, Ráy Nana, Tiêu Thảo, Vảy Ốc Siêu Đỏ và Phân Nền dinh dưỡng. Cây khỏe rễ, sạch ốc hại, bọc ẩm bảo đảm sống sót 100% khi về bể.
+            </p>
+        </div>
+
+                <!-- Quick Feature Utility Links (Kiến trúc tối giản, Không lạm dụng icon lòe loẹt) -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-slate-100">
+            <a href="{% url 'plant_assistant' %}" class="p-3.5 bg-slate-50 hover:bg-[#EEF5F0] border border-slate-200 hover:border-[#7AA88B] transition cursor-pointer group rounded-none flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-bold text-slate-900 group-hover:text-[#2F5C3E]">Trợ Lý Chọn Cây</span>
+                        <span class="text-[11px] text-slate-400 group-hover:text-[#7AA88B] font-bold">→</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 leading-snug">Gợi ý loại cây theo kích thước bể & CO₂</p>
+                </div>
+            </a>
+
+            <a href="{% url 'plant_quantity' %}" class="p-3.5 bg-slate-50 hover:bg-[#EEF5F0] border border-slate-200 hover:border-[#7AA88B] transition cursor-pointer group rounded-none flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-bold text-slate-900 group-hover:text-[#2F5C3E]">Dự Toán Diện Tích</span>
+                        <span class="text-[11px] text-slate-400 group-hover:text-[#7AA88B] font-bold">→</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 leading-snug">Tính số cốc chuẩn theo cm² đáy hồ</p>
+                </div>
+            </a>
+
+            <a href="{% url 'layout_presets' %}" class="p-3.5 bg-slate-50 hover:bg-[#EEF5F0] border border-slate-200 hover:border-[#7AA88B] transition cursor-pointer group rounded-none flex flex-col justify-between">
+                <div>
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs font-bold text-slate-900 group-hover:text-[#2F5C3E]">Combo Bố Cục Mẫu</span>
+                        <span class="text-[11px] text-slate-400 group-hover:text-[#7AA88B] font-bold">→</span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 leading-snug">Bộ phối sẵn Iwagumi & Hà Lan (-15%)</p>
+                </div>
+            </a>
+        </div>
+    </div>
+
+    <!-- Featured Scape Card (Mặt Hàng Hot Nhất / Bán Chạy Nhất) -->
+    <div class="lg:col-span-5 bg-white border border-slate-200 rounded-none overflow-hidden flex flex-col justify-between group">
+        <div class="relative aspect-16/10 overflow-hidden bg-slate-100">
+            <img src="{% static 'images/iwagumi_60cm.jpg' %}" 
+                 alt="Bố Cục Iwagumi Tiêu Biểu" 
+                 class="w-full h-full object-cover group-hover:scale-102 transition duration-500">
+            <span class="absolute top-3 left-3 bg-[#8C2C2C] text-white text-[10px] font-bold px-2.5 py-1 tracking-wider uppercase rounded-none">
+                <i class="fa-solid fa-fire text-amber-200 mr-1"></i> BÁN CHẠY NHẤT
+            </span>
+            <span class="absolute bottom-3 right-3 bg-white/95 text-slate-800 text-xs font-bold px-2 py-0.5 border border-slate-200 rounded-none">
+                Hồ 60 × 40 × 40 cm
+            </span>
+        </div>
+
+        <div class="p-5 flex-grow flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between mb-1">
+                    <h3 class="text-sm font-bold text-slate-900 group-hover:text-[#7AA88B] transition">
+                        Set Cây Bố Cục Thảo Nguyên Iwagumi
+                    </h3>
+                    <span class="text-xs text-amber-600 font-bold"><i class="fa-solid fa-star text-[11px]"></i> 5.0 (34 đã mua)</span>
+                </div>
+                <p class="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-4">
+                    Gói phối sẵn trọn bộ 8 cốc Trân Châu Ngọc Trai, 3 chậu Cỏ Nhang điểm kẽ đá và 1 hộp Rêu Mini Taiwan.
+                </p>
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div>
+                    <span class="text-[11px] text-slate-400 line-through">850.000₫</span>
+                    <span class="text-lg font-black text-rose-700 block">720.000₫</span>
+                </div>
+                <a href="{% url 'layout_presets' %}" class="bg-[#7AA88B] hover:bg-[#638F73] text-white text-xs font-bold px-4 py-2 transition flex items-center gap-1.5 rounded-none">
+                    <i class="fa-solid fa-cart-shopping"></i> Mua Trọn Combo
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Quick Category Navigation (Typography thuần thanh lịch, Không icon rác) -->
+<div class="bg-white border border-slate-200 rounded-none p-3 mb-8">
+    <div class="flex items-center justify-start gap-2 overflow-x-auto">
+        <a href="{% url 'home' %}" class="px-4 py-2 text-xs font-bold transition rounded-none {% if not selected_position %}bg-[#7AA88B] text-white{% else %}bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200{% endif %}">
+            Tất Cả Sản Phẩm
+        </a>
+        <a href="{% url 'home' %}?position=tien_canh" class="px-4 py-2 text-xs font-bold transition rounded-none {% if selected_position == 'tien_canh' %}bg-[#7AA88B] text-white{% else %}bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200{% endif %}">
+            Cây Tiền Cảnh (Trải Thảm)
+        </a>
+        <a href="{% url 'home' %}?position=trung_canh" class="px-4 py-2 text-xs font-bold transition rounded-none {% if selected_position == 'trung_canh' %}bg-[#7AA88B] text-white{% else %}bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200{% endif %}">
+            Cây Trung Cảnh (Bụi Gốc)
+        </a>
+        <a href="{% url 'home' %}?position=hau_canh" class="px-4 py-2 text-xs font-bold transition rounded-none {% if selected_position == 'hau_canh' %}bg-[#7AA88B] text-white{% else %}bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200{% endif %}">
+            Cây Hậu Cảnh (Cắt Cắm Đỏ)
+        </a>
+        <a href="{% url 'home' %}?position=gia_the" class="px-4 py-2 text-xs font-bold transition rounded-none {% if selected_position == 'gia_the' %}bg-[#7AA88B] text-white{% else %}bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200{% endif %}">
+            Phân Nền & Giá Thể
+        </a>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+    <!-- Filter Sidebar -->
+    <aside class="space-y-6">
+        <div class="bg-white border border-slate-200 rounded-none p-5">
+            <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
+                <h2 class="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-filter text-[#7AA88B]"></i> Bộ Lọc Tìm Kiếm
+                </h2>
+                <a href="{% url 'home' %}" class="text-[11px] text-slate-500 hover:text-[#7AA88B] font-medium">Đặt lại</a>
+            </div>
+
+            <form method="GET" action="{% url 'home' %}" class="space-y-4">
+                {% if search_query %}
+                <input type="hidden" name="q" value="{{ search_query }}">
+                {% endif %}
+
+                <!-- Vị trí cắm -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-800 mb-2">Vị Trí Trồng Trong Bể</label>
+                    <div class="space-y-2 text-xs">
+                        <label class="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-slate-900">
+                            <input type="radio" name="position" value="" {% if not selected_position %}checked{% endif %} class="text-[#7AA88B] focus:ring-0">
+                            <span>Tất cả vị trí</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-slate-900">
+                            <input type="radio" name="position" value="tien_canh" {% if selected_position == 'tien_canh' %}checked{% endif %} class="text-[#7AA88B] focus:ring-0">
+                            <span>Tiền cảnh (Trải thảm đáy)</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-slate-900">
+                            <input type="radio" name="position" value="trung_canh" {% if selected_position == 'trung_canh' %}checked{% endif %} class="text-[#7AA88B] focus:ring-0">
+                            <span>Trung cảnh (Bụi cây giữa)</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-slate-900">
+                            <input type="radio" name="position" value="hau_canh" {% if selected_position == 'hau_canh' %}checked{% endif %} class="text-[#7AA88B] focus:ring-0">
+                            <span>Hậu cảnh (Cây cắt cắm cao)</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-slate-900">
+                            <input type="radio" name="position" value="gia_the" {% if selected_position == 'gia_the' %}checked{% endif %} class="text-[#7AA88B] focus:ring-0">
+                            <span>Gắn lũa & Giá thể đất nền</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Nhu cầu CO2 -->
+                <div class="pt-4 border-t border-slate-100">
+                    <label class="block text-xs font-bold text-slate-800 mb-2">Nhu Cầu Khí CO₂</label>
+                    <div class="space-y-2 text-xs">
+                        <label class="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-slate-900">
+                            <input type="radio" name="co2" value="" {% if not selected_co2 %}checked{% endif %} class="text-[#7AA88B] focus:ring-0">
+                            <span>Mọi nhu cầu CO₂</span>
+                        </label>
+                        <label class="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-slate-900">
+                            <input type="radio" name="co2" value="no" {% if selected_co2 == 'no' %}checked{% endif %} class="text-[#7AA88B] focus:ring-0">
+                            <span class="inline-flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 bg-[#7AA88B]"></span>
+                                Không cần CO₂ (Dễ trồng)
+                            </span>
+                        </label>
+                        <label class="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-slate-900">
+                            <input type="radio" name="co2" value="yes" {% if selected_co2 == 'yes' %}checked{% endif %} class="text-[#7AA88B] focus:ring-0">
+                            <span class="inline-flex items-center gap-1.5">
+                                <span class="w-1.5 h-1.5 bg-amber-600"></span>
+                                Cần bình khí CO₂
+                            </span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="pt-2">
+                    <button type="submit" class="w-full bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs py-2.5 transition rounded-none">
+                        Lọc Sản Phẩm
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Shopping Advisory Card -->
+        <div class="bg-stone-50 border border-stone-200 rounded-none p-4 text-xs text-slate-700">
+            <div class="font-bold mb-1.5 flex items-center gap-1.5 text-stone-900">
+                <i class="fa-solid fa-lightbulb text-amber-600"></i> Lời Khuyên Mua Cây
+            </div>
+            <p class="text-slate-600 text-[11px] leading-relaxed">
+                Đối với hồ mới setup tuần đầu tiên, nên chọn các dòng <strong>Ráy Nana</strong> hoặc <strong>Tiêu Thảo</strong> để tránh hiện tượng rữa lá và giữ nước hồ luôn trong sạch.
+            </p>
+        </div>
+    </aside>
+
+    <!-- Product Grid -->
+    <div class="lg:col-span-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-3 border-b border-slate-200">
+            <div class="text-xs text-slate-600">
+                Tìm thấy <span class="font-bold text-slate-900">{{ products.count }}</span> loại sản phẩm phù hợp
+            </div>
+            <div class="flex items-center gap-2 text-xs">
+                <span class="text-slate-500">Sắp xếp theo:</span>
+                <select class="bg-white border border-slate-300 rounded-none px-2.5 py-1 text-xs text-slate-800 focus:border-[#7AA88B]">
+                    <option>Bán chạy nhất tuần</option>
+                    <option>Giá: Thấp đến Cao</option>
+                    <option>Giá: Cao đến Thấp</option>
+                    <option>Đánh giá cao nhất</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for p in products %}
+            <div class="bg-white border border-slate-200 rounded-none overflow-hidden hover:border-slate-400 transition flex flex-col justify-between group">
+                <div>
+                    <!-- Product Image -->
+                    <div class="relative aspect-4/3 overflow-hidden bg-slate-50 border-b border-slate-100">
+                        <a href="{% url 'product_detail' slug=p.slug %}">
+                            <img src="{% if 'Nana' in p.name %}{% static 'images/anubias_nana.jpg' %}{% elif 'Trân Châu' in p.name %}{% static 'images/monte_carlo.jpg' %}{% elif 'Tiêu Thảo' in p.name %}{% static 'images/cryptocoryne_brown.jpg' %}{% elif 'Vảy Ốc' in p.name %}{% static 'images/rotala_hra.jpg' %}{% elif 'Phân Nền' in p.name %}{% static 'images/aquasoil.jpg' %}{% else %}{% static 'images/anubias_nana.jpg' %}{% endif %}" 
+                                 alt="{{ p.name }}" 
+                                 class="w-full h-48 object-cover group-hover:scale-105 transition duration-300">
+                        </a>
+                        
+                        {% if forloop.first %}
+                        <span class="absolute top-2.5 left-2.5 bg-[#8C2C2C] text-white text-[10px] font-bold px-2 py-0.5 rounded-none tracking-wider uppercase">
+                            -18% GIẢM
+                        </span>
+                        {% elif forloop.counter == 2 %}
+                        <span class="absolute top-2.5 left-2.5 bg-amber-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-none tracking-wider uppercase">
+                            BÁN CHẠY
+                        </span>
+                        {% endif %}
+
+                        <span class="absolute bottom-2.5 right-2.5 bg-white/95 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-none border border-slate-200">
+                            {{ p.unit|default:"1 Chậu rễ bám" }}
+                        </span>
+                    </div>
+
+                    <div class="p-4">
+                        <div class="flex flex-wrap gap-1.5 mb-2">
+                            <span class="bg-stone-100 text-stone-700 border border-stone-200 text-[10px] font-bold px-2 py-0.2 rounded-none">
+                                {{ p.get_placement_position_display }}
+                            </span>
+                            {% if p.co2_required %}
+                            <span class="bg-stone-100 text-stone-700 border border-stone-200 text-[10px] font-bold px-2 py-0.2 rounded-none">
+                                Cần CO₂
+                            </span>
+                            {% else %}
+                            <span class="bg-stone-100 text-stone-700 border border-stone-200 text-[10px] font-bold px-2 py-0.2 rounded-none">
+                                Không cần CO₂
+                            </span>
+                            {% endif %}
+                        </div>
+
+                        <h3 class="font-bold text-sm text-slate-900 group-hover:text-[#7AA88B] transition leading-snug mb-1">
+                            <a href="{% url 'product_detail' slug=p.slug %}">{{ p.name }}</a>
+                        </h3>
+                        {% if p.scientific_name %}
+                        <p class="text-xs text-slate-400 italic mb-2">{{ p.scientific_name }}</p>
+                        {% endif %}
+
+                        <!-- Star Rating -->
+                        <div class="flex items-center gap-1.5 text-xs text-amber-600 mb-3">
+                            <div class="flex text-[11px]">
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star"></i>
+                                <i class="fa-solid fa-star"></i>
+                            </div>
+                            <span class="text-slate-500 text-[11px] font-medium">5.0 ({{ forloop.counter|add:25 }} đã bán)</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4 pt-0 border-t border-slate-100 mt-2 flex items-center justify-between gap-2">
+                    <div>
+                        <span class="text-base font-black text-rose-700">{{ p.sale_price|default:p.regular_price }}₫</span>
+                        {% if p.sale_price %}
+                        <span class="text-xs text-slate-400 line-through ml-1">{{ p.regular_price }}₫</span>
+                        {% endif %}
+                    </div>
+                    <a href="{% url 'cart' %}" class="bg-[#EEF5F0] hover:bg-[#7AA88B] text-[#2F5C3E] hover:text-white border border-[#C5DEC9] text-xs font-bold px-3 py-2 rounded-none transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-cart-shopping"></i> Thêm Giỏ
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

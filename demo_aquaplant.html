@@ -1,0 +1,1594 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AquaPlant - Cửa Hàng Cây Thủy Sinh & Layout Hồ Tự Nhiên</title>
+    <!-- Tailwind CSS v3 via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome 6 -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Google Fonts: Plus Jakarta Sans for clean architectural typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #F8FAFC;
+            color: #0F172A;
+            -webkit-font-smoothing: antialiased;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 5px;
+            height: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #F1F5F9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #CBD5E1;
+            border-radius: 0px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94A3B8;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-emerald-100 selection:text-emerald-900">
+
+    <!-- Top Announcement Bar -->
+        <div class="bg-[#F5F8F5] text-slate-700 text-xs py-2 px-4 border-b border-[#E3EDE5]">
+        <div class="max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <span class="inline-flex items-center gap-1.5 font-bold text-[#447653] text-[11px] tracking-wide uppercase">
+                    <i class="fa-solid fa-gift"></i> ƯU ĐÃI THÀNH VIÊN:
+                </span>
+                <span class="text-slate-600 hidden sm:inline">Giảm 10% đơn đầu tiên với mã <strong class="text-slate-800">AQUA2026</strong> · Miễn phí giao hàng đơn từ 300.000₫</span>
+            </div>
+            <div class="flex items-center gap-5 text-xs">
+                <a href="tel:1900000" class="hover:text-[#447653] transition flex items-center gap-1.5 font-bold text-slate-800">
+                    <i class="fa-solid fa-phone-volume text-[#447653]"></i> Hotline: 1900000
+                </a>
+                <span class="text-slate-300 hidden md:inline">|</span>
+                <span class="text-slate-600 hidden md:inline"><i class="fa-solid fa-shield-heart text-[#447653]"></i> Bảo hiểm 1 đổi 1 tận nơi nếu cây dập nát</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5">
+            <div class="flex items-center justify-between gap-4 md:gap-8">
+                
+                <!-- Brand Logo (Sắc nét, Không bo cong) -->
+                <a href="javascript:void(0)" onclick="switchTab('shop')" class="flex items-center gap-3 group flex-shrink-0">
+                    <div class="w-10 h-10 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] flex items-center justify-center font-bold text-lg rounded-none group-hover:bg-[#7AA88B] group-hover:text-white transition">
+                        <i class="fa-solid fa-seedling text-base"></i>
+                    </div>
+                    <div>
+                        <span class="text-lg font-extrabold tracking-tight text-slate-900 block leading-tight">
+                            Aqua<span class="text-[#7AA88B]">Plant</span>
+                        </span>
+                        <span class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider block">Cửa Hàng Thủy Sinh & Layout Hồ</span>
+                    </div>
+                </a>
+
+                <!-- Search Bar (Góc vuông thanh lịch, Màu nhã nhặn) -->
+                <div class="flex-grow max-w-2xl hidden md:block">
+                    <div class="relative">
+                        <input type="text" 
+                               id="main-search-input"
+                               onkeyup="handleQuickSearch(event)"
+                               placeholder="Tìm kiếm cây tiền cảnh, trân châu, ráy nana, phân nền, lũa đá..." 
+                               class="w-full bg-slate-50 border border-slate-300 rounded-none py-2.5 pl-4 pr-24 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7AA88B] focus:bg-white transition">
+                        <button onclick="executeSearch()" class="absolute right-0 top-0 bottom-0 bg-[#7AA88B] hover:bg-[#6B997C] text-white text-xs font-bold px-5 rounded-none transition flex items-center gap-1.5">
+                            <i class="fa-solid fa-magnifying-glass text-xs"></i> Tìm
+                        </button>
+                    </div>
+                    <!-- Search Suggestions -->
+                    <div class="flex items-center gap-3 mt-1.5 text-[11px] text-slate-400 px-1">
+                        <span class="text-slate-500 font-medium">Xu hướng:</span>
+                        <a href="javascript:void(0)" onclick="quickFilterKeyword('Trân Châu')" class="hover:text-[#7AA88B] hover:underline">Trân Châu Ngọc Trai</a>
+                        <span>·</span>
+                        <a href="javascript:void(0)" onclick="quickFilterKeyword('Ráy')" class="hover:text-[#7AA88B] hover:underline">Ráy Nana</a>
+                        <span>·</span>
+                        <a href="javascript:void(0)" onclick="quickFilterKeyword('Vảy Ốc')" class="hover:text-[#7AA88B] hover:underline">Vảy Ốc Đỏ</a>
+                        <span>·</span>
+                        <a href="javascript:void(0)" onclick="quickFilterKeyword('Phân Nền')" class="hover:text-[#7AA88B] hover:underline">Phân Nền 9L</a>
+                    </div>
+                </div>
+
+                <!-- Header Actions -->
+                <div class="flex items-center gap-3 sm:gap-5 flex-shrink-0">
+                    <div class="hidden lg:flex items-center gap-2.5 text-right">
+                        <div class="w-8 h-8 rounded-none border border-slate-200 text-[#7AA88B] flex items-center justify-center text-xs">
+                            <i class="fa-solid fa-headset"></i>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 block font-medium">Tư vấn trực tiếp</span>
+                            <a href="tel:1900000" class="text-xs font-black text-rose-700 hover:underline">1900000</a>
+                        </div>
+                    </div>
+
+                    <button onclick="toggleCart()" class="relative bg-[#7AA88B] hover:bg-[#6B997C] text-white px-4 py-2.5 rounded-none text-xs font-bold transition flex items-center gap-2" title="Xem giỏ hàng">
+                        <i class="fa-solid fa-cart-shopping text-xs"></i>
+                        <span class="hidden sm:inline">Giỏ hàng</span>
+                        <span id="cart-badge" class="bg-amber-300 text-slate-900 text-[10px] font-black px-1.5 py-0.2 rounded-none">2</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Secondary Navigation (Thẳng tắp, Không bo góc) -->
+        <div class="bg-slate-50 border-t border-slate-200 px-4 sm:px-6 lg:px-8">
+            <div class="max-w-7xl mx-auto flex items-center justify-between overflow-x-auto">
+                <nav class="flex items-center text-xs font-semibold tracking-normal">
+                    <button onclick="switchTab('shop')" id="nav-shop" class="nav-btn px-4 py-2.5 transition text-[#2F5C3E] font-bold bg-white border-b-2 border-[#7AA88B] rounded-none">
+                        Cửa Hàng
+                    </button>
+                    <button onclick="switchTab('assistant')" id="nav-assistant" class="nav-btn px-4 py-2.5 transition text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-b-2 border-transparent rounded-none">
+                        Trợ Lý Chọn Cây
+                    </button>
+                    <button onclick="switchTab('calculator')" id="nav-calculator" class="nav-btn px-4 py-2.5 transition text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-b-2 border-transparent rounded-none">
+                        Tính Cây Theo Diện Tích
+                    </button>
+                    <button onclick="switchTab('presets')" id="nav-presets" class="nav-btn px-4 py-2.5 transition text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-b-2 border-transparent rounded-none">
+                        Combo Bố Cục Hồ Mẫu
+                    </button>
+                </nav>
+
+                <div class="hidden xl:flex items-center gap-5 text-xs text-slate-500">
+                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-circle-check text-[#7AA88B]"></i> 100% Cây Nuôi Cấy Mô Thuần Nước</span>
+                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-truck-fast text-[#7AA88B]"></i> Đóng Gói Túi Khí Chuyên Dụng</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Breadcrumb -->
+    <div class="bg-white border-b border-slate-200 py-2.5 px-4 sm:px-6 lg:px-8">
+        <div class="max-w-7xl mx-auto flex items-center justify-between text-xs text-slate-500">
+            <div class="flex items-center gap-2">
+                <a href="javascript:void(0)" onclick="switchTab('shop')" class="hover:text-[#7AA88B]">Trang Chủ</a>
+                <span>/</span>
+                <span id="current-section-name" class="font-bold text-slate-800">Cửa Hàng Cây Thủy Sinh Tươi Sống</span>
+            </div>
+            <div class="hidden sm:flex items-center gap-2 text-slate-400">
+                <i class="fa-solid fa-shield-halved text-[#7AA88B]"></i>
+                <span>Giao hàng đảm bảo sống khỏe 100% khi về bể</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main class="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 w-full">
+
+        <!-- ======================================================= -->
+        <!-- TAB 1: CỬA HÀNG SẢN PHẨM (SPLIT COMMERCIAL HERO + SHOP) -->
+        <!-- ======================================================= -->
+        <section id="tab-shop" class="tab-content block">
+            
+            <!-- Split Hero Banner (Vuông vức, Màu dịu nhẹ tự nhiên) -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8 items-stretch">
+                
+                <!-- Cột Trái (7 Cột): Thông Điệp Mua Sắm & Lối Tắt Công Cụ Tiện Ích -->
+                <div class="lg:col-span-7 bg-white border border-slate-200 rounded-none p-6 sm:p-8 flex flex-col justify-between">
+                    <div>
+                        <div class="inline-flex items-center gap-2 px-2.5 py-1 bg-stone-100 text-[#6B997C] border border-stone-200 text-[11px] font-bold mb-4 tracking-wider uppercase rounded-none">
+                            <span class="w-1.5 h-1.5 bg-[#7AA88B]"></span>
+                            MÙA SETUP BỂ THỦY SINH 2026 · GIẢM ĐẾN 20%
+                        </div>
+                        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug mb-3">
+                            Thế Giới Cây Thủy Sinh & Thảm Thực Vật Tự Nhiên
+                        </h1>
+                        <p class="text-xs sm:text-sm text-slate-600 leading-relaxed mb-6 font-normal">
+                            Cung cấp các giống cây nuôi cấy mô thuần lá nước: Trân Châu Ngọc Trai, Ráy Nana, Tiêu Thảo, Vảy Ốc Siêu Đỏ và Phân Nền dinh dưỡng. Cây khỏe rễ, sạch ốc hại, bọc ẩm bảo đảm sống sót 100% khi về bể.
+                        </p>
+                    </div>
+
+                    <!-- 3 Thẻ Công Cụ Mua Sắm (Kiến trúc tối giản, Không lạm dụng icon lòe loẹt) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-4 border-t border-slate-100">
+                        <div onclick="switchTab('assistant')" class="p-3.5 bg-slate-50 hover:bg-[#EEF5F0] border border-slate-200 hover:border-[#7AA88B] transition cursor-pointer group rounded-none flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-xs font-bold text-slate-900 group-hover:text-[#2F5C3E]">Trợ Lý Chọn Cây</span>
+                                    <span class="text-[11px] text-slate-400 group-hover:text-[#7AA88B] font-bold">→</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500 leading-snug">Gợi ý loại cây theo kích thước bể & CO₂</p>
+                            </div>
+                        </div>
+
+                        <div onclick="switchTab('calculator')" class="p-3.5 bg-slate-50 hover:bg-[#EEF5F0] border border-slate-200 hover:border-[#7AA88B] transition cursor-pointer group rounded-none flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-xs font-bold text-slate-900 group-hover:text-[#2F5C3E]">Dự Toán Diện Tích</span>
+                                    <span class="text-[11px] text-slate-400 group-hover:text-[#7AA88B] font-bold">→</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500 leading-snug">Tính số cốc chuẩn theo cm² đáy hồ</p>
+                            </div>
+                        </div>
+
+                        <div onclick="switchTab('presets')" class="p-3.5 bg-slate-50 hover:bg-[#EEF5F0] border border-slate-200 hover:border-[#7AA88B] transition cursor-pointer group rounded-none flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center justify-between mb-1">
+                                    <span class="text-xs font-bold text-slate-900 group-hover:text-[#2F5C3E]">Combo Hồ Mẫu</span>
+                                    <span class="text-[11px] text-slate-400 group-hover:text-[#7AA88B] font-bold">→</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500 leading-snug">Bộ phối sẵn Iwagumi & Hà Lan (-15%)</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cột Phải (5 Cột): Thẻ Showcase Hồ Mẫu Thực Tế (Góc Vuông) -->
+                <div class="lg:col-span-5 bg-white border border-slate-200 rounded-none overflow-hidden flex flex-col justify-between group">
+                    <div class="relative aspect-16/10 overflow-hidden bg-slate-100">
+                        <img src="./static/images/iwagumi_60cm.jpg" 
+                             alt="Bố Cục Iwagumi Tiêu Biểu" 
+                             class="w-full h-full object-cover group-hover:scale-102 transition duration-500">
+                        <span class="absolute top-3 left-3 bg-[#8C2C2C] text-white text-[10px] font-bold px-2.5 py-1 tracking-wider uppercase rounded-none">
+                            <i class="fa-solid fa-fire text-amber-200 mr-1"></i> BỐ CỤC BÁN CHẠY NHẤT
+                        </span>
+                        <span class="absolute bottom-3 right-3 bg-white/95 text-slate-800 text-xs font-bold px-2 py-0.5 border border-slate-200 rounded-none">
+                            Hồ 60 × 40 × 40 cm
+                        </span>
+                    </div>
+
+                    <div class="p-5 flex-grow flex flex-col justify-between">
+                        <div>
+                            <div class="flex items-center justify-between mb-1">
+                                <h3 class="text-sm font-bold text-slate-900 group-hover:text-[#7AA88B] transition">
+                                    Set Cây Bố Cục Thảo Nguyên Iwagumi
+                                </h3>
+                                <span class="text-xs text-amber-600 font-bold"><i class="fa-solid fa-star text-[11px]"></i> 5.0 (34 đã mua)</span>
+                            </div>
+                            <p class="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-4">
+                                Gói phối sẵn trọn bộ 8 cốc Trân Châu Ngọc Trai, 3 chậu Cỏ Nhang điểm kẽ đá và 1 hộp Rêu Mini Taiwan.
+                            </p>
+                        </div>
+
+                        <div class="pt-3 border-t border-slate-100 flex items-center justify-between">
+                            <div>
+                                <span class="text-[11px] text-slate-400 line-through">850.000₫</span>
+                                <span class="text-lg font-black text-rose-700 block">720.000₫</span>
+                            </div>
+                            <button onclick="addToCart('Set Combo Cây Bố Cục Iwagumi 60cm', 720000)" class="bg-[#7AA88B] hover:bg-[#6B997C] text-white text-xs font-bold px-4 py-2 transition flex items-center gap-1.5 rounded-none">
+                                <i class="fa-solid fa-cart-shopping"></i> Mua Trọn Combo
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Quick Category Navigation (Thẳng tắp, Không bo góc) -->
+            <div class="bg-white border border-slate-200 rounded-none p-3 mb-8">
+    <div class="flex items-center justify-start gap-2 overflow-x-auto">
+        <button onclick="filterPosition('')" id="chip-all" class="cat-chip px-4 py-2 text-xs font-bold transition rounded-none bg-[#7AA88B] text-white">
+            Tất Cả Sản Phẩm
+        </button>
+        <button onclick="filterPosition('tien_canh')" id="chip-tien_canh" class="cat-chip px-4 py-2 text-xs font-bold transition rounded-none bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200">
+            Cây Tiền Cảnh (Trải Thảm)
+        </button>
+        <button onclick="filterPosition('trung_canh')" id="chip-trung_canh" class="cat-chip px-4 py-2 text-xs font-bold transition rounded-none bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200">
+            Cây Trung Cảnh (Bụi Gốc)
+        </button>
+        <button onclick="filterPosition('hau_canh')" id="chip-hau_canh" class="cat-chip px-4 py-2 text-xs font-bold transition rounded-none bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200">
+            Cây Hậu Cảnh (Cắt Cắm Đỏ)
+        </button>
+        <button onclick="filterPosition('gia_the')" id="chip-gia_the" class="cat-chip px-4 py-2 text-xs font-bold transition rounded-none bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200">
+            Phân Nền & Giá Thể
+        </button>
+    </div>
+</div>
+
+            <!-- Grid Danh Sách Sản Phẩm & Bộ Lọc Cạnh Bên -->
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                
+                <!-- Filter Sidebar (Vuông vức, Tối giản) -->
+                <aside class="space-y-6">
+                    <div class="bg-white border border-slate-200 rounded-none p-5">
+                        <div class="flex justify-between items-center pb-3 border-b border-slate-100 mb-4">
+                            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                                <i class="fa-solid fa-filter text-[#7AA88B]"></i> Bộ Lọc Tìm Kiếm
+                            </h2>
+                            <button onclick="resetFilters()" class="text-[11px] text-slate-500 hover:text-[#7AA88B] font-medium">Đặt lại</button>
+                        </div>
+
+                        <form id="filter-form" onchange="filterProducts()" class="space-y-4">
+                            <!-- Vị trí cắm -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-800 mb-2">Vị Trí Trồng Trong Bể</label>
+                                <div class="space-y-2 text-xs">
+                                    <label class="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-slate-900">
+                                        <input type="radio" name="filter-position" value="all" checked class="text-[#7AA88B] focus:ring-0">
+                                        <span>Tất cả vị trí</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-slate-900">
+                                        <input type="radio" name="filter-position" value="tien_canh" class="text-[#7AA88B] focus:ring-0">
+                                        <span>Tiền cảnh (Trải thảm đáy)</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-slate-900">
+                                        <input type="radio" name="filter-position" value="trung_canh" class="text-[#7AA88B] focus:ring-0">
+                                        <span>Trung cảnh (Bụi cây giữa)</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-slate-900">
+                                        <input type="radio" name="filter-position" value="hau_canh" class="text-[#7AA88B] focus:ring-0">
+                                        <span>Hậu cảnh (Cây cắt cắm cao)</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-slate-900">
+                                        <input type="radio" name="filter-position" value="gia_the" class="text-[#7AA88B] focus:ring-0">
+                                        <span>Gắn lũa & Giá thể đất nền</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Nhu cầu CO2 -->
+                            <div class="pt-4 border-t border-slate-100">
+                                <label class="block text-xs font-bold text-slate-800 mb-2">Nhu Cầu Khí CO₂</label>
+                                <div class="space-y-2 text-xs">
+                                    <label class="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-slate-900">
+                                        <input type="radio" name="filter-co2" value="all" checked class="text-[#7AA88B] focus:ring-0">
+                                        <span>Tất cả mức CO₂</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-slate-900">
+                                        <input type="radio" name="filter-co2" value="no" class="text-[#7AA88B] focus:ring-0">
+                                        <span class="inline-flex items-center gap-1.5">
+                                            <span class="w-1.5 h-1.5 bg-[#7AA88B]"></span>
+                                            Không cần CO₂ (Dễ trồng)
+                                        </span>
+                                    </label>
+                                    <label class="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-slate-900">
+                                        <input type="radio" name="filter-co2" value="yes" class="text-[#7AA88B] focus:ring-0">
+                                        <span class="inline-flex items-center gap-1.5">
+                                            <span class="w-1.5 h-1.5 bg-amber-600"></span>
+                                            Cần bình khí CO₂
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Mức độ chăm sóc -->
+                            <div class="pt-4 border-t border-slate-100">
+                                <label class="block text-xs font-bold text-slate-800 mb-2">Độ Khó Chăm Sóc</label>
+                                <div class="space-y-2 text-xs">
+                                    <label class="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-slate-900">
+                                        <input type="radio" name="filter-care" value="all" checked class="text-[#7AA88B] focus:ring-0">
+                                        <span>Mọi trình độ</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-slate-900">
+                                        <input type="radio" name="filter-care" value="easy" class="text-[#7AA88B] focus:ring-0">
+                                        <span>Dễ (Mới bắt đầu chơi)</span>
+                                    </label>
+                                    <label class="flex items-center gap-2 text-slate-700 cursor-pointer hover:text-slate-900">
+                                        <input type="radio" name="filter-care" value="hard" class="text-[#7AA88B] focus:ring-0">
+                                        <span>Nâng cao (Cần đèn mạnh)</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Shopping Advisory Card (Vuông vức, Màu dịu) -->
+                    <div class="bg-stone-50 border border-stone-200 rounded-none p-4 text-xs text-slate-700">
+                        <div class="font-bold mb-1.5 flex items-center gap-1.5 text-stone-900">
+                            <i class="fa-solid fa-lightbulb text-amber-600"></i> Lời Khuyên Mua Cây
+                        </div>
+                        <p class="text-[11px] text-slate-600 leading-relaxed">
+                            Đối với hồ mới setup tuần đầu tiên, nên chọn các dòng <strong>Ráy Nana</strong> hoặc <strong>Tiêu Thảo</strong> để tránh hiện tượng rữa lá và giữ nước hồ luôn trong sạch.
+                        </p>
+                    </div>
+                </aside>
+
+                <!-- Product Grid (Thẻ vuông vức, Nhã nhặn) -->
+                <div class="lg:col-span-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5 pb-3 border-b border-slate-200">
+                        <div class="text-xs text-slate-600">
+                            Tìm thấy <span id="product-count" class="font-bold text-slate-900">5</span> loại sản phẩm phù hợp
+                        </div>
+                        <div class="flex items-center gap-2 text-xs">
+                            <span class="text-slate-500">Sắp xếp theo:</span>
+                            <select onchange="sortProducts(this.value)" class="bg-white border border-slate-300 rounded-none px-2.5 py-1 text-xs text-slate-800 focus:border-[#7AA88B]">
+                                <option value="bestseller">Bán chạy nhất tuần</option>
+                                <option value="price-asc">Giá: Thấp đến Cao</option>
+                                <option value="price-desc">Giá: Cao đến Thấp</option>
+                                <option value="rating">Đánh giá cao nhất</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                        
+                        <!-- Product 1: Ráy Nana -->
+                        <div class="product-card bg-white border border-slate-200 rounded-none overflow-hidden hover:border-slate-400 transition flex flex-col justify-between group"
+                             data-position="gia_the" data-co2="no" data-care="easy" data-price="65000">
+                            <div>
+                                <div class="relative aspect-4/3 overflow-hidden bg-slate-50 border-b border-slate-100">
+                                    <img src="./static/images/anubias_nana.jpg" 
+                                         alt="Cây Ráy Nana" 
+                                         class="w-full h-48 object-cover group-hover:scale-102 transition duration-300">
+                                    <span class="absolute top-2.5 left-2.5 bg-[#8C2C2C] text-white text-[10px] font-bold px-2 py-0.5 rounded-none tracking-wider uppercase">
+                                        -18% GIẢM
+                                    </span>
+                                    <span class="absolute bottom-2.5 right-2.5 bg-white/95 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-none border border-slate-200">
+                                        1 Chậu rễ bám
+                                    </span>
+                                </div>
+                                <div class="p-4">
+                                    <div class="flex flex-wrap gap-1.5 mb-2">
+                                        <span class="bg-stone-100 text-stone-700 border border-stone-200 text-[10px] font-bold px-2 py-0.2 rounded-none">
+                                            Gắn lũa & đá
+                                        </span>
+                                        <span class="bg-stone-100 text-stone-700 border border-stone-200 text-[10px] font-bold px-2 py-0.2 rounded-none">
+                                            Không cần CO₂
+                                        </span>
+                                    </div>
+                                    <h3 class="font-bold text-sm text-slate-900 group-hover:text-[#7AA88B] transition leading-snug mb-1">Cây Ráy Nana Thủy Sinh</h3>
+                                    <p class="text-xs text-slate-400 italic mb-2">Anubias barteri var. nana</p>
+                                    
+                                    <div class="flex items-center gap-1.5 text-xs text-amber-600 mb-3">
+                                        <div class="flex text-[11px]">
+                                            <i class="fa-solid fa-star"></i>
+                                            <i class="fa-solid fa-star"></i>
+                                            <i class="fa-solid fa-star"></i>
+                                            <i class="fa-solid fa-star"></i>
+                                            <i class="fa-solid fa-star"></i>
+                                        </div>
+                                        <span class="text-slate-500 text-[11px] font-medium">5.0 (48 đã bán)</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="p-4 pt-0 border-t border-slate-100 mt-2 flex items-center justify-between gap-2">
+                                <div>
+                                    <span class="text-base font-black text-rose-700">65.000₫</span>
+                                    <span class="text-xs text-slate-400 line-through ml-1">80.000₫</span>
+                                </div>
+                                <button onclick="addToCart('Cây Ráy Nana Thủy Sinh', 65000)" class="bg-[#EEF5F0] hover:bg-[#7AA88B] text-[#2F5C3E] hover:text-white border border-[#C5DEC9] text-xs font-bold px-3 py-2 rounded-none transition flex items-center gap-1.5">
+                                    <i class="fa-solid fa-cart-shopping"></i> Thêm Giỏ
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Product 2: Trân Châu Ngọc Trai -->
+                        <div class="product-card bg-white border border-slate-200 rounded-none overflow-hidden hover:border-slate-400 transition flex flex-col justify-between group"
+                             data-position="tien_canh" data-co2="yes" data-care="easy" data-price="75000">
+                            <div>
+                                <div class="relative aspect-4/3 overflow-hidden bg-slate-50 border-b border-slate-100">
+                                    <img src="./static/images/monte_carlo.jpg" 
+                                         alt="Cây Trân Châu Ngọc Trai" 
+                                         class="w-full h-48 object-cover group-hover:scale-102 transition duration-300">
+                                    <span class="absolute top-2.5 left-2.5 bg-amber-700 text-white text-[10px] font-bold px-2 py-0.5 rounded-none tracking-wider uppercase">
+                                        BÁN CHẠY
+                                    </span>
+                                    <span class="absolute bottom-2.5 right-2.5 bg-white/95 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-none border border-slate-200">
+                                        1 Cốc thảm
+                                    </span>
+                                </div>
+                                <div class="p-4">
+                                    <div class="flex flex-wrap gap-1.5 mb-2">
+                                        <span class="bg-stone-100 text-stone-700 border border-stone-200 text-[10px] font-bold px-2 py-0.2 rounded-none">
+                                            Tiền cảnh trải thảm
+                                        </span>
+                                        <span class="bg-stone-100 text-stone-700 border border-stone-200 text-[10px] font-bold px-2 py-0.2 rounded-none">
+                                            Bò lan nhanh
+                                        </span>
+                                    </div>
+                                    <h3 class="font-bold text-sm text-slate-900 group-hover:text-[#7AA88B] transition leading-snug mb-1">Cây Trân Châu Ngọc Trai</h3>
+                                    <p class="text-xs text-slate-400 italic mb-2">Micranthemum 'Monte Carlo'</p>
+                                    
+                                    <div class="flex items-center gap-1.5 text-xs text-amber-600 mb-3">
+                                        <div class="flex text-[11px]">
+                                            <i class="fa-solid fa-star"></i>
+                                            <i class="fa-solid fa-star"></i>
+                                            <i class="fa-solid fa-star"></i>
+                                            <i class="fa-solid fa-star"></i>
+                                            <i class="fa-solid fa-star"></i>
+                                        </div>
+                                        <span class="text-slate-500 text-[11px] font-medium">5.0 (92 đã bán)</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="p-4 pt-0 border-t border-slate-100 mt-2 flex items-center justify-between gap-2">
+                                <div>
+                                    <span class="text-base font-black text-rose-700">75.000₫</span>
+                                    <span class="text-xs text-slate-400 line-through ml-1">90.000₫</span>
+                                </div>
+                                <button onclick="addToCart('Cây Trân Châu Ngọc Trai', 75000)" class="bg-[#EEF5F0] hover:bg-[#7AA88B] text-[#2F5C3E] hover:text-white border border-[#C5DEC9] text-xs font-bold px-3 py-2 rounded-none transition flex items-center gap-1.5">
+                                    <i class="fa-solid fa-cart-shopping"></i> Thêm Giỏ
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Product 3: Tiêu Thảo Nâu -->
+                        <div class="product-card bg-white border border-slate-200 rounded-none overflow-hidden hover:border-slate-400 transition flex flex-col justify-between group"
+                             data-position="trung_canh" data-co2="no" data-care="easy" data-price="45000">
+                            <div>
+                                <div class="relative aspect-4/3 overflow-hidden bg-slate-50 border-b border-slate-100">
+                                    <img src="./static/images/cryptocoryne_brown.jpg" 
+                                         alt="Cây Tiêu Thảo Nâu" 
+                                         class="w-full h-48 object-cover group-hover:scale-102 transition duration-300">
+                                    <span class="absolute bottom-2.5 right-2.5 bg-white/95 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-none border border-slate-200">
+                                        1 Chậu bụi
+                                    </span>
+                                </div>
+                                <div class="p-4">
+                                    <div class="flex flex-wrap gap-1.5 mb-2">
+                                        <span class="bg-stone-100 text-stone-700 border border-stone-200 text-[10px] font-bold px-2 py-0.2 rounded-none">
+                                            Trung cảnh
+                                        </span>
+                                        <span class="bg-stone-100 text-stone-700 border border-stone-200 text-[10px] font-bold px-2 py-0.2 rounded-none">
+                                            Chịu bóng tốt
+                                        </span>
+                                    </div>
+                                    <h3 class="font-bold text-sm text-slate-900 group-hover:text-[#7AA88B] transition leading-snug mb-1">Cây Tiêu Thảo Nâu (Wendtii)</h3>
+                                    <p class="text-xs text-slate-400 italic mb-2">Cryptocoryne wendtii 'Brown'</p>
+                                    
+                                    <div class="flex items-center gap-1.5 text-xs text-amber-600 mb-3">
+                                        <div class="flex text-[11px]">
+                                            <i class="fa-solid fa-star"></i>
+                                            <i class="fa-solid fa-star"></i>
+                                            <i class="fa-solid fa-star"></i>
+                                            <i class="fa-solid fa-star"></i>
+                                            <i class="fa-solid fa-star-half-stroke"></i>
+                                        </div>
+                                        <span class="text-slate-500 text-[11px] font-medium">4.8 (37 đã bán)</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="p-4 pt-0 border-t border-slate-100 mt-2 flex items-center justify-between gap-2">
+                                <div>
+                                    <span class="text-base font-black text-rose-700">45.000₫</span>
+                                    <span class="text-xs text-slate-400 line-through ml-1">50.000₫</span>
+                                </div>
+                                <button onclick="addToCart('Cây Tiêu Thảo Nâu', 45000)" class="bg-[#EEF5F0] hover:bg-[#7AA88B] text-[#2F5C3E] hover:text-white border border-[#C5DEC9] text-xs font-bold px-3 py-2 rounded-none transition flex items-center gap-1.5">
+                                    <i class="fa-solid fa-cart-shopping"></i> Thêm Giỏ
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Product 4: Vảy Ốc Siêu Đỏ -->
+                        <div class="product-card bg-white border border-slate-200 rounded-none overflow-hidden hover:border-slate-400 transition flex flex-col justify-between group"
+                             data-position="hau_canh" data-co2="yes" data-care="hard" data-price="35000">
+                            <div>
+                                <div class="relative aspect-4/3 overflow-hidden bg-slate-50 border-b border-slate-100">
+                                    <img src="./static/images/rotala_hra.jpg" 
+                                         alt="Cây Vảy Ốc Siêu Đỏ" 
+                                         class="w-full h-48 object-cover group-hover:scale-102 transition duration-300">
+                                    <span class="absolute bottom-2.5 right-2.5 bg-white/95 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-none border border-slate-200">
+                                        1 Bó 10 ngọn
+                                    </span>
+                                </div>
+                                <div class="p-4">
+                                    <div class="flex flex-wrap gap-1.5 mb-2">
+                                        <span class="bg-stone-100 text-stone-700 border border-stone-200 text-[10px] font-bold px-2 py-0.2 rounded-none">
+                                            Hậu cảnh cắt cắm
+                                        </span>
+                                        <span class="bg-stone-100 text-stone-700 border border-stone-200 text-[10px] font-bold px-2 py-0.2 rounded-none">
+                                            Đỏ rực dưới đèn
+                                        </span>
+                                    </div>
+                                    <h3 class="font-bold text-sm text-slate-900 group-hover:text-[#7AA88B] transition leading-snug mb-1">Cây Vảy Ốc Siêu Đỏ (H'ra)</h3>
+                                    <p class="text-xs text-slate-400 italic mb-2">Rotala rotundifolia 'H'ra'</p>
+                                    
+                                    <div class="flex items-center gap-1.5 text-xs text-amber-600 mb-3">
+                                        <div class="flex text-[11px]">
+                                            <i class="fa-solid fa-star"></i>
+                                            <i class="fa-solid fa-star"></i>
+                                            <i class="fa-solid fa-star"></i>
+                                            <i class="fa-solid fa-star"></i>
+                                            <i class="fa-solid fa-star"></i>
+                                        </div>
+                                        <span class="text-slate-500 text-[11px] font-medium">5.0 (61 đã bán)</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="p-4 pt-0 border-t border-slate-100 mt-2 flex items-center justify-between gap-2">
+                                <div>
+                                    <span class="text-base font-black text-rose-700">35.000₫</span>
+                                    <span class="text-xs text-slate-400 line-through ml-1">40.000₫</span>
+                                </div>
+                                <button onclick="addToCart('Cây Vảy Ốc Siêu Đỏ', 35000)" class="bg-[#EEF5F0] hover:bg-[#7AA88B] text-[#2F5C3E] hover:text-white border border-[#C5DEC9] text-xs font-bold px-3 py-2 rounded-none transition flex items-center gap-1.5">
+                                    <i class="fa-solid fa-cart-shopping"></i> Thêm Giỏ
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Product 5: Phân Nền Thủy Sinh Cao Cấp -->
+                        <div class="product-card bg-white border border-slate-200 rounded-none overflow-hidden hover:border-slate-400 transition flex flex-col justify-between group"
+                             data-position="gia_the" data-co2="no" data-care="easy" data-price="350000">
+                            <div>
+                                <div class="relative aspect-4/3 overflow-hidden bg-slate-50 border-b border-slate-100">
+                                    <img src="./static/images/aquasoil.jpg" 
+                                         alt="Phân Nền Thủy Sinh Cao Cấp" 
+                                         class="w-full h-48 object-cover group-hover:scale-102 transition duration-300">
+                                    <span class="absolute bottom-2.5 right-2.5 bg-white/95 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-none border border-slate-200">
+                                        Bao lớn 9L
+                                    </span>
+                                </div>
+                                <div class="p-4">
+                                    <div class="flex flex-wrap gap-1.5 mb-2">
+                                        <span class="bg-stone-100 text-stone-700 border border-stone-200 text-[10px] font-bold px-2 py-0.2 rounded-none">
+                                            Đất nền tự nhiên
+                                        </span>
+                                        <span class="bg-stone-100 text-stone-700 border border-stone-200 text-[10px] font-bold px-2 py-0.2 rounded-none">
+                                            Giữ nước trong vắt
+                                        </span>
+                                    </div>
+                                    <h3 class="font-bold text-sm text-slate-900 group-hover:text-[#7AA88B] transition leading-snug mb-1">Phân Nền Thủy Sinh Cao Cấp (Bao 9L)</h3>
+                                    <p class="text-xs text-slate-400 italic mb-2">Aquasoil Premium Substrate</p>
+                                    
+                                    <div class="flex items-center gap-1.5 text-xs text-amber-600 mb-3">
+                                        <div class="flex text-[11px]">
+                                            <i class="fa-solid fa-star"></i>
+                                            <i class="fa-solid fa-star"></i>
+                                            <i class="fa-solid fa-star"></i>
+                                            <i class="fa-solid fa-star"></i>
+                                            <i class="fa-solid fa-star-half-stroke"></i>
+                                        </div>
+                                        <span class="text-slate-500 text-[11px] font-medium">4.7 (19 đã bán)</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="p-4 pt-0 border-t border-slate-100 mt-2 flex items-center justify-between gap-2">
+                                <div>
+                                    <span class="text-base font-black text-rose-700">350.000₫</span>
+                                    <span class="text-xs text-slate-400 line-through ml-1">380.000₫</span>
+                                </div>
+                                <button onclick="addToCart('Phân Nền Thủy Sinh Cao Cấp 9L', 350000)" class="bg-[#EEF5F0] hover:bg-[#7AA88B] text-[#2F5C3E] hover:text-white border border-[#C5DEC9] text-xs font-bold px-3 py-2 rounded-none transition flex items-center gap-1.5">
+                                    <i class="fa-solid fa-cart-shopping"></i> Thêm Giỏ
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ======================================================== -->
+        <!-- TAB 2: TRỢ LÝ CHỌN CÂY THEO ĐIỀU KIỆN HỒ                -->
+        <!-- ======================================================== -->
+        <section id="tab-assistant" class="tab-content hidden">
+            <div class="bg-white border border-slate-200 rounded-none p-6 sm:p-8 mb-8">
+                <div class="max-w-3xl">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-900 text-[11px] font-bold mb-3 border border-amber-200 rounded-none tracking-wider uppercase">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> TÍNH NĂNG TƯ VẤN THÔNG MINH
+                    </span>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
+                        Trợ Lý Chọn Cây Phù Hợp Với Hồ Nhà Bạn
+                    </h1>
+                    <p class="text-sm text-slate-600 leading-relaxed">
+                        Bạn chưa biết chọn cây gì cho hồ của mình? Hãy cho chúng tôi biết kích thước hồ và trang bị hiện có, trợ lý sẽ lọc ngay danh mục những cây dễ trồng và sống khỏe nhất cho bạn!
+                    </p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Form Input Panel -->
+                <div class="bg-white border border-slate-200 rounded-none p-6 h-fit">
+                    <h2 class="text-sm font-bold text-slate-900 mb-4 pb-3 border-b border-slate-100 flex items-center gap-2">
+                        <i class="fa-solid fa-sliders text-[#7AA88B]"></i> Thông Tin Hồ Cá Của Bạn
+                    </h2>
+
+                    <form id="assistant-form" onsubmit="runAssistant(event)" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-800 mb-1.5">Kích thước hồ dự kiến</label>
+                            <select id="asst-tank-size" class="w-full bg-slate-50 border border-slate-300 rounded-none p-2.5 text-xs text-slate-800 font-semibold focus:border-[#7AA88B] focus:bg-white">
+                                <option value="mini">Hồ nhỏ mini / Để bàn (Dưới 30 lít)</option>
+                                <option value="standard" selected>Hồ tiêu chuẩn 60 x 40 x 40 cm (~64 lít)</option>
+                                <option value="large">Hồ lớn 90 x 45 x 45 cm (~180 lít)</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-800 mb-1.5">Hồ có bình khí CO₂ không?</label>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <label class="border border-slate-200 rounded-none p-2.5 flex items-center gap-2 cursor-pointer hover:bg-slate-50 transition">
+                                    <input type="radio" name="asst-co2" value="no" checked class="text-[#7AA88B]">
+                                    <span class="font-medium text-slate-700">Không có CO₂</span>
+                                </label>
+                                <label class="border border-slate-200 rounded-none p-2.5 flex items-center gap-2 cursor-pointer hover:bg-slate-50 transition">
+                                    <input type="radio" name="asst-co2" value="yes" class="text-[#7AA88B]">
+                                    <span class="font-medium text-slate-700">Có bình CO₂</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-800 mb-1.5">Loại đèn chiếu sáng</label>
+                            <select id="asst-light" class="w-full bg-slate-50 border border-slate-300 rounded-none p-2.5 text-xs text-slate-800 font-semibold focus:border-[#7AA88B] focus:bg-white">
+                                <option value="low">Đèn LED thường / Ánh sáng vừa</option>
+                                <option value="high">Đèn chuyên dụng WRGB / Ánh sáng mạnh</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-800 mb-1.5">Kinh nghiệm của bạn</label>
+                            <select id="asst-care" class="w-full bg-slate-50 border border-slate-300 rounded-none p-2.5 text-xs text-slate-800 font-semibold focus:border-[#7AA88B] focus:bg-white">
+                                <option value="easy">Mới tập chơi (Cần cây bền, dễ sống)</option>
+                                <option value="hard">Đã có kinh nghiệm chăm sóc</option>
+                            </select>
+                        </div>
+
+                        <button type="submit" class="w-full bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs py-3 transition flex items-center justify-center gap-2 mt-4 rounded-none">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i> Xem Gợi Ý Cây Phù Hợp
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Recommendation Output -->
+                <div class="lg:col-span-2">
+                    <div id="asst-results-container" class="space-y-4">
+                        <div class="bg-white border border-slate-200 rounded-none p-10 text-center">
+                            <div class="w-12 h-12 bg-stone-100 text-[#7AA88B] flex items-center justify-center text-xl mx-auto mb-3 rounded-none">
+                                <i class="fa-solid fa-lightbulb"></i>
+                            </div>
+                            <h3 class="text-sm font-bold text-slate-900 mb-1">Chưa thiết lập thông tin hồ</h3>
+                            <p class="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
+                                Chọn điều kiện hồ ở bảng bên trái và nhấn nút "Xem Gợi Ý Cây Phù Hợp" để hệ thống đề xuất ngay cho bạn nhé!
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ======================================================== -->
+        <!-- TAB 3: TÍNH CÂY THEO DIỆN TÍCH (AREA CALCULATOR)         -->
+        <!-- ======================================================== -->
+        <section id="tab-calculator" class="tab-content hidden">
+            <div class="bg-white border border-slate-200 rounded-none p-6 sm:p-8 mb-8">
+                <div class="max-w-3xl">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-blue-50 text-blue-900 text-[11px] font-bold mb-3 border border-blue-200 rounded-none tracking-wider uppercase">
+                        <i class="fa-solid fa-calculator"></i> TIỆN ÍCH DỰ TOÁN MUA SẮM
+                    </span>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
+                        Tính Số Lượng Cây Cần Mua & Dự Trù Chi Phí
+                    </h1>
+                    <p class="text-sm text-slate-600 leading-relaxed">
+                        Nhập chiều dài và chiều rộng khu vực bạn muốn trồng thảm, hệ thống sẽ tính toán chính xác cần bao nhiêu cốc cây và tổng số tiền để bạn không mua thừa hoặc thiếu!
+                    </p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                <!-- Inputs -->
+                <div class="bg-white border border-slate-200 rounded-none p-6">
+                    <h2 class="text-sm font-bold text-slate-900 mb-4 pb-3 border-b border-slate-100 flex items-center gap-2">
+                        <i class="fa-solid fa-ruler-combined text-[#7AA88B]"></i> Kích Thước Vùng Trồng
+                    </h2>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-800 mb-1.5">Chọn giống cây bạn muốn trồng thảm</label>
+                            <select id="calc-plant-select" onchange="calculatePlantQuantity()" class="w-full bg-slate-50 border border-slate-300 rounded-none p-2.5 text-xs text-slate-800 font-semibold focus:border-[#7AA88B] focus:bg-white">
+                                <option value="75000" data-coverage="80" selected>Cây Trân Châu Ngọc Trai (75.000₫ / cốc · Phủ 80 cm²)</option>
+                                <option value="65000" data-coverage="60">Cây Ráy Nana Mini (65.000₫ / chậu · Phủ 60 cm²)</option>
+                                <option value="35000" data-coverage="30">Cây Vảy Ốc Siêu Đỏ (35.000₫ / bó · Phủ 30 cm²)</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-800 mb-1.5">Chiều dài vùng trồng (cm)</label>
+                                <input type="number" id="calc-length" value="40" min="5" max="300" oninput="calculatePlantQuantity()" class="w-full bg-slate-50 border border-slate-300 rounded-none p-2.5 text-xs text-slate-800 font-bold focus:border-[#7AA88B] focus:bg-white">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-800 mb-1.5">Chiều rộng vùng trồng (cm)</label>
+                                <input type="number" id="calc-width" value="20" min="5" max="150" oninput="calculatePlantQuantity()" class="w-full bg-slate-50 border border-slate-300 rounded-none p-2.5 text-xs text-slate-800 font-bold focus:border-[#7AA88B] focus:bg-white">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold text-slate-800 mb-1.5">Mật độ cắm mong muốn</label>
+                            <div class="grid grid-cols-3 gap-2">
+                                <button type="button" onclick="setDensity(1.2, this)" class="density-btn py-2 px-2 border border-slate-200 rounded-none text-center text-xs hover:bg-slate-50">
+                                    <span class="font-bold block text-slate-800">Cắm Thưa</span>
+                                    <span class="text-[10px] text-slate-400">Tiết kiệm tiền</span>
+                                </button>
+                                <button type="button" onclick="setDensity(1.0, this)" class="density-btn py-2 px-2 border border-[#7AA88B] bg-[#F4F8F5] rounded-none text-center text-xs">
+                                    <span class="font-bold block text-[#6B997C]">Tiêu Chuẩn</span>
+                                    <span class="text-[10px] text-[#7AA88B]">Phủ sau 3 tuần</span>
+                                </button>
+                                <button type="button" onclick="setDensity(0.8, this)" class="density-btn py-2 px-2 border border-slate-200 rounded-none text-center text-xs hover:bg-slate-50">
+                                    <span class="font-bold block text-slate-800">Cắm Dày</span>
+                                    <span class="text-[10px] text-slate-400">Đẹp ngay khi cắm</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Results -->
+                <div class="bg-white border border-slate-200 rounded-none p-6">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+                        <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                            <i class="fa-solid fa-receipt text-[#7AA88B]"></i> Bảng Dự Trù Ngân Sách
+                        </h2>
+                        <span class="bg-stone-100 text-stone-700 text-[10px] font-bold px-2 py-0.5 rounded-none border border-stone-200">
+                            Tính tự động
+                        </span>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="flex justify-between items-center text-xs pb-3 border-b border-slate-100">
+                            <span class="text-slate-500">Diện tích mặt đáy cần trồng:</span>
+                            <span id="res-area" class="text-sm font-bold text-slate-900">800 cm²</span>
+                        </div>
+                        <div class="flex justify-between items-center text-xs pb-3 border-b border-slate-100">
+                            <span class="text-slate-500">Giống cây chọn:</span>
+                            <span id="res-plant-name" class="font-bold text-slate-900">Cây Trân Châu Ngọc Trai</span>
+                        </div>
+                        <div class="flex justify-between items-center text-xs pb-3 border-b border-slate-100">
+                            <span class="text-slate-500">Số lượng cần mua:</span>
+                            <span id="res-quantity" class="text-base font-black text-[#7AA88B]">10 Cốc</span>
+                        </div>
+                        <div class="flex justify-between items-center text-xs pb-3 border-b border-slate-100">
+                            <span class="text-slate-500">Đơn giá tham khảo:</span>
+                            <span id="res-unit-price" class="font-medium text-slate-800">75.000₫ / cốc</span>
+                        </div>
+
+                        <!-- Grand Total Box -->
+                        <div class="p-4 bg-stone-50 border border-stone-200 mt-4 flex items-center justify-between rounded-none">
+                            <div>
+                                <span class="text-xs text-stone-700 font-bold block">TỔNG TIỀN DỰ KIẾN:</span>
+                                <span id="res-total" class="text-xl font-black text-rose-700">750.000₫</span>
+                            </div>
+                            <button onclick="addCalculatedToCart()" class="bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs px-4 py-2.5 transition flex items-center gap-2 rounded-none">
+                                <i class="fa-solid fa-cart-plus"></i> Đặt Mua Số Cây Này
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ======================================================== -->
+        <!-- TAB 4: COMBO HỒ MẪU (LAYOUT PRESETS)                     -->
+        <!-- ======================================================== -->
+        <section id="tab-presets" class="tab-content hidden">
+            <div class="bg-white border border-slate-200 rounded-none p-6 sm:p-8 mb-8">
+                <div class="max-w-3xl">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-stone-100 text-stone-800 text-[11px] font-bold mb-3 border border-stone-200 rounded-none tracking-wider uppercase">
+                        <i class="fa-solid fa-layer-group"></i> TRỌN GÓI TIẾT KIỆM
+                    </span>
+                    <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
+                        Combo Bố Cục Hồ Mẫu Phối Sẵn
+                    </h1>
+                    <p class="text-sm text-slate-600 leading-relaxed">
+                        Bạn muốn có một bể thủy sinh đẹp như các tác phẩm thi đấu? Chúng tôi đã phối sẵn các gói cây chuẩn bố cục vàng, chỉ 1 cú click là đủ trọn bộ cây cho hồ nhà bạn!
+                    </p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Preset 1: Iwagumi 60cm -->
+                <div class="bg-white border border-slate-200 rounded-none overflow-hidden hover:border-slate-400 transition flex flex-col justify-between group">
+                    <div>
+                        <div class="relative aspect-16/9 bg-slate-100 overflow-hidden">
+                            <img src="./static/images/iwagumi_60cm.jpg" 
+                                 alt="Bố Cục Iwagumi Thảo Nguyên" 
+                                 class="w-full h-56 object-cover group-hover:scale-102 transition duration-500">
+                            <span class="absolute top-3 left-3 bg-[#7AA88B] text-white text-[10px] font-bold px-2.5 py-1 tracking-wider uppercase rounded-none">
+                                PHONG CÁCH IWAGUMI NHẬT BẢN
+                            </span>
+                            <span class="absolute bottom-3 right-3 bg-white/95 text-slate-800 text-xs font-bold px-2 py-0.5 border border-slate-200 rounded-none">
+                                Hồ 60 × 40 × 40 cm
+                            </span>
+                        </div>
+                        <div class="p-6">
+                            <h2 class="text-base font-bold text-slate-900 group-hover:text-[#7AA88B] transition mb-2">Set Bố Cục Thảo Nguyên Iwagumi (Hồ 60cm)</h2>
+                            <p class="text-xs text-slate-600 leading-relaxed mb-4">
+                                Bố cục thảo nguyên mở rộng với thảm xanh mướt làm nền tảng, tôn vinh khối đá chính Oyaishi và đá phụ theo triết lý cân bằng tự nhiên.
+                            </p>
+
+                            <div class="bg-slate-50 border border-slate-200 rounded-none p-4 mb-4">
+                                <span class="text-xs font-bold text-slate-800 block mb-2">Danh mục cây thành phần trong gói:</span>
+                                <ul class="text-xs text-slate-600 space-y-1.5">
+                                    <li class="flex items-center justify-between">
+                                        <span>• 8 Cốc Trân Châu Ngọc Trai (Trải thảm đáy)</span>
+                                        <span class="font-semibold text-slate-800">600.000₫</span>
+                                    </li>
+                                    <li class="flex items-center justify-between">
+                                        <span>• 3 Chậu Cỏ Nhang Thủy Sinh (Điểm kẽ đá)</span>
+                                        <span class="font-semibold text-slate-800">90.000₫</span>
+                                    </li>
+                                    <li class="flex items-center justify-between">
+                                        <span>• 1 Hộp Rêu Mini Taiwan (Gắn chân đá)</span>
+                                        <span class="font-semibold text-slate-800">30.000₫</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-6 pt-0 border-t border-slate-100 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs text-slate-400 block">Trọn bộ combo cây:</span>
+                            <span class="text-xl font-black text-rose-700">720.000₫</span>
+                        </div>
+                        <button onclick="addToCart('Set Combo Cây Bố Cục Iwagumi 60cm', 720000)" class="bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs px-4 py-2 transition flex items-center gap-2 rounded-none">
+                            <i class="fa-solid fa-cart-shopping"></i> Mua Trọn Bộ Combo
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Preset 2: Rừng Lũa 90cm -->
+                <div class="bg-white border border-slate-200 rounded-none overflow-hidden hover:border-slate-400 transition flex flex-col justify-between group">
+                    <div>
+                        <div class="relative aspect-16/9 bg-slate-100 overflow-hidden">
+                            <img src="./static/images/nature_wood_90cm.png" 
+                                 alt="Bố Cục Rừng Lũa Thủy Sinh" 
+                                 class="w-full h-56 object-cover group-hover:scale-102 transition duration-500">
+                            <span class="absolute top-3 left-3 bg-stone-700 text-white text-[10px] font-bold px-2.5 py-1 tracking-wider uppercase rounded-none">
+                                NATURE AQUARIUM RỪNG LŨA
+                            </span>
+                            <span class="absolute bottom-3 right-3 bg-white/95 text-slate-800 text-xs font-bold px-2 py-0.5 border border-slate-200 rounded-none">
+                                Hồ 90 × 45 × 45 cm
+                            </span>
+                        </div>
+                        <div class="p-6">
+                            <h2 class="text-base font-bold text-slate-900 group-hover:text-[#7AA88B] transition mb-2">Set Bố Cục Rừng Lũa Thủy Sinh (Hồ 90cm)</h2>
+                            <p class="text-xs text-slate-600 leading-relaxed mb-4">
+                                Phỏng dựng dòng suối nguyên sinh nhiệt đới. Tập trung vào các dòng cây bám thân gỗ không đòi hỏi hệ thống khí CO₂ quá gắt gao.
+                            </p>
+
+                            <div class="bg-slate-50 border border-slate-200 rounded-none p-4 mb-4">
+                                <span class="text-xs font-bold text-slate-800 block mb-2">Danh mục cây thành phần trong gói:</span>
+                                <ul class="text-xs text-slate-600 space-y-1.5">
+                                    <li class="flex items-center justify-between">
+                                        <span>• 5 Chậu Cây Ráy Nana (Gắn thân lũa)</span>
+                                        <span class="font-semibold text-slate-800">325.000₫</span>
+                                    </li>
+                                    <li class="flex items-center justify-between">
+                                        <span>• 4 Chậu Tiêu Thảo Nâu (Trung cảnh)</span>
+                                        <span class="font-semibold text-slate-800">180.000₫</span>
+                                    </li>
+                                    <li class="flex items-center justify-between">
+                                        <span>• 5 Ngọn Vảy Ốc Siêu Đỏ (Hậu cảnh)</span>
+                                        <span class="font-semibold text-slate-800">175.000₫</span>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="p-6 pt-0 border-t border-slate-100 flex items-center justify-between">
+                        <div>
+                            <span class="text-xs text-slate-400 block">Trọn bộ combo cây (Giảm 15%):</span>
+                            <span class="text-xl font-black text-rose-700">580.000₫</span>
+                        </div>
+                        <button onclick="addToCart('Set Combo Cây Bố Cục Rừng Lũa 90cm', 580000)" class="bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs px-4 py-2 transition flex items-center gap-2 rounded-none">
+                            <i class="fa-solid fa-cart-shopping"></i> Mua Trọn Bộ Combo
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Interactive Cart Slide-over Drawer -->
+    <div id="cart-drawer" class="fixed inset-0 z-50 overflow-hidden hidden" aria-labelledby="slide-over-title" role="dialog" aria-modal="true">
+        <div onclick="toggleCart()" class="fixed inset-0 bg-slate-900/40 transition-opacity duration-300"></div>
+
+        <div class="fixed inset-y-0 right-0 max-w-full flex pl-10">
+            <div class="w-screen max-w-md bg-white border-l border-slate-200 shadow-xl flex flex-col justify-between rounded-none">
+                <!-- Header -->
+                <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-cart-shopping text-[#7AA88B] text-base"></i>
+                        <h2 class="text-sm font-bold text-slate-900">Giỏ Hàng Của Bạn</h2>
+                    </div>
+                    <button onclick="toggleCart()" class="text-slate-400 hover:text-slate-600 p-1.5 hover:bg-slate-100 rounded-none">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+
+                <!-- Items list -->
+                <div class="flex-grow overflow-y-auto p-5 space-y-4" id="cart-items-container">
+                    <div class="flex gap-3 pb-4 border-b border-slate-100">
+                        <div class="w-16 h-16 bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200 rounded-none">
+                            <img src="./static/images/anubias_nana.jpg" class="w-full h-full object-cover">
+                        </div>
+                        <div class="flex-grow">
+                            <h4 class="text-xs font-bold text-slate-900">Cây Ráy Nana Thủy Sinh</h4>
+                            <span class="text-[11px] text-slate-400">Đơn vị: 1 Chậu rễ bám</span>
+                            <div class="flex items-center justify-between mt-2">
+                                <span class="text-sm font-bold text-rose-700">65.000₫</span>
+                                <span class="text-xs text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded-none">x1</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex gap-3 pb-4 border-b border-slate-100">
+                        <div class="w-16 h-16 bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200 rounded-none">
+                            <img src="./static/images/monte_carlo.jpg" class="w-full h-full object-cover">
+                        </div>
+                        <div class="flex-grow">
+                            <h4 class="text-xs font-bold text-slate-900">Cây Trân Châu Ngọc Trai</h4>
+                            <span class="text-[11px] text-slate-400">Đơn vị: 1 Cốc thảm</span>
+                            <div class="flex items-center justify-between mt-2">
+                                <span class="text-sm font-bold text-rose-700">75.000₫</span>
+                                <span class="text-xs text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded-none">x1</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Summary & Checkout Footer -->
+                <div class="p-5 border-t border-slate-200 bg-slate-50 space-y-3">
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-500">Tạm tính (2 sản phẩm):</span>
+                        <span id="cart-subtotal" class="font-bold text-slate-900">140.000₫</span>
+                    </div>
+                    <div class="flex justify-between items-center text-xs">
+                        <span class="text-slate-500">Bảo hiểm bọc ẩm vận chuyển:</span>
+                        <span class="text-[#7AA88B] font-bold">Miễn phí</span>
+                    </div>
+                    <div class="pt-3 border-t border-slate-200 flex justify-between items-baseline">
+                        <span class="text-sm font-bold text-slate-900">TỔNG THANH TOÁN:</span>
+                        <span id="cart-total" class="text-xl font-black text-rose-700">140.000₫</span>
+                    </div>
+
+                    <button onclick="alert('Đơn hàng demo đã sẵn sàng! Backend Django trên cổng 8080 sẽ tiếp nhận phiên giỏ hàng.')" class="w-full bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs py-3.5 transition flex items-center justify-center gap-2 mt-2 rounded-none">
+                        <i class="fa-solid fa-lock"></i> Tiến Hành Đặt Hàng Ngay
+                    </button>
+                    <p class="text-[11px] text-center text-slate-400">Hỗ trợ thanh toán QR MoMo/VietQR & ship COD tận nơi</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-5 right-5 bg-slate-900 text-white px-5 py-3 rounded-none text-xs font-bold shadow-xl transition-all duration-300 transform translate-y-20 opacity-0 z-50 flex items-center gap-2.5">
+        <i class="fa-solid fa-circle-check text-emerald-400 text-base"></i>
+        <span id="toast-message">Đã thêm vào giỏ hàng thành công!</span>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-slate-50 text-slate-600 text-xs border-t border-slate-200 mt-16">
+        </div>
+
+        <!-- Footer Links -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                
+                <!-- Col 1: Brand Info -->
+                <div class="space-y-3.5">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-7 h-7 bg-[#7AA88B] text-white flex items-center justify-center font-bold text-xs rounded-none">
+                            <i class="fa-solid fa-seedling"></i>
+                        </div>
+                        <span class="text-base font-extrabold tracking-tight text-slate-900">Aqua<span class="text-[#7AA88B]">Plant</span></span>
+                    </div>
+                    <p class="text-slate-500 text-xs leading-relaxed">
+                        Cửa hàng chuyên cung cấp các giống cây thủy sinh cấy mô, đất nền dinh dưỡng và combo layout hồ mẫu cho người chơi thủy sinh từ cơ bản đến chuyên nghiệp.
+                    </p>
+                    <div class="pt-1 text-xs text-slate-600 flex items-center gap-2">
+                        <i class="fa-solid fa-clock text-[#7AA88B]"></i>
+                        <span>Giờ mở cửa: <strong>8h00 - 20h00</strong> hàng ngày</span>
+                    </div>
+                </div>
+
+                <!-- Col 2: Contact Info -->
+                <div>
+                    <h3 class="text-slate-900 text-xs font-bold uppercase tracking-wider mb-4 pb-2 border-b border-slate-200">
+                        Thông Tin Liên Hệ
+                    </h3>
+                    <ul class="space-y-3 text-xs">
+                        <li class="flex items-start gap-2.5">
+                            <i class="fa-solid fa-location-dot text-[#7AA88B] text-sm mt-0.5"></i>
+                            <div class="leading-relaxed">
+                                <span class="text-slate-800 font-semibold block">Địa chỉ showroom:</span>
+                                <span class="text-slate-600">Trường Đại Học Khoa Học Tự Nhiên, Phường Đông Hòa, HCM</span>
+                            </div>
+                        </li>
+                        <li class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-phone text-[#7AA88B] text-sm"></i>
+                            <div>
+                                <span class="text-slate-600">Hotline đặt hàng:</span>
+                                <a href="tel:1900000" class="text-rose-700 font-black hover:underline ml-1 text-sm">1900000</a>
+                            </div>
+                        </li>
+                        <li class="flex items-center gap-2.5">
+                            <i class="fa-solid fa-envelope text-[#7AA88B] text-sm"></i>
+                            <div>
+                                <span class="text-slate-600">Email hỗ trợ:</span>
+                                <a href="mailto:tawa@gmail.com" class="text-[#7AA88B] font-semibold hover:underline ml-1">tawa@gmail.com</a>
+                            </div>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Col 3: Customer Policies -->
+                <div>
+                    <h3 class="text-slate-900 text-xs font-bold uppercase tracking-wider mb-4 pb-2 border-b border-slate-200">
+                        Chính Sách & Hỗ Trợ
+                    </h3>
+                    <ul class="space-y-2.5 text-xs text-slate-600">
+                                                <li>
+                            <a href="javascript:void(0)" onclick="openPolicyModal('huong-dan-dat-hang-va-thanh-toan')" class="hover:text-[#7AA88B] transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i> Hướng dẫn đặt hàng & thanh toán
+                            </a>
+                        </li>
+                        <li>
+                            <a href="javascript:void(0)" onclick="openPolicyModal('chinh-sach-bao-hiem-dap-nat-1-doi-1')" class="hover:text-[#7AA88B] transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i> Chính sách bảo hiểm dập nát 1 đổi 1
+                            </a>
+                        </li>
+                        <li>
+                            <a href="javascript:void(0)" onclick="openPolicyModal('huong-dan-duong-cay-moi-cam-ho')" class="hover:text-[#7AA88B] transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i> Hướng dẫn dưỡng cây mới cắm hồ
+                            </a>
+                        </li>
+                        <li>
+                            <a href="javascript:void(0)" onclick="openPolicyModal('quy-dinh-giao-nhan-cod-toan-quoc')" class="hover:text-[#7AA88B] transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-chevron-right text-[10px] text-slate-400"></i> Quy định giao nhận COD toàn quốc
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- Col 4: Payment & Certification -->
+                <div>
+                    <h3 class="text-slate-900 text-xs font-bold uppercase tracking-wider mb-4 pb-2 border-b border-slate-200">
+                        Thanh Toán & Chứng Nhận
+                    </h3>
+                    <div class="space-y-3 text-xs">
+                        <p class="text-slate-500 text-[11px]">Hỗ trợ đa dạng các hình thức thanh toán an toàn:</p>
+                        <!-- Payment Methods -->
+                        <div class="flex flex-wrap gap-2 text-slate-600">
+                            <span class="bg-white border border-slate-200 px-2.5 py-1 font-bold text-[11px] flex items-center gap-1 rounded-none">
+                                <i class="fa-solid fa-qrcode text-[#7AA88B]"></i> VietQR
+                            </span>
+                            <span class="bg-white border border-slate-200 px-2.5 py-1 font-bold text-[11px] flex items-center gap-1 rounded-none">
+                                <i class="fa-solid fa-wallet text-pink-700"></i> MoMo
+                            </span>
+                            <span class="bg-white border border-slate-200 px-2.5 py-1 font-bold text-[11px] flex items-center gap-1 rounded-none">
+                                <i class="fa-solid fa-credit-card text-blue-700"></i> Visa / Master
+                            </span>
+                            <span class="bg-white border border-slate-200 px-2.5 py-1 font-bold text-[11px] flex items-center gap-1 rounded-none">
+                                <i class="fa-solid fa-money-bill-wave text-[#7AA88B]"></i> COD
+                            </span>
+                        </div>
+
+                        <!-- Project Identity Note -->
+                        <div class="pt-2">
+                            <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-[#EEF5F0] border border-[#C5DEC9] text-[#2F5C3E] rounded-none">
+                                <i class="fa-solid fa-graduation-cap text-sm"></i>
+                                <div>
+                                    <span class="text-[9px] font-bold block leading-tight">ĐỒ ÁN PHÁT TRIỂN HỆ THỐNG</span>
+                                    <span class="text-[8px] font-extrabold uppercase tracking-wider block">ĐẠI HỌC KHOA HỌC TỰ NHIÊN</span>
+                                </div>
+                            </div>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Copyright -->
+        <div class="border-t border-slate-200 bg-white py-4 px-4 sm:px-6 lg:px-8">
+            <div class="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2 text-[11px] text-slate-500">
+                <div>
+                    <strong class="text-slate-700">AquaPlant © 2026</strong> · Cửa Hàng Cây Thủy Sinh & Layout Hồ Tự Nhiên
+                </div>
+                <div class="text-slate-500 font-medium">
+                    Đồ án Website Bán Cây Thủy Sinh - Trường Đại Học Khoa Học Tự Nhiên - ĐHQG-HCM
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Client-Side State & Event Handlers -->
+    <script>
+        
+        const policiesDataDemo = {
+            'huong-dan-dat-hang-va-thanh-toan': {
+                title: 'Hướng Dẫn Đặt Hàng & Thanh Toán Trực Tuyến',
+                category: 'QUY TRÌNH MUA HÀNG',
+                icon: 'fa-solid fa-cart-shopping',
+                content: `
+                    <div class="p-4 bg-[#F8FAF8] border-l-4 border-[#7AA88B] border border-slate-200 mb-4">
+                        <strong class="text-[#2F5C3E] block mb-1">Quy trình mua hàng 4 bước tinh giản:</strong>
+                        Tối ưu hóa trải nghiệm mua sắm cây cảnh thủy sinh: tích hợp công cụ tính toán số lượng cây theo diện tích bể và các cổng thanh toán tức thời, bảo mật tuyệt đối.
+                    </div>
+                    <h4 class="font-bold text-slate-900 text-sm mb-1">1. Lựa chọn dòng cây & Bố cục hồ mẫu</h4>
+                    <p class="mb-4">Khách hàng chọn cây theo vị trí: Tiền cảnh, Trung cảnh, Hậu cảnh hoặc dùng Trợ Lý Chọn Cây và công cụ Dự Toán Diện Tích để xác định chính xác số cốc cây cần thiết mà không bị thiếu hụt.</p>
+                    <h4 class="font-bold text-slate-900 text-sm mb-1">2. Kiểm tra giỏ hàng & Mã giảm giá</h4>
+                    <p class="mb-4">Tại giỏ hàng, cập nhật số lượng hoặc xóa cây dễ dàng. Nhập mã ưu đãi <code>AQUA2026</code> (giảm 10%) hoặc <code>FREESHIP</code> (miễn phí vận chuyển từ 300k). Hàng xuất kho tuân thủ nghiêm ngặt nguyên tắc FIFO tươi mới nhất.</p>
+                    <h4 class="font-bold text-slate-900 text-sm mb-1">3. Phương thức thanh toán</h4>
+                    <p class="mb-4">Hỗ trợ 2 cổng thanh toán tiện lợi: <strong>Quét mã VietQR tự động</strong> (xác nhận sau 3 giây) hoặc <strong>Thanh toán tiền mặt COD</strong> khi bưu tá giao cây tận nơi.</p>
+                    <h4 class="font-bold text-slate-900 text-sm mb-1">4. Theo dõi vận đơn</h4>
+                    <p>Nhận ngay mã vận đơn AQUA-XXXXXX sau khi đặt hàng để tra cứu trực tiếp hành trình xe lạnh trên trang Tra Cứu Đơn Hàng.</p>
+                `
+            },
+            'chinh-sach-bao-hiem-dap-nat-1-doi-1': {
+                title: 'Chính Sách Bảo Hiểm Cây Sống & Dập Nát 1 Đổi 1 Tận Nơi',
+                category: 'BẢO HIỂM THỰC VẬT SỐNG',
+                icon: 'fa-solid fa-shield-heart',
+                content: `
+                    <div class="p-4 bg-[#F8FAF8] border-l-4 border-[#7AA88B] border border-slate-200 mb-4">
+                        <strong class="text-[#2F5C3E] block mb-1">Cam kết rủi ro 100% thuộc về AquaPlant:</strong>
+                        Cây thủy sinh là sinh vật sống nhạy cảm. Chúng tôi cam kết bảo hiểm dập nát: Cứ hư hỏng do vận chuyển là được đổi mới 100% hoặc hoàn tiền không tốn phí.
+                    </div>
+                    <h4 class="font-bold text-slate-900 text-sm mb-1">1. Phạm vi bảo hiểm</h4>
+                    <p class="mb-4">Áp dụng cho mọi đơn hàng bị dập nát, gãy ngọn chính, úng rễ hoặc rữa lá do va chạm cơ học trong quá trình vận chuyển, hoặc do giao trễ sốc nhiệt.</p>
+                    <h4 class="font-bold text-slate-900 text-sm mb-1">2. Quy trình xử lý siêu tốc trong 24h</h4>
+                    <p class="mb-4">Quý khách chỉ cần quay video khui hộp hoặc chụp 2-3 ảnh rõ nét tình trạng cây gửi về Zalo/Hotline <code>1900000</code> trong vòng 24 giờ kể từ khi nhận bưu phẩm. AquaPlant phản hồi xử lý trong vòng 15 phút.</p>
+                    <h4 class="font-bold text-slate-900 text-sm mb-1">3. Quyền lợi đền bù</h4>
+                    <p>Khách hàng được quyền chọn: <strong>Gửi bù cây mới hỏa tốc miễn phí</strong> hoặc <strong>Hoàn tiền 100%</strong> vào tài khoản ngân hàng / ví điện tử ngay lập tức.</p>
+                `
+            },
+            'huong-dan-duong-cay-moi-cam-ho': {
+                title: 'Hướng Dẫn Dưỡng & Cắm Cây Mới Vào Hồ Thủy Sinh',
+                category: 'KỸ THUẬT SINH HỌC CHUYÊN SÂU',
+                icon: 'fa-solid fa-seedling',
+                content: `
+                    <div class="p-4 bg-[#F8FAF8] border-l-4 border-[#7AA88B] border border-slate-200 mb-4">
+                        <strong class="text-[#2F5C3E] block mb-1">Kỹ thuật hạ phèn & thuần dưỡng lá nước:</strong>
+                        90% nguyên nhân rữa lá là do cắm sai kỹ thuật và sốc môi trường nước mới. Làm theo cẩm nang dưới đây để cây đạt tỷ lệ sống sót tuyệt đối.
+                    </div>
+                    <h4 class="font-bold text-slate-900 text-sm mb-1">1. Rửa gel và tỉa rễ</h4>
+                    <p class="mb-4">Rửa sạch lớp gel dinh dưỡng dưới vòi nước chảy nhẹ để tránh nấm mốc trắng trong hồ. Cắt tỉa rễ già chỉ chừa lại 1.5 - 2 cm để kích thích bung rễ tơ trắng sau 72 giờ.</p>
+                    <h4 class="font-bold text-slate-900 text-sm mb-1">2. Kỹ thuật cắm</h4>
+                    <p class="mb-4">Hạ mực nước sát mặt nền để triệt tiêu lực đẩy nổi. Kẹp nhíp nghiêng 45 độ, ấn sâu 2.5 - 3.5 cm rồi rút nhíp lên theo phương nghiêng để đất tự lấp kín gốc.</p>
+                    <h4 class="font-bold text-slate-900 text-sm mb-1">3. Chế độ ánh sáng & CO₂</h4>
+                    <p>Tuần đầu chỉ mở đèn 5-6 tiếng/ngày với công suất 50-60% để hạn chế rêu hại. Sủi CO₂ 1.5 - 2 giọt/giây trước khi bật đèn 30 phút. Thay 30% nước cách ngày.</p>
+                `
+            },
+            'quy-dinh-giao-nhan-cod-toan-quoc': {
+                title: 'Quy Định Giao Nhận COD & Đóng Gói Túi Khí Chuyên Dụng',
+                category: 'GIAO HÀNG & BẢO QUẢN ĐỘ ẨM',
+                icon: 'fa-solid fa-truck-fast',
+                content: `
+                    <div class="p-4 bg-[#F8FAF8] border-l-4 border-[#7AA88B] border border-slate-200 mb-4">
+                        <strong class="text-[#2F5C3E] block mb-1">Tiêu chuẩn đóng gói 3 lớp vi khí hậu:</strong>
+                        Toàn bộ cây được bọc túi khí vô trùng giữ ẩm 98%, chống va đập đa tầng trong thùng xốp giữ nhiệt cách ly thời tiết bên ngoài.
+                    </div>
+                    <h4 class="font-bold text-slate-900 text-sm mb-1">1. Thời gian giao hàng</h4>
+                    <p class="mb-4">Nội thành TP.HCM: Hỏa tốc trong 2 giờ hoặc trong ngày theo lịch hẹn. Toàn quốc: Vận chuyển xe lạnh chuyển phát nhanh 24 - 48 giờ.</p>
+                    <h4 class="font-bold text-slate-900 text-sm mb-1">2. Cước phí & Freeship</h4>
+                    <p class="mb-4">Đồng giá vận chuyển 30.000₫ toàn quốc. Miễn phí hoàn toàn (FREESHIP) cho đơn hàng từ 300.000₫ trở lên.</p>
+                    <h4 class="font-bold text-slate-900 text-sm mb-1">3. Quyền lợi đồng kiểm</h4>
+                    <p>Khách hàng được quyền đồng kiểm ngoại quan hộp hàng với bưu tá trước khi thanh toán COD.</p>
+                `
+            }
+        };
+
+        function openPolicyModal(slug) {
+            const p = policiesDataDemo[slug];
+            if (!p) return;
+            document.getElementById('policy-modal-icon').className = p.icon;
+            document.getElementById('policy-modal-category').innerText = p.category;
+            document.getElementById('policy-modal-title').innerText = p.title;
+            document.getElementById('policy-modal-body').innerHTML = p.content;
+            document.getElementById('policy-modal').classList.remove('hidden');
+        }
+
+        function closePolicyModal() {
+            document.getElementById('policy-modal').classList.add('hidden');
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('block'));
+            
+            const target = document.getElementById(`tab-${tabId}`);
+            if (target) {
+                target.classList.remove('hidden');
+                target.classList.add('block');
+            }
+
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = "nav-btn px-4 py-2.5 transition flex items-center gap-2 text-slate-600 hover:text-[#7AA88B] hover:bg-white border-b-2 border-transparent rounded-none";
+            });
+
+            const activeBtn = document.getElementById(`nav-${tabId}`);
+            if (activeBtn) {
+                activeBtn.className = "nav-btn px-4 py-2.5 transition flex items-center gap-2 text-[#2F5C3E] bg-white border-b-2 border-[#7AA88B] rounded-none";
+            }
+
+            const breadcrumbMap = {
+                'shop': 'Cửa Hàng Cây Thủy Sinh Tươi Sống',
+                'assistant': 'Trợ Lý Chọn Cây Cho Hồ Cá',
+                'calculator': 'Dự Toán Số Lượng Cây Cần Mua',
+                'presets': 'Combo Bố Cục Hồ Mẫu Trọn Gói'
+            };
+            document.getElementById('current-section-name').innerText = breadcrumbMap[tabId] || 'Cửa Hàng';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function filterProducts() {
+            const pos = document.querySelector('input[name="filter-position"]:checked')?.value || 'all';
+            const co2 = document.querySelector('input[name="filter-co2"]:checked')?.value || 'all';
+            const care = document.querySelector('input[name="filter-care"]:checked')?.value || 'all';
+
+            const cards = document.querySelectorAll('.product-card');
+            let visibleCount = 0;
+
+            cards.forEach(card => {
+                const cPos = card.getAttribute('data-position');
+                const cCo2 = card.getAttribute('data-co2');
+                const cCare = card.getAttribute('data-care');
+
+                let matchPos = (pos === 'all' || pos === cPos);
+                let matchCo2 = (co2 === 'all' || co2 === cCo2);
+                let matchCare = (care === 'all' || care === cCare);
+
+                if (matchPos && matchCo2 && matchCare) {
+                    card.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            document.getElementById('product-count').innerText = visibleCount;
+        }
+
+        function filterByQuickCategory(category) {
+            document.querySelectorAll('.cat-pill').forEach(btn => {
+                btn.className = "cat-pill px-3.5 py-1.5 text-xs font-bold transition flex items-center gap-2 bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200 rounded-none";
+            });
+            event.currentTarget.className = "cat-pill px-3.5 py-1.5 text-xs font-bold transition flex items-center gap-2 bg-[#F0F6F2] text-[#2C5F3E] border border-[#CDE4D5] rounded-none";
+
+            const radio = document.querySelector(`input[name="filter-position"][value="${category}"]`);
+            if (radio) {
+                radio.checked = true;
+                filterProducts();
+            }
+        }
+
+        function resetFilters() {
+            document.querySelector('input[name="filter-position"][value="all"]').checked = true;
+            document.querySelector('input[name="filter-co2"][value="all"]').checked = true;
+            document.querySelector('input[name="filter-care"][value="all"]').checked = true;
+            filterProducts();
+        }
+
+        function quickFilterKeyword(keyword) {
+            document.getElementById('main-search-input').value = keyword;
+            executeSearch();
+        }
+
+        function handleQuickSearch(event) {
+            if (event.key === 'Enter') {
+                executeSearch();
+            }
+        }
+
+        function executeSearch() {
+            switchTab('shop');
+            const query = document.getElementById('main-search-input').value.toLowerCase().trim();
+            const cards = document.querySelectorAll('.product-card');
+            let visibleCount = 0;
+
+            cards.forEach(card => {
+                const title = card.querySelector('h3').innerText.toLowerCase();
+                if (!query || title.includes(query)) {
+                    card.style.display = 'flex';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            document.getElementById('product-count').innerText = visibleCount;
+        }
+
+        function sortProducts(criteria) {
+            const grid = document.getElementById('product-grid');
+            const cards = Array.from(document.querySelectorAll('.product-card'));
+
+            cards.sort((a, b) => {
+                const priceA = parseInt(a.getAttribute('data-price'));
+                const priceB = parseInt(b.getAttribute('data-price'));
+
+                if (criteria === 'price-asc') return priceA - priceB;
+                if (criteria === 'price-desc') return priceB - priceA;
+                return 0;
+            });
+
+            cards.forEach(card => grid.appendChild(card));
+        }
+
+        // Assistant logic
+        function runAssistant(e) {
+            e.preventDefault();
+            const co2 = document.querySelector('input[name="asst-co2"]:checked').value;
+            const care = document.getElementById('asst-care').value;
+            const container = document.getElementById('asst-results-container');
+
+            let filtered = [];
+            if (co2 === 'no') {
+                filtered = [
+                    { name: 'Cây Ráy Nana Thủy Sinh', price: '65.000₫', img: './static/images/anubias_nana.jpg', reason: 'Không cần khí CO₂, lá dày chịu bóng râm tốt, rễ khỏe bám chắc vào đá hoặc thân lũa.' },
+                    { name: 'Cây Tiêu Thảo Nâu (Wendtii)', price: '45.000₫', img: './static/images/cryptocoryne_brown.jpg', reason: 'Dòng cây trung cảnh rất bền bỉ, thích nghi tốt với nước máy và ánh sáng cơ bản.' }
+                ];
+            } else {
+                filtered = [
+                    { name: 'Cây Trân Châu Ngọc Trai', price: '75.000₫', img: './static/images/monte_carlo.jpg', reason: 'Có CO₂ cây sẽ đâm ngọn và bò thảm xanh mướt toàn bộ đáy bể chỉ sau 2-3 tuần.' },
+                    { name: 'Cây Vảy Ốc Siêu Đỏ (H\'ra)', price: '35.000₫', img: './static/images/rotala_hra.jpg', reason: 'Nhu cầu quang hợp cao, kết hợp khí CO₂ sẽ cho màu đỏ cam rực rỡ ở tầng hậu cảnh.' }
+                ];
+            }
+
+            container.innerHTML = `
+                <div class="bg-stone-50 border border-stone-200 rounded-none p-4 mb-4 flex items-center justify-between">
+                    <div>
+                        <span class="text-xs font-bold text-stone-900 block">Đã tìm thấy ${filtered.length} loại cây lý tưởng cho hồ của bạn</span>
+                        <span class="text-[11px] text-stone-600">Dựa trên tiêu chí: ${co2 === 'yes' ? 'Có bình CO₂' : 'Không có CO₂'} · Tỷ lệ thích nghi 98%</span>
+                    </div>
+                    <span class="bg-white text-[#7AA88B] text-xs font-bold px-2.5 py-1 border border-slate-200 rounded-none">
+                        Khuyên Dùng
+                    </span>
+                </div>
+                ${filtered.map(item => `
+                    <div class="bg-white border border-slate-200 rounded-none p-4 hover:border-slate-400 transition flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                        <div class="flex gap-4 items-center">
+                            <div class="w-16 h-16 bg-slate-50 border border-slate-200 overflow-hidden flex-shrink-0 rounded-none">
+                                <img src="${item.img}" class="w-full h-full object-cover">
+                            </div>
+                            <div>
+                                <span class="bg-stone-100 text-stone-700 text-[10px] font-bold px-2 py-0.2 border border-stone-200 mb-1 inline-block rounded-none">Khuyên trồng</span>
+                                <h3 class="font-bold text-xs text-slate-900 mb-1">${item.name}</h3>
+                                <p class="text-xs text-slate-500 leading-relaxed mb-1">${item.reason}</p>
+                            </div>
+                        </div>
+                        <div class="flex sm:flex-col items-center sm:items-end justify-between w-full sm:w-auto gap-3 pt-3 sm:pt-0 border-t sm:border-t-0 border-slate-100 flex-shrink-0">
+                            <span class="text-base font-black text-rose-700 block">${item.price}</span>
+                            <button onclick="addToCart('${item.name}', ${parseInt(item.price.replace(/\D/g, ''))})" class="bg-[#7AA88B] hover:bg-[#6B997C] text-white text-xs font-bold px-3 py-1.5 transition flex items-center gap-1.5 rounded-none">
+                                <i class="fa-solid fa-cart-shopping"></i> Thêm Giỏ
+                            </button>
+                        </div>
+                    </div>
+                `).join('')}
+            `;
+        }
+
+        // Calculator logic
+        let currentDensity = 1.0;
+        function setDensity(factor, btn) {
+            currentDensity = factor;
+            document.querySelectorAll('.density-btn').forEach(b => {
+                b.className = "density-btn py-2 px-2 border border-slate-200 rounded-none text-center text-xs hover:bg-slate-50";
+                b.querySelector('span:first-child').className = "font-bold block text-slate-800";
+            });
+            btn.className = "density-btn py-2 px-2 border border-[#7AA88B] bg-[#F4F8F5] rounded-none text-center text-xs";
+            btn.querySelector('span:first-child').className = "font-bold block text-[#6B997C]";
+            calculatePlantQuantity();
+        }
+
+        function calculatePlantQuantity() {
+            const select = document.getElementById('calc-plant-select');
+            const unitPrice = parseInt(select.value);
+            const coverage = parseInt(select.selectedOptions[0].getAttribute('data-coverage'));
+            const plantName = select.selectedOptions[0].text.split('(')[0].trim();
+
+            const length = parseFloat(document.getElementById('calc-length').value) || 0;
+            const width = parseFloat(document.getElementById('calc-width').value) || 0;
+
+            const area = length * width;
+            let cups = Math.ceil((area / coverage) * currentDensity);
+            if (cups < 1) cups = 1;
+
+            const total = cups * unitPrice;
+
+            document.getElementById('res-area').innerText = `${area.toLocaleString('vi-VN')} cm²`;
+            document.getElementById('res-plant-name').innerText = plantName;
+            document.getElementById('res-quantity').innerText = `${cups} Cốc`;
+            document.getElementById('res-unit-price').innerText = `${unitPrice.toLocaleString('vi-VN')}₫ / cốc`;
+            document.getElementById('res-total').innerText = `${total.toLocaleString('vi-VN')}₫`;
+        }
+
+        function addCalculatedToCart() {
+            const select = document.getElementById('calc-plant-select');
+            const plantName = select.selectedOptions[0].text.split('(')[0].trim();
+            const total = parseInt(document.getElementById('res-total').innerText.replace(/\D/g, ''));
+            addToCart(`Gói thảm: ${plantName}`, total);
+        }
+
+        // Cart Drawer
+        let cartItems = [
+            { name: 'Cây Ráy Nana Thủy Sinh', price: 65000, qty: 1, img: './static/images/anubias_nana.jpg' },
+            { name: 'Cây Trân Châu Ngọc Trai', price: 75000, qty: 1, img: './static/images/monte_carlo.jpg' }
+        ];
+
+        function toggleCart() {
+            const drawer = document.getElementById('cart-drawer');
+            drawer.classList.toggle('hidden');
+        }
+
+        function addToCart(name, price) {
+            const existing = cartItems.find(i => i.name === name);
+            if (existing) {
+                existing.qty += 1;
+            } else {
+                cartItems.push({
+                    name: name,
+                    price: price,
+                    qty: 1,
+                    img: './static/images/anubias_nana.jpg'
+                });
+            }
+            updateCartUI();
+            showToast(`Đã thêm "${name}" vào giỏ hàng!`);
+        }
+
+        function updateCartUI() {
+            const container = document.getElementById('cart-items-container');
+            const totalCount = cartItems.reduce((sum, i) => sum + i.qty, 0);
+            const subtotal = cartItems.reduce((sum, i) => sum + (i.price * i.qty), 0);
+
+            document.getElementById('cart-badge').innerText = totalCount;
+            document.getElementById('cart-subtotal').innerText = `${subtotal.toLocaleString('vi-VN')}₫`;
+            document.getElementById('cart-total').innerText = `${subtotal.toLocaleString('vi-VN')}₫`;
+
+            container.innerHTML = cartItems.map(item => `
+                <div class="flex gap-3 pb-4 border-b border-slate-100">
+                    <div class="w-16 h-16 bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200 rounded-none">
+                        <img src="${item.img}" class="w-full h-full object-cover">
+                    </div>
+                    <div class="flex-grow">
+                        <h4 class="text-xs font-bold text-slate-900">${item.name}</h4>
+                        <span class="text-[11px] text-slate-400">Đơn vị: Tiêu chuẩn</span>
+                        <div class="flex items-center justify-between mt-2">
+                            <span class="text-sm font-bold text-rose-700">${(item.price * item.qty).toLocaleString('vi-VN')}₫</span>
+                            <span class="text-xs text-slate-500 font-bold bg-slate-100 px-2 py-0.5 rounded-none">x${item.qty}</span>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toast-message').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 2500);
+        }
+    </script>
+
+    <!-- Policy Viewer Modal -->
+    <div id="policy-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white border border-slate-200 max-w-3xl w-full max-h-[85vh] flex flex-col rounded-none shadow-2xl">
+            <div class="p-4 sm:p-5 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-7 h-7 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] flex items-center justify-center rounded-none text-xs font-bold">
+                        <i id="policy-modal-icon" class="fa-solid fa-shield-heart"></i>
+                    </div>
+                    <div>
+                        <span id="policy-modal-category" class="text-[10px] font-bold text-[#2F5C3E] uppercase tracking-wider block">CHÍNH SÁCH BÁN HÀNG</span>
+                        <h3 id="policy-modal-title" class="text-sm sm:text-base font-extrabold text-slate-900">Tiêu đề chính sách</h3>
+                    </div>
+                </div>
+                <button onclick="closePolicyModal()" class="text-slate-400 hover:text-slate-700 p-2 text-base transition">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div id="policy-modal-body" class="p-6 overflow-y-auto space-y-5 text-xs sm:text-sm text-slate-600 leading-relaxed">
+                <!-- Nội dung chính sách nạp tự động qua JS -->
+            </div>
+            <div class="p-4 border-t border-slate-200 bg-slate-50 flex items-center justify-between">
+                <span class="text-[11px] text-slate-500"><i class="fa-solid fa-headset mr-1 text-[#7AA88B]"></i> Hotline tư vấn 24/7: <strong>1900000</strong></span>
+                <button onclick="closePolicyModal()" class="px-5 py-2 bg-[#7AA88B] hover:bg-[#638F73] text-white text-xs font-bold rounded-none transition">
+                    Đã Hiểu & Đóng
+                </button>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>

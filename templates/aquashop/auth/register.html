@@ -1,0 +1,273 @@
+{% extends 'aquashop/base.html' %}
+{% load static %}
+
+{% block title %}Đăng Ký Tài Khoản Thành Viên Mới - AquaPlant{% endblock %}
+{% block section_name %}Tạo Mới Tài Khoản Khách Hàng{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-4 sm:py-8">
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+        
+        <!-- Cột Trái: Form Đăng Ký -->
+        <div class="md:col-span-8 bg-white p-6 sm:p-8 border border-slate-200 rounded-none shadow-sm">
+            <div class="border-b border-slate-100 pb-5 mb-6">
+                <span class="inline-block text-[10px] font-extrabold uppercase tracking-widest text-[#2F5C3E] bg-[#EEF5F0] border border-[#C5DEC9] px-2.5 py-1 mb-2.5 rounded-none">
+                    Thành Viên Mới
+                </span>
+                <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+                    <i class="fa-solid fa-user-plus text-[#7AA88B]"></i> Đăng Ký Tài Khoản AquaPlant
+                </h1>
+                <p class="text-xs text-slate-500 mt-1">
+                    Trở thành hội viên để nhận mã giảm 10% đơn đầu tiên và quản lý quá trình dưỡng cây dễ dàng.
+                </p>
+            </div>
+
+            <form method="POST" action="{% url 'register' %}" class="space-y-4">
+                {% csrf_token %}
+
+                {% if form.non_field_errors %}
+                <div class="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-none space-y-1">
+                    {% for error in form.non_field_errors %}
+                    <p class="flex items-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation text-rose-600"></i>
+                        <span>{{ error }}</span>
+                    </p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Tên đăng nhập & Họ tên -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="{{ form.username.id_for_label }}" class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">
+                            {{ form.username.label }} <span class="text-rose-600">*</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">
+                                <i class="fa-solid fa-at"></i>
+                            </span>
+                            <input type="text" 
+                                   name="{{ form.username.name }}" 
+                                   id="{{ form.username.id_for_label }}"
+                                   value="{{ form.username.value|default:'' }}"
+                                   class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-none text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7AA88B] focus:bg-white transition"
+                                   placeholder="Viết liền không dấu..."
+                                   required>
+                        </div>
+                        {% if form.username.errors %}
+                        <p class="text-[11px] text-rose-600 mt-1 font-medium">{{ form.username.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.full_name.id_for_label }}" class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">
+                            {{ form.full_name.label }} <span class="text-rose-600">*</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">
+                                <i class="fa-solid fa-id-card"></i>
+                            </span>
+                            <input type="text" 
+                                   name="{{ form.full_name.name }}" 
+                                   id="{{ form.full_name.id_for_label }}"
+                                   value="{{ form.full_name.value|default:'' }}"
+                                   class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-none text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7AA88B] focus:bg-white transition"
+                                   placeholder="Ví dụ: Nguyễn Văn Bảo"
+                                   required>
+                        </div>
+                        {% if form.full_name.errors %}
+                        <p class="text-[11px] text-rose-600 mt-1 font-medium">{{ form.full_name.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Email & Số điện thoại -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="{{ form.email.id_for_label }}" class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">
+                            {{ form.email.label }} <span class="text-rose-600">*</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">
+                                <i class="fa-solid fa-envelope"></i>
+                            </span>
+                            <input type="email" 
+                                   name="{{ form.email.name }}" 
+                                   id="{{ form.email.id_for_label }}"
+                                   value="{{ form.email.value|default:'' }}"
+                                   class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-none text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7AA88B] focus:bg-white transition"
+                                   placeholder="name@example.com"
+                                   required>
+                        </div>
+                        {% if form.email.errors %}
+                        <p class="text-[11px] text-rose-600 mt-1 font-medium">{{ form.email.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.phone.id_for_label }}" class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">
+                            {{ form.phone.label }} <span class="text-rose-600">*</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">
+                                <i class="fa-solid fa-phone"></i>
+                            </span>
+                            <input type="text" 
+                                   name="{{ form.phone.name }}" 
+                                   id="{{ form.phone.id_for_label }}"
+                                   value="{{ form.phone.value|default:'' }}"
+                                   class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-none text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7AA88B] focus:bg-white transition"
+                                   placeholder="Ví dụ: 0912345678"
+                                   required>
+                        </div>
+                        {% if form.phone.errors %}
+                        <p class="text-[11px] text-rose-600 mt-1 font-medium">{{ form.phone.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Địa chỉ giao hàng mặc định -->
+                <div>
+                    <label for="{{ form.address.id_for_label }}" class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">
+                        {{ form.address.label }} <span class="text-rose-600">*</span>
+                    </label>
+                    <textarea name="{{ form.address.name }}" 
+                              id="{{ form.address.id_for_label }}"
+                              rows="2"
+                              class="w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-none text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7AA88B] focus:bg-white transition resize-none"
+                              placeholder="Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố..."
+                              required>{{ form.address.value|default:'' }}</textarea>
+                    {% if form.address.errors %}
+                    <p class="text-[11px] text-rose-600 mt-1 font-medium">{{ form.address.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Mật khẩu & Nhập lại mật khẩu -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label for="{{ form.password.id_for_label }}" class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">
+                            {{ form.password.label }} <span class="text-rose-600">*</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">
+                                <i class="fa-solid fa-lock"></i>
+                            </span>
+                            <input type="password" 
+                                   name="{{ form.password.name }}" 
+                                   id="{{ form.password.id_for_label }}"
+                                   class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-none text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7AA88B] focus:bg-white transition"
+                                   placeholder="Tối thiểu 6 ký tự"
+                                   required>
+                        </div>
+                        {% if form.password.errors %}
+                        <p class="text-[11px] text-rose-600 mt-1 font-medium">{{ form.password.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div>
+                        <label for="{{ form.confirm_password.id_for_label }}" class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">
+                            {{ form.confirm_password.label }} <span class="text-rose-600">*</span>
+                        </label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">
+                                <i class="fa-solid fa-shield"></i>
+                            </span>
+                            <input type="password" 
+                                   name="{{ form.confirm_password.name }}" 
+                                   id="{{ form.confirm_password.id_for_label }}"
+                                   class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-none text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7AA88B] focus:bg-white transition"
+                                   placeholder="Nhập lại mật khẩu trên"
+                                   required>
+                        </div>
+                        {% if form.confirm_password.errors %}
+                        <p class="text-[11px] text-rose-600 mt-1 font-medium">{{ form.confirm_password.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Điều khoản -->
+                <div class="pt-2 text-[11px] text-slate-500">
+                    Bằng việc nhấp vào nút "Đăng Ký Tài Khoản", bạn đồng ý với các 
+                    <a href="javascript:void(0)" class="text-[#7AA88B] font-semibold underline">Điều khoản dịch vụ</a> và 
+                    <a href="javascript:void(0)" class="text-[#7AA88B] font-semibold underline">Chính sách bảo mật cây sống</a> của AquaPlant.
+                </div>
+
+                <!-- Nút Đăng ký -->
+                <div class="pt-2">
+                    <button type="submit" class="w-full bg-[#7AA88B] hover:bg-[#638F73] text-white py-3 px-6 rounded-none text-xs font-extrabold uppercase tracking-wider transition duration-150 flex items-center justify-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-user-plus text-xs"></i> Hoàn Tất Đăng Ký Tài Khoản
+                    </button>
+                </div>
+            </form>
+
+            <!-- Đã có tài khoản -->
+            <div class="mt-6 pt-5 border-t border-slate-100 text-center">
+                <p class="text-xs text-slate-600">
+                    Đã có tài khoản thành viên? 
+                    <a href="{% url 'login' %}" class="font-extrabold text-[#2F5C3E] hover:text-[#7AA88B] hover:underline ml-1 inline-flex items-center gap-1">
+                        Đăng nhập ngay <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                    </a>
+                </p>
+            </div>
+        </div>
+
+        <!-- Cột Phải: Cam Kết Chất Lượng -->
+        <div class="md:col-span-4 space-y-6">
+            
+            <div class="bg-[#EEF5F0] border border-[#C5DEC9] p-6 rounded-none">
+                <div class="flex items-center gap-2 pb-3 border-b border-[#C5DEC9]">
+                    <i class="fa-solid fa-seedling text-[#7AA88B] text-base"></i>
+                    <h2 class="text-xs font-black uppercase tracking-wide text-[#2F5C3E]">
+                        Cam Kết Dịch Vụ Cây Sống
+                    </h2>
+                </div>
+
+                <div class="mt-4 space-y-4 text-xs text-slate-700">
+                    <div class="flex items-start gap-2.5">
+                        <div class="w-5 h-5 bg-white border border-[#C5DEC9] text-[#2F5C3E] flex items-center justify-center font-bold text-[10px] rounded-none flex-shrink-0">
+                            1
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-900">Bọc ẩm kỹ thuật cao:</p>
+                            <p class="text-slate-600 text-[11px] mt-0.5">Mỗi cây đều được bọc rễ giữ ẩm bằng bông khoáng sinh học và bơm khí CO2 đệm.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-2.5">
+                        <div class="w-5 h-5 bg-white border border-[#C5DEC9] text-[#2F5C3E] flex items-center justify-center font-bold text-[10px] rounded-none flex-shrink-0">
+                            2
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-900">Bảo hiểm 1 đổi 1 tận tay:</p>
+                            <p class="text-slate-600 text-[11px] mt-0.5">Nhận cây bị rữa rễ hoặc dập gãy chỉ cần chụp hình gửi ngay, hệ thống bù cây mới 100% không phát sinh phí.</p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-start gap-2.5">
+                        <div class="w-5 h-5 bg-white border border-[#C5DEC9] text-[#2F5C3E] flex items-center justify-center font-bold text-[10px] rounded-none flex-shrink-0">
+                            3
+                        </div>
+                        <div>
+                            <p class="font-bold text-slate-900">Tư vấn thông số nước miễn phí:</p>
+                            <p class="text-slate-600 text-[11px] mt-0.5">Đội ngũ kỹ thuật hỗ trợ đo pH, TDS và tính toán lượng CO2 qua hotline 1900000.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hotline Box -->
+            <div class="bg-white border border-slate-200 p-5 rounded-none flex items-center gap-3">
+                <div class="w-10 h-10 bg-[#EEF5F0] border border-[#C5DEC9] text-[#2F5C3E] flex items-center justify-center text-base rounded-none flex-shrink-0">
+                    <i class="fa-solid fa-headset"></i>
+                </div>
+                <div>
+                    <span class="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">Hỗ trợ kỹ thuật</span>
+                    <a href="tel:1900000" class="text-sm font-extrabold text-rose-700 hover:underline">Hotline: 1900000</a>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+{% endblock %}

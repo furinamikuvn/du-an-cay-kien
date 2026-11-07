@@ -1,0 +1,62 @@
+{% extends 'aquashop/base.html' %}
+{% load static %}
+
+{% block section_name %}Combo Bố Cục Hồ Mẫu Trọn Gói{% endblock %}
+
+{% block content %}
+<!-- Feature Introduction Header -->
+<div class="bg-white border border-slate-200 p-6 sm:p-8 mb-8 rounded-none">
+    <div class="max-w-3xl">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-[#F4F8F5] text-[#2F5C3E] border border-[#DFECE3] text-xs font-bold mb-3 rounded-none">
+            <i class="fa-solid fa-layer-group text-[#7AA88B]"></i> TRỌN GÓI TIẾT KIỆM
+        </span>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
+            Set Cây Phối Sẵn Theo Bố Cục Hồ Chuẩn Nghệ Thuật
+        </h1>
+        <p class="text-sm text-slate-600 leading-relaxed">
+            Các set phối cảnh tuyển chọn từ nghệ nhân thủy sinh. Đầy đủ danh mục cây tiền cảnh, trung cảnh và hậu cảnh được cân đối tỉ lệ hoàn hảo cho từng kích thước hồ.
+        </p>
+    </div>
+</div>
+
+<!-- Layout Presets Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    {% for layout in layouts %}
+    <div class="bg-white border border-slate-200 overflow-hidden hover:border-[#7AA88B] transition-all duration-300 flex flex-col justify-between group rounded-none">
+        <div>
+            <!-- Preset Image -->
+            <div class="relative aspect-16/9 bg-slate-100 overflow-hidden rounded-none">
+                <img src="{% if 'Iwagumi' in layout.name %}{% static 'images/iwagumi_60cm.jpg' %}{% else %}{% static 'images/nature_wood_90cm.png' %}{% endif %}" 
+                     alt="{{ layout.name }}" 
+                     class="w-full h-56 object-cover group-hover:scale-102 transition duration-500">
+                <span class="absolute top-3 left-3 bg-[#7AA88B] text-white text-xs font-bold px-3 py-1 rounded-none shadow-sm">
+                    {{ layout.style|upper }}
+                </span>
+                <span class="absolute bottom-3 right-3 bg-white/95 text-slate-800 text-xs font-bold px-2.5 py-1 border border-slate-200 shadow-xs rounded-none">
+                    {{ layout.tank_size }}
+                </span>
+            </div>
+            <div class="p-6">
+                <h2 class="text-lg font-bold text-slate-900 group-hover:text-[#7AA88B] transition mb-2">{{ layout.name }}</h2>
+                <p class="text-xs text-slate-600 leading-relaxed mb-4">{{ layout.description }}</p>
+
+                <div class="bg-slate-50 border border-slate-200 p-4 mb-4 rounded-none">
+                    <span class="text-xs font-bold text-slate-800 block mb-2">Danh mục cây thành phần trong gói:</span>
+                    <p class="text-xs text-slate-600 whitespace-pre-line leading-relaxed">{{ layout.plant_list_text }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="p-6 pt-0 border-t border-slate-100 flex items-center justify-between">
+            <div>
+                <span class="text-xs text-slate-400 block">Trọn bộ combo cây:</span>
+                <span class="text-2xl font-black text-[#B91C1C]">{{ layout.total_price }}₫</span>
+            </div>
+            <a href="{% url 'cart' %}" class="bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs px-4 py-2.5 transition flex items-center gap-2 rounded-none">
+                <i class="fa-solid fa-cart-shopping"></i> Mua Trọn Bộ Combo
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

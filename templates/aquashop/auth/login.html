@@ -1,0 +1,165 @@
+{% extends 'aquashop/base.html' %}
+{% load static %}
+
+{% block title %}Đăng Nhập Tài Khoản Thành Viên - AquaPlant{% endblock %}
+{% block section_name %}Xác Thực Hội Viên AquaPlant{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto py-4 sm:py-8">
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-8 items-start">
+        
+        <!-- Cột Trái: Form Đăng Nhập -->
+        <div class="md:col-span-7 bg-white p-6 sm:p-8 border border-slate-200 rounded-none shadow-sm">
+            <div class="border-b border-slate-100 pb-5 mb-6">
+                <span class="inline-block text-[10px] font-extrabold uppercase tracking-widest text-[#2F5C3E] bg-[#EEF5F0] border border-[#C5DEC9] px-2.5 py-1 mb-2.5 rounded-none">
+                    Cổng Đăng Nhập Hệ Thống
+                </span>
+                <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+                    <i class="fa-solid fa-arrow-right-to-bracket text-[#7AA88B]"></i> Đăng Nhập Hội Viên
+                </h1>
+                <p class="text-xs text-slate-500 mt-1">
+                    Đăng nhập để quản lý đơn hàng, theo dõi bọc ẩm cây sống và nhận ưu đãi tích lũy.
+                </p>
+            </div>
+
+            <form method="POST" action="{% url 'login' %}{% if next %}?next={{ next }}{% endif %}" class="space-y-5">
+                {% csrf_token %}
+                {% if next %}
+                <input type="hidden" name="next" value="{{ next }}">
+                {% endif %}
+
+                {% if form.non_field_errors %}
+                <div class="p-3.5 bg-rose-50 border border-rose-200 text-rose-800 text-xs rounded-none space-y-1">
+                    {% for error in form.non_field_errors %}
+                    <p class="flex items-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation text-rose-600"></i>
+                        <span>{{ error }}</span>
+                    </p>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Tên đăng nhập -->
+                <div>
+                    <label for="{{ form.username.id_for_label }}" class="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5">
+                        {{ form.username.label }} <span class="text-rose-600">*</span>
+                    </label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">
+                            <i class="fa-solid fa-user"></i>
+                        </span>
+                        <input type="text" 
+                               name="{{ form.username.name }}" 
+                               id="{{ form.username.id_for_label }}"
+                               value="{{ form.username.value|default:'' }}"
+                               class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-none text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7AA88B] focus:bg-white transition"
+                               placeholder="Nhập tên đăng nhập của bạn..."
+                               required>
+                    </div>
+                    {% if form.username.errors %}
+                    <p class="text-[11px] text-rose-600 mt-1 font-medium">{{ form.username.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Mật khẩu -->
+                <div>
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label for="{{ form.password.id_for_label }}" class="block text-xs font-bold text-slate-700 uppercase tracking-wide">
+                            {{ form.password.label }} <span class="text-rose-600">*</span>
+                        </label>
+                        <a href="javascript:void(0)" onclick="alert('Vui lòng liên hệ bộ phận hỗ trợ Hotline 1900000 để được cấp lại mật khẩu tài khoản.')" class="text-[11px] font-semibold text-[#7AA88B] hover:underline">
+                            Quên mật khẩu?
+                        </a>
+                    </div>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400 text-xs">
+                            <i class="fa-solid fa-lock"></i>
+                        </span>
+                        <input type="password" 
+                               name="{{ form.password.name }}" 
+                               id="{{ form.password.id_for_label }}"
+                               class="w-full pl-9 pr-3 py-2.5 bg-slate-50 border border-slate-300 rounded-none text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7AA88B] focus:bg-white transition"
+                               placeholder="Nhập mật khẩu..."
+                               required>
+                    </div>
+                    {% if form.password.errors %}
+                    <p class="text-[11px] text-rose-600 mt-1 font-medium">{{ form.password.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Nút Đăng nhập -->
+                <div class="pt-2">
+                    <button type="submit" class="w-full bg-[#7AA88B] hover:bg-[#638F73] text-white py-3 px-6 rounded-none text-xs font-extrabold uppercase tracking-wider transition duration-150 flex items-center justify-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-right-to-bracket text-xs"></i> Đăng Nhập Vào Hệ Thống
+                    </button>
+                </div>
+            </form>
+
+            <!-- Chuyển sang Đăng ký -->
+            <div class="mt-6 pt-5 border-t border-slate-100 text-center">
+                <p class="text-xs text-slate-600">
+                    Chưa có tài khoản AquaPlant? 
+                    <a href="{% url 'register' %}{% if next %}?next={{ next }}{% endif %}" class="font-extrabold text-[#2F5C3E] hover:text-[#7AA88B] hover:underline ml-1 inline-flex items-center gap-1">
+                        Đăng ký thành viên mới <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                    </a>
+                </p>
+            </div>
+        </div>
+
+        <!-- Cột Phải: Quyền Lợi & Hỗ Trợ Đơn Hàng -->
+        <div class="md:col-span-5 space-y-6">
+            
+            <!-- Box Quyền Lợi -->
+            <div class="bg-[#EEF5F0] border border-[#C5DEC9] p-6 rounded-none">
+                <div class="flex items-center gap-2.5 pb-3 border-b border-[#C5DEC9]">
+                    <div class="w-7 h-7 bg-[#7AA88B] text-white flex items-center justify-center font-bold text-xs rounded-none">
+                        <i class="fa-solid fa-star"></i>
+                    </div>
+                    <h2 class="text-xs font-extrabold uppercase tracking-wide text-[#2F5C3E]">
+                        Đặc Quyền Hội Viên AquaPlant
+                    </h2>
+                </div>
+
+                <ul class="mt-4 space-y-3.5 text-xs text-slate-700">
+                    <li class="flex items-start gap-2.5">
+                        <i class="fa-solid fa-box-open text-[#7AA88B] mt-0.5 text-xs"></i>
+                        <div>
+                            <span class="font-bold text-slate-900 block">Theo dõi đơn hàng chính xác:</span>
+                            <span class="text-slate-600 text-[11px]">Cập nhật trạng thái từng bước từ chuẩn bị, bọc ẩm đến lúc shipper bàn giao.</span>
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-2.5">
+                        <i class="fa-solid fa-shield-halved text-[#7AA88B] mt-0.5 text-xs"></i>
+                        <div>
+                            <span class="font-bold text-slate-900 block">Bảo hiểm rủi ro cây cảnh:</span>
+                            <span class="text-slate-600 text-[11px]">Tự động kích hoạt chính sách 1 đổi 1 trong 24h đối với cây dập úng khi nhận.</span>
+                        </div>
+                    </li>
+                    <li class="flex items-start gap-2.5">
+                        <i class="fa-solid fa-tags text-[#7AA88B] mt-0.5 text-xs"></i>
+                        <div>
+                            <span class="font-bold text-slate-900 block">Ưu đãi độc quyền:</span>
+                            <span class="text-slate-600 text-[11px]">Nhận mã giảm giá định kỳ và tích lũy chiết khấu khi mua phân nền, lũa đá.</span>
+                        </div>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- Box Tra cứu nhanh không cần login -->
+            <div class="bg-white border border-slate-200 p-6 rounded-none">
+                <div class="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wide mb-2">
+                    <i class="fa-solid fa-magnifying-glass text-[#7AA88B]"></i> Khách Vãng Lai Muốn Tra Cứu?
+                </div>
+                <p class="text-xs text-slate-500 mb-4 leading-relaxed">
+                    Bạn đặt hàng không cần tài khoản? Tra cứu ngay tiến độ đơn hàng và thông tin vận chuyển bằng mã đơn hoặc số điện thoại.
+                </p>
+                <a href="{% url 'order_tracking' %}" class="inline-flex items-center justify-center gap-2 w-full py-2.5 bg-slate-100 hover:bg-[#EEF5F0] hover:text-[#2F5C3E] border border-slate-300 text-xs font-bold text-slate-700 rounded-none transition">
+                    <i class="fa-solid fa-truck-fast text-[#7AA88B]"></i> Đi Đến Trang Tra Cứu Đơn
+                </a>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+{% endblock %}

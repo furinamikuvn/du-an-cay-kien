@@ -1,0 +1,39 @@
+{% extends 'aquashop/base.html' %}
+
+{% block content %}
+<div class="max-w-xl mx-auto bg-white p-8 border border-slate-200 text-center rounded-none">
+    <div class="w-16 h-16 bg-[#F4F8F5] text-[#7AA88B] border border-[#DFECE3] flex items-center justify-center mx-auto mb-4 text-2xl rounded-none">
+        <i class="fa-solid fa-check"></i>
+    </div>
+    <h1 class="text-2xl font-black text-slate-900 mb-1">Đặt Hàng Thành Công!</h1>
+    <p class="text-xs text-slate-500 mb-6">Mã đơn hàng: <strong class="text-[#7AA88B] font-mono text-sm">{{ order.order_code }}</strong></p>
+
+    <div class="bg-slate-50 p-4 text-left text-xs space-y-2 mb-6 border border-slate-200 rounded-none">
+        <div class="flex justify-between">
+            <span class="text-slate-500">Khách hàng:</span>
+            <span class="font-bold text-slate-900">{{ order.customer_name }}</span>
+        </div>
+        <div class="flex justify-between">
+            <span class="text-slate-500">Số điện thoại:</span>
+            <span class="font-bold text-slate-900">{{ order.phone }}</span>
+        </div>
+        <div class="flex justify-between">
+            <span class="text-slate-500">Địa chỉ giao:</span>
+            <span class="font-bold text-slate-900">{{ order.shipping_address }}</span>
+        </div>
+        <div class="flex justify-between border-t border-slate-200 pt-2 font-bold text-sm">
+            <span class="text-slate-900">Tổng tiền đã ghi nhận:</span>
+            <span class="text-[#B91C1C] text-lg font-black">{{ order.total_amount }}₫</span>
+        </div>
+    </div>
+
+    <div class="flex gap-3 justify-center">
+        <a href="{% url 'home' %}" class="bg-[#7AA88B] hover:bg-[#6B997C] text-white px-5 py-2.5 font-bold text-xs transition rounded-none">
+            Quay Lại Cửa Hàng
+        </a>
+        <a href="/admin/" target="_blank" class="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 font-bold text-xs border border-slate-300 transition rounded-none">
+            Kiểm Tra Đơn Trong Django Admin
+        </a>
+    </div>
+</div>
+{% endblock %}

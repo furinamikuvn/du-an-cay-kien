@@ -1,0 +1,108 @@
+{% extends 'aquashop/base.html' %}
+{% load static %}
+
+{% block section_name %}Dự Toán Số Lượng Cây Cần Mua{% endblock %}
+
+{% block content %}
+<!-- Feature Introduction Header -->
+<div class="bg-white border border-slate-200 p-6 sm:p-8 mb-8 rounded-none">
+    <div class="max-w-3xl">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-50 text-blue-900 border border-blue-200 text-xs font-bold mb-3 rounded-none">
+            <i class="fa-solid fa-calculator text-blue-700"></i> TIỆN ÍCH DỰ TOÁN MUA SẮM
+        </span>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
+            Tính Số Lượng Cây & Dự Toán Chi Phí Theo Diện Tích Hồ
+        </h1>
+        <p class="text-sm text-slate-600 leading-relaxed">
+            Nhập kích thước vùng trải thảm hoặc diện tích cần trồng (dài × rộng), công cụ sẽ tính ngay số lượng cốc cây cần mua cùng tổng chi phí dự kiến, tránh mua thừa hoặc thiếu cây.
+        </p>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+    <!-- Input Form -->
+    <div class="bg-white border border-slate-200 p-6 rounded-none">
+        <h2 class="text-sm font-bold text-slate-900 mb-4 pb-3 border-b border-slate-100 flex items-center gap-2">
+            <i class="fa-solid fa-ruler-combined text-[#7AA88B]"></i> Kích Thước Vùng Cần Trồng Cây
+        </h2>
+
+        <form method="POST" action="{% url 'plant_quantity' %}" class="space-y-4">
+            {% csrf_token %}
+            <div>
+                <label class="block text-xs font-bold text-slate-800 mb-1.5">Chọn loại cây muốn trồng</label>
+                <select name="product_id" class="w-full bg-slate-50 border border-slate-300 p-3 text-xs text-slate-800 font-semibold focus:ring-1 focus:ring-[#7AA88B] focus:border-[#7AA88B] focus:bg-white rounded-none">
+                    {% for p in products %}
+                    <option value="{{ p.id }}">{{ p.name }} (Đơn giá: {{ p.sale_price|default:p.regular_price }}₫ / Cốc)</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-800 mb-1.5">Chiều dài vùng trồng (cm)</label>
+                    <input type="number" step="1" name="length" value="{{ result.length|default:40 }}" required class="w-full bg-slate-50 border border-slate-300 p-3 text-xs text-slate-800 font-bold focus:ring-1 focus:ring-[#7AA88B] focus:border-[#7AA88B] focus:bg-white rounded-none">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-800 mb-1.5">Chiều rộng vùng trồng (cm)</label>
+                    <input type="number" step="1" name="width" value="{{ result.width|default:20 }}" required class="w-full bg-slate-50 border border-slate-300 p-3 text-xs text-slate-800 font-bold focus:ring-1 focus:ring-[#7AA88B] focus:border-[#7AA88B] focus:bg-white rounded-none">
+                </div>
+            </div>
+
+            <div class="bg-[#F4F8F5] border border-[#DFECE3] p-3 text-xs text-[#2F5C3E] rounded-none">
+                <i class="fa-solid fa-circle-info text-[#7AA88B] mr-1"></i>
+                Hệ số phủ trung bình: 1 cốc cây trải thảm tiêu chuẩn phủ kín khoảng 100 - 150 cm² đáy hồ.
+            </div>
+
+            <button type="submit" class="w-full bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs py-3.5 transition flex items-center justify-center gap-2 mt-4 rounded-none">
+                <i class="fa-solid fa-calculator"></i> Tính Số Cốc Cây Cần Mua
+            </button>
+        </form>
+    </div>
+
+    <!-- Calculation Results -->
+    <div class="bg-white border border-slate-200 p-6 rounded-none">
+        <h2 class="text-sm font-bold text-slate-900 mb-4 pb-3 border-b border-slate-100 flex items-center gap-2">
+            <i class="fa-solid fa-receipt text-[#7AA88B]"></i> Kết Quả Tính Toán
+        </h2>
+
+        {% if result %}
+        <div class="space-y-4">
+            <div class="p-4 bg-slate-50 border border-slate-200 rounded-none">
+                <span class="text-xs text-slate-500 block mb-1">Loài cây đang tính:</span>
+                <span class="text-sm font-bold text-slate-900">{{ result.product.name }}</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div class="p-4 bg-slate-50 border border-slate-200 rounded-none">
+                    <span class="text-xs text-slate-500 block mb-1">Diện tích vùng trồng:</span>
+                    <span class="text-xl font-black text-slate-900">{{ result.area_cm2 }} cm²</span>
+                </div>
+                <div class="p-4 bg-[#F4F8F5] border border-[#DFECE3] rounded-none">
+                    <span class="text-xs text-[#2F5C3E] font-bold block mb-1">Số lượng khuyên dùng:</span>
+                    <span class="text-2xl font-black text-[#7AA88B]">{{ result.estimated_cups }} cốc / chậu</span>
+                </div>
+            </div>
+
+            <div class="p-5 bg-[#F4F8F5] border border-[#DFECE3] flex items-center justify-between rounded-none">
+                <div>
+                    <span class="text-xs text-[#2F5C3E] font-bold block">DỰ TOÁN CHI PHÍ:</span>
+                    <span class="text-2xl font-black text-[#B91C1C]">{{ result.total_cost }}₫</span>
+                </div>
+                <a href="{% url 'cart' %}" class="bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs px-4 py-2.5 transition flex items-center gap-1.5 rounded-none">
+                    <i class="fa-solid fa-cart-shopping"></i> Cho Vào Giỏ Hàng
+                </a>
+            </div>
+
+            <div class="text-[11px] text-slate-500 leading-relaxed pt-2">
+                * Lưu ý: Mật độ cây có thể xê dịch tùy thuộc bạn muốn thảm phủ nhanh (trồng dày) hay tiết kiệm chi phí để cây tự bò lan tự nhiên.
+            </div>
+        </div>
+        {% else %}
+        <div class="text-center py-12 text-slate-400">
+            <i class="fa-solid fa-calculator text-4xl mb-3 block text-slate-300"></i>
+            <p class="text-xs">Vui lòng nhập kích thước bể bên cạnh để hiển thị dự toán chính xác.</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,210 @@
+{% extends 'aquashop/base.html' %}
+{% load static %}
+
+{% block title %}Đơn Hàng Của Tôi - Lịch Sử Đặt Cây & Vận Chuyển - AquaPlant{% endblock %}
+{% block section_name %}Lịch Sử Toàn Bộ Đơn Đặt Hàng Của Hội Viên{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto py-4 sm:py-6 space-y-6">
+
+    <!-- Header Section -->
+    <div class="bg-white border border-slate-200 p-6 rounded-none flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
+        <div>
+            <span class="inline-block text-[10px] font-extrabold uppercase tracking-widest text-[#2F5C3E] bg-[#EEF5F0] border border-[#C5DEC9] px-2.5 py-1 mb-1.5 rounded-none">
+                Quản Lý Giao Dịch
+            </span>
+            <h1 class="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2.5">
+                <i class="fa-solid fa-box-archive text-[#7AA88B]"></i> Đơn Hàng Của Tôi
+            </h1>
+            <p class="text-xs text-slate-500 mt-1">
+                Theo dõi tất cả đơn đặt hàng, kiểm tra lộ trình bọc ẩm rễ và bảo hiểm cây sống.
+            </p>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <a href="{% url 'profile' %}" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-xs font-bold text-slate-700 rounded-none transition flex items-center gap-1.5">
+                <i class="fa-solid fa-id-card text-[#7AA88B]"></i> Hồ Sơ Tài Khoản
+            </a>
+            <a href="{% url 'home' %}" class="px-4 py-2 bg-[#7AA88B] hover:bg-[#638F73] text-white text-xs font-bold rounded-none transition flex items-center gap-1.5">
+                <i class="fa-solid fa-plus text-xs"></i> Mua Thêm Cây Mới
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter Tabs (Sắc nét, Không bo góc) -->
+    <div class="bg-white border border-slate-200 p-1.5 rounded-none overflow-x-auto shadow-sm">
+        <div class="flex items-center gap-1 text-xs font-bold whitespace-nowrap min-w-max">
+            <a href="{% url 'my_orders' %}" 
+               class="px-4 py-2 rounded-none transition flex items-center gap-1.5 {% if not status_filter %}bg-[#7AA88B] text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+                <span>Tất cả</span>
+                <span class="px-1.5 py-0.2 text-[10px] {% if not status_filter %}bg-white/20 text-white{% else %}bg-slate-200 text-slate-700{% endif %}">
+                    {{ total_orders }}
+                </span>
+            </a>
+
+            <a href="{% url 'my_orders' %}?status=pending" 
+               class="px-4 py-2 rounded-none transition flex items-center gap-1.5 {% if status_filter == 'pending' %}bg-[#7AA88B] text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+                <span>Chờ xác nhận</span>
+                <span class="px-1.5 py-0.2 text-[10px] {% if status_filter == 'pending' %}bg-white/20 text-white{% else %}bg-slate-200 text-slate-700{% endif %}">
+                    {{ pending_count }}
+                </span>
+            </a>
+
+            <a href="{% url 'my_orders' %}?status=confirmed" 
+               class="px-4 py-2 rounded-none transition flex items-center gap-1.5 {% if status_filter == 'confirmed' %}bg-[#7AA88B] text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+                <span>Đang bọc ẩm</span>
+                <span class="px-1.5 py-0.2 text-[10px] {% if status_filter == 'confirmed' %}bg-white/20 text-white{% else %}bg-slate-200 text-slate-700{% endif %}">
+                    {{ confirmed_count }}
+                </span>
+            </a>
+
+            <a href="{% url 'my_orders' %}?status=shipping" 
+               class="px-4 py-2 rounded-none transition flex items-center gap-1.5 {% if status_filter == 'shipping' %}bg-[#7AA88B] text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+                <span>Đang vận chuyển</span>
+                <span class="px-1.5 py-0.2 text-[10px] {% if status_filter == 'shipping' %}bg-white/20 text-white{% else %}bg-slate-200 text-slate-700{% endif %}">
+                    {{ shipping_count }}
+                </span>
+            </a>
+
+            <a href="{% url 'my_orders' %}?status=completed" 
+               class="px-4 py-2 rounded-none transition flex items-center gap-1.5 {% if status_filter == 'completed' %}bg-[#7AA88B] text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+                <span>Đã giao thành công</span>
+                <span class="px-1.5 py-0.2 text-[10px] {% if status_filter == 'completed' %}bg-white/20 text-white{% else %}bg-slate-200 text-slate-700{% endif %}">
+                    {{ completed_count }}
+                </span>
+            </a>
+
+            <a href="{% url 'my_orders' %}?status=cancelled" 
+               class="px-4 py-2 rounded-none transition flex items-center gap-1.5 {% if status_filter == 'cancelled' %}bg-[#7AA88B] text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+                <span>Đã hủy</span>
+                <span class="px-1.5 py-0.2 text-[10px] {% if status_filter == 'cancelled' %}bg-white/20 text-white{% else %}bg-slate-200 text-slate-700{% endif %}">
+                    {{ cancelled_count }}
+                </span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Orders List -->
+    {% if orders %}
+    <div class="space-y-6">
+        {% for ord in orders %}
+        <div class="bg-white border border-slate-200 rounded-none shadow-sm overflow-hidden hover:border-[#7AA88B] transition">
+            
+            <!-- Card Header -->
+            <div class="bg-slate-50 border-b border-slate-200 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                <div class="flex items-center gap-3 flex-wrap">
+                    <span class="font-black text-slate-900 text-sm">Mã đơn: <span class="text-[#7AA88B]">{{ ord.order_code }}</span></span>
+                    <span class="text-slate-300">|</span>
+                    <span class="text-slate-500"><i class="fa-regular fa-clock mr-1"></i> Ngày đặt: {{ ord.created_at|date:"d/m/Y H:i" }}</span>
+                </div>
+
+                <div>
+                    {% if ord.status == 'pending' %}
+                    <span class="px-3 py-1 text-xs font-bold bg-amber-50 text-amber-800 border border-amber-300 rounded-none inline-flex items-center gap-1">
+                        <i class="fa-solid fa-clock text-[10px]"></i> {{ ord.get_status_display }}
+                    </span>
+                    {% elif ord.status == 'confirmed' %}
+                    <span class="px-3 py-1 text-xs font-bold bg-blue-50 text-blue-800 border border-blue-300 rounded-none inline-flex items-center gap-1">
+                        <i class="fa-solid fa-box-open text-[10px]"></i> {{ ord.get_status_display }}
+                    </span>
+                    {% elif ord.status == 'shipping' %}
+                    <span class="px-3 py-1 text-xs font-bold bg-purple-50 text-purple-800 border border-purple-300 rounded-none inline-flex items-center gap-1">
+                        <i class="fa-solid fa-truck-fast text-[10px]"></i> {{ ord.get_status_display }}
+                    </span>
+                    {% elif ord.status == 'completed' %}
+                    <span class="px-3 py-1 text-xs font-bold bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] rounded-none inline-flex items-center gap-1">
+                        <i class="fa-solid fa-circle-check text-[10px]"></i> {{ ord.get_status_display }}
+                    </span>
+                    {% else %}
+                    <span class="px-3 py-1 text-xs font-bold bg-rose-50 text-rose-800 border border-rose-300 rounded-none inline-flex items-center gap-1">
+                        <i class="fa-solid fa-xmark text-[10px]"></i> {{ ord.get_status_display }}
+                    </span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Items In Order -->
+            <div class="p-6 divide-y divide-slate-100">
+                {% for item in ord.items.all %}
+                <div class="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-slate-50 border border-slate-200 flex items-center justify-center text-[#7AA88B] text-lg rounded-none flex-shrink-0">
+                            <i class="fa-solid fa-seedling"></i>
+                        </div>
+                        <div>
+                            <p class="font-extrabold text-slate-900 text-sm">{{ item.product.name }}</p>
+                            <p class="text-slate-400 text-[11px] mt-0.5">
+                                {{ item.product.get_leaf_state_display|default:'100% Thuần lá nước' }} · Nhu cầu CO2: {{ item.product.get_co2_requirement_display }}
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between sm:justify-end gap-6 text-right">
+                        <span class="text-slate-600 font-semibold">Số lượng: <strong class="text-slate-900">{{ item.quantity }}</strong> chậu</span>
+                        <span class="text-slate-500 font-mono">{{ item.unit_price|floatformat:0 }}₫/chậu</span>
+                        <span class="font-black text-slate-900 font-mono text-sm w-24 text-right">{{ item.subtotal|floatformat:0 }}₫</span>
+                    </div>
+                </div>
+                {% empty %}
+                <div class="py-4 text-center text-xs text-slate-400 italic">
+                    Chưa có danh mục sản phẩm chi tiết.
+                </div>
+                {% endfor %}
+            </div>
+
+            <!-- Card Footer: Total & Actions -->
+            <div class="bg-slate-50 border-t border-slate-200 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="text-xs text-slate-600">
+                    <span class="block text-[11px] text-slate-400">Địa chỉ giao:</span>
+                    <span class="font-medium text-slate-800">{{ ord.customer_name }} - {{ ord.phone }} ({{ ord.shipping_address|truncatechars:45 }})</span>
+                </div>
+
+                <div class="flex items-center justify-between sm:justify-end gap-5">
+                    <div class="text-right">
+                        <span class="text-[11px] text-slate-400 block font-bold uppercase">Tổng tiền thanh toán</span>
+                        <span class="font-black text-lg text-[#B91C1C] font-mono">{{ ord.total_amount|floatformat:0 }}₫</span>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <a href="{% url 'order_tracking' %}?q={{ ord.order_code }}" 
+                           class="px-4 py-2.5 bg-[#EEF5F0] hover:bg-[#7AA88B] text-[#2F5C3E] hover:text-white border border-[#C5DEC9] text-xs font-bold rounded-none transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-route text-xs"></i> Tra Cứu Lộ Trình
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <!-- Khi không có đơn nào -->
+    <div class="bg-white border border-slate-200 p-12 text-center rounded-none shadow-sm space-y-4">
+        <div class="w-16 h-16 bg-slate-50 border border-slate-200 text-slate-400 flex items-center justify-center text-2xl mx-auto rounded-none">
+            <i class="fa-solid fa-box-open"></i>
+        </div>
+        <div>
+            <h2 class="text-base font-extrabold text-slate-900">
+                {% if status_filter %}
+                Không tìm thấy đơn hàng nào với trạng thái này
+                {% else %}
+                Bạn chưa có đơn đặt hàng nào trong tài khoản
+                {% endif %}
+            </h2>
+            <p class="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+                AquaPlant cung cấp hàng trăm giống cây thủy sinh nuôi cấy mô thuần nước, phân nền chuyên dụng và combo layout hồ mẫu có sẵn.
+            </p>
+        </div>
+        <div class="pt-2 flex justify-center gap-3">
+            <a href="{% url 'home' %}" class="px-5 py-2.5 bg-[#7AA88B] hover:bg-[#638F73] text-white text-xs font-bold rounded-none transition">
+                Khám Phá Cửa Hàng Cây
+            </a>
+            <a href="{% url 'plant_assistant' %}" class="px-5 py-2.5 bg-[#EEF5F0] hover:bg-[#C5DEC9] text-[#2F5C3E] border border-[#C5DEC9] text-xs font-bold rounded-none transition">
+                Trợ Lý Chọn Cây Theo Thông Số
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}

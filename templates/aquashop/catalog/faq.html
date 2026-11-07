@@ -1,0 +1,239 @@
+{% extends 'aquashop/base.html' %}
+{% load static %}
+
+{% block title %}Hỏi Đáp Thường Gặp (FAQ) - Tư Vấn Kỹ Thuật & Đổi Trả | AquaPlant{% endblock %}
+
+{% block section_name %}
+<a href="{% url 'home' %}" class="hover:text-[#7AA88B]">Trang Chủ</a>
+<span class="mx-1.5 text-slate-300">/</span>
+<span class="text-slate-900 font-bold">Hỏi Đáp Thường Gặp (FAQ)</span>
+{% endblock %}
+
+{% block content %}
+<!-- Banner Hero FAQ -->
+<div class="bg-white border border-slate-200 rounded-none p-6 sm:p-8 mb-8">
+    <div class="max-w-3xl">
+        <div class="inline-flex items-center gap-2 px-2.5 py-1 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] text-[11px] font-bold mb-3 tracking-wider uppercase rounded-none">
+            <i class="fa-solid fa-circle-question text-[#7AA88B]"></i> TRUNG TÂM GIẢI ĐÁP & HỖ TRỢ KỸ THUẬT
+        </div>
+        <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug mb-3">
+            Những Câu Hỏi Thường Gặp Của Người Chơi Thủy Sinh
+        </h1>
+        <p class="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal mb-6">
+            Mọi thắc mắc về quy trình đóng gói cây tươi, kỹ thuật dưỡng cây mới cắm hồ, cách kích rễ và chính sách bảo hiểm dập nát 1 đổi 1 tận nhà đều được tổng hợp chi tiết bên dưới.
+        </p>
+    </div>
+
+    <!-- Thanh Tìm Kiếm Câu Hỏi Realtime / Query -->
+    <div class="pt-5 border-t border-slate-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+        <form method="GET" action="{% url 'faq' %}" class="flex items-center gap-0 w-full sm:w-96">
+            <input type="text" 
+                   name="q" 
+                   value="{{ search_query|default:'' }}" 
+                   placeholder="Nhập câu hỏi, CO2, lá nước, bảo hiểm..." 
+                   class="w-full bg-slate-50 border border-slate-300 rounded-none px-4 py-2.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#7AA88B] focus:bg-white transition">
+            <button type="submit" 
+                    class="bg-[#7AA88B] hover:bg-[#638F73] text-white text-xs font-bold px-5 py-2.5 rounded-none transition flex items-center justify-center flex-shrink-0">
+                <i class="fa-solid fa-magnifying-glass mr-1.5"></i> Tìm Kiếm
+            </button>
+        </form>
+
+        <div class="flex items-center gap-2 text-xs text-slate-500">
+            <span>Chủ đề nhanh:</span>
+            <a href="{% url 'faq' %}?q=Lá+nước" class="bg-slate-100 hover:bg-slate-200 px-2.5 py-1 text-slate-700 font-medium rounded-none">Lá nước</a>
+            <a href="{% url 'faq' %}?q=CO2" class="bg-slate-100 hover:bg-slate-200 px-2.5 py-1 text-slate-700 font-medium rounded-none">Bình CO2</a>
+            <a href="{% url 'faq' %}?q=Bảo+hiểm" class="bg-slate-100 hover:bg-slate-200 px-2.5 py-1 text-slate-700 font-medium rounded-none">Bảo hiểm 1 đổi 1</a>
+        </div>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-12">
+    
+    <!-- Cột Danh Sách Accordion FAQ (8 Cột) -->
+    <div class="lg:col-span-8 space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+            <h2 class="text-sm font-extrabold uppercase tracking-tight text-slate-900 flex items-center gap-2">
+                <i class="fa-solid fa-clipboard-question text-[#7AA88B]"></i> 
+                {% if search_query %}
+                    Kết Quả Tìm Kiếm: "{{ search_query }}"
+                {% else %}
+                    Danh Sách Giải Đáp Chi Tiết
+                {% endif %}
+            </h2>
+            <span class="text-xs text-slate-500">Hiển thị: <strong>{{ faqs.count }}</strong> câu hỏi</span>
+        </div>
+
+        {% if faqs %}
+        <div class="space-y-3" id="faq-accordion-container">
+            {% for faq in faqs %}
+            <div class="border border-slate-200 bg-white rounded-none overflow-hidden transition-all duration-200 faq-item">
+                <!-- Accordion Header Button -->
+                <button type="button" 
+                        onclick="toggleFaq({{ forloop.counter }})" 
+                        id="faq-btn-{{ forloop.counter }}"
+                        class="w-full text-left p-4 sm:p-5 flex items-center justify-between gap-4 font-bold text-xs sm:text-sm text-slate-900 hover:text-[#7AA88B] transition focus:outline-none">
+                    <div class="flex items-center gap-3">
+                        <span class="w-6 h-6 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] flex items-center justify-center font-bold text-xs rounded-none flex-shrink-0">
+                            {{ forloop.counter }}
+                        </span>
+                        <span class="leading-snug">{{ faq.question }}</span>
+                    </div>
+                    <div class="w-6 h-6 flex items-center justify-center text-slate-400 flex-shrink-0 faq-icon transition-transform duration-200" id="faq-icon-{{ forloop.counter }}">
+                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                    </div>
+                </button>
+
+                <!-- Accordion Body Content -->
+                <div id="faq-body-{{ forloop.counter }}" 
+                     class="{% if forloop.first and not search_query %}{% else %}hidden{% endif %} px-5 pb-5 pt-1 text-xs sm:text-sm text-slate-600 leading-relaxed border-t border-slate-100 bg-slate-50/50">
+                    <div class="prose prose-sm max-w-none text-slate-700 leading-relaxed pt-2">
+                        {{ faq.answer|linebreaks }}
+                    </div>
+
+                    <div class="mt-4 pt-3 border-t border-slate-200/60 flex items-center justify-between text-[11px] text-slate-400">
+                        <span>Câu trả lời có hữu ích với bạn không?</span>
+                        <div class="flex items-center gap-2">
+                            <button type="button" onclick="this.classList.add('text-[#7AA88B]', 'font-bold');" class="hover:text-[#7AA88B] transition">
+                                <i class="fa-regular fa-thumbs-up mr-1"></i> Có ({{ forloop.counter|add:18 }})
+                            </button>
+                            <span>·</span>
+                            <button type="button" onclick="this.classList.add('text-[#B91C1C]');" class="hover:text-[#B91C1C] transition">
+                                <i class="fa-regular fa-thumbs-down mr-1"></i> Không (0)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="bg-white border border-slate-200 rounded-none p-12 text-center text-slate-500 text-xs">
+            <i class="fa-regular fa-circle-question text-4xl text-slate-300 mb-3 block"></i>
+            <p class="text-slate-800 font-bold mb-1">Không tìm thấy câu hỏi phù hợp với từ khóa "{{ search_query }}".</p>
+            <p class="text-slate-400 mb-4">Bạn có thể liên hệ trực tiếp với chuyên gia AquaPlant qua số hotline 1900000 để được hỗ trợ tức thì.</p>
+            <a href="{% url 'faq' %}" class="inline-block bg-[#7AA88B] text-white font-bold text-xs px-4 py-2 rounded-none">
+                Xem Tất Cả Câu Hỏi
+            </a>
+        </div>
+        {% endif %}
+
+        <!-- Box Cam Kết Bảo Hiểm Vận Chuyển Cây Tươi -->
+        <div class="p-5 bg-[#EEF5F0] border border-[#C5DEC9] rounded-none mt-6">
+            <div class="flex items-start gap-3.5">
+                <div class="w-10 h-10 bg-[#7AA88B] text-white flex items-center justify-center text-lg flex-shrink-0 rounded-none">
+                    <i class="fa-solid fa-shield-heart"></i>
+                </div>
+                <div class="space-y-1">
+                    <h4 class="font-bold text-xs text-[#2F5C3E] uppercase tracking-wider">
+                        Chính Sách Bảo Hiểm Cây Tươi Sống 1 Đổi 1 Trong 24 Giờ
+                    </h4>
+                    <p class="text-[11px] text-slate-600 leading-relaxed">
+                        Toàn bộ cây xuất xưởng tại AquaPlant đều được bảo hiểm dập nát, vàng lá hoặc úng rữa do quá trình vận chuyển. Quý khách chỉ cần quay video khui hộp gửi về Hotline/Zalo <strong>1900000</strong>, cửa hàng sẽ gửi lại cây mới 100% hoàn toàn miễn phí trong vòng 24H.
+                    </p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Cột Phụ: Kênh Trợ Giúp Trực Tiếp & Hotline (4 Cột) -->
+    <aside class="lg:col-span-4 space-y-6">
+        
+        <!-- Box Hỗ Trợ Kỹ Thuật Viên 24/7 -->
+        <div class="bg-white border border-slate-200 rounded-none p-6 text-xs text-slate-700 space-y-4">
+            <h3 class="font-bold uppercase tracking-wider text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
+                <i class="fa-solid fa-headset text-[#7AA88B]"></i> Kênh Hỗ Trợ Trực Tiếp
+            </h3>
+
+            <p class="text-[11px] text-slate-500 leading-relaxed">
+                Nếu bạn gặp hiện tượng rữa lá, đục nước hoặc bùng phát rêu hại chưa rõ nguyên nhân, hãy liên hệ ngay với kỹ thuật viên:
+            </p>
+
+            <div class="space-y-3">
+                <a href="tel:1900000" class="p-3 bg-slate-50 hover:bg-[#EEF5F0] border border-slate-200 hover:border-[#7AA88B] transition flex items-center gap-3 rounded-none group block">
+                    <div class="w-8 h-8 bg-rose-100 text-[#B91C1C] flex items-center justify-center font-bold text-sm rounded-none">
+                        <i class="fa-solid fa-phone"></i>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-400 block font-medium">Hotline Khẩn Cấp (8:00 - 21:00)</span>
+                        <strong class="text-xs text-slate-900 group-hover:text-[#7AA88B]">1900000</strong>
+                    </div>
+                </a>
+
+                <a href="mailto:tawa@gmail.com" class="p-3 bg-slate-50 hover:bg-[#EEF5F0] border border-slate-200 hover:border-[#7AA88B] transition flex items-center gap-3 rounded-none group block">
+                    <div class="w-8 h-8 bg-emerald-100 text-[#2F5C3E] flex items-center justify-center font-bold text-sm rounded-none">
+                        <i class="fa-solid fa-envelope"></i>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-400 block font-medium">Hòm Thư Kỹ Thuật</span>
+                        <strong class="text-xs text-slate-900 group-hover:text-[#7AA88B]">tawa@gmail.com</strong>
+                    </div>
+                </a>
+
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-none flex items-center gap-3">
+                    <div class="w-8 h-8 bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-sm rounded-none">
+                        <i class="fa-solid fa-location-dot"></i>
+                    </div>
+                    <div>
+                        <span class="text-[10px] text-slate-400 block font-medium">Showroom Trưng Bày</span>
+                        <strong class="text-xs text-slate-900">ĐH KHTN, Đông Hòa, HCM</strong>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Box Hướng Dẫn Nhanh Cho Hồ Mới -->
+        <div class="bg-white border border-slate-200 rounded-none p-5 text-xs text-slate-700">
+            <h4 class="font-bold text-slate-900 uppercase tracking-wider mb-2 flex items-center gap-2">
+                <i class="fa-solid fa-lightbulb text-amber-500"></i> Mẹo Hay Cho Hồ Mới
+            </h4>
+            <ul class="space-y-2 text-[11px] text-slate-600">
+                <li class="flex items-start gap-2">
+                    <i class="fa-solid fa-check text-[#7AA88B] mt-0.5"></i>
+                    <span>Không nên thả cá ngay trong tuần đầu tiên khi vi sinh chưa ổn định.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <i class="fa-solid fa-check text-[#7AA88B] mt-0.5"></i>
+                    <span>Nên bật đèn chia đôi ca sáng (3h sáng - 2h nghỉ - 3h chiều) để hạn chế rêu tóc.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <i class="fa-solid fa-check text-[#7AA88B] mt-0.5"></i>
+                    <span>Luôn đo kiểm tra độ cứng nước TDS dưới 150ppm cho cây thủy sinh phát triển tối ưu.</span>
+                </li>
+            </ul>
+        </div>
+
+        <!-- Banner Chuyển Đến Công Cụ Trợ Lý Chọn Cây -->
+        <div class="bg-[#EEF5F0] border border-[#C5DEC9] p-5 rounded-none text-center">
+            <div class="w-10 h-10 bg-[#7AA88B] text-white flex items-center justify-center text-base font-bold mx-auto mb-2 rounded-none">
+                <i class="fa-solid fa-wand-magic-sparkles"></i>
+            </div>
+            <h4 class="font-bold text-xs text-[#2F5C3E] uppercase mb-1">Chưa Biết Chọn Cây Nào?</h4>
+            <p class="text-[11px] text-slate-600 mb-3">
+                Sử dụng trợ lý thông minh gợi ý dòng cây phù hợp với điều kiện đèn và CO2 hồ của bạn.
+            </p>
+            <a href="{% url 'plant_assistant' %}" class="inline-block bg-[#7AA88B] hover:bg-[#638F73] text-white text-xs font-bold px-4 py-2 rounded-none transition">
+                Dùng Trợ Lý Chọn Cây Ngay
+            </a>
+        </div>
+
+    </aside>
+
+</div>
+
+<!-- JavaScript Điều Khiển Accordion Góc Vuông Sắc Nét -->
+<script>
+function toggleFaq(index) {
+    const body = document.getElementById('faq-body-' + index);
+    const icon = document.getElementById('faq-icon-' + index);
+    
+    if (body.classList.contains('hidden')) {
+        body.classList.remove('hidden');
+        icon.classList.add('rotate-180');
+    } else {
+        body.classList.add('hidden');
+        icon.classList.remove('rotate-180');
+    }
+}
+</script>
+{% endblock %}

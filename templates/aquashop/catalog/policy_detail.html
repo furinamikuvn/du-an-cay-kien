@@ -1,0 +1,156 @@
+{% extends 'aquashop/base.html' %}
+{% load static %}
+
+{% block title %}{{ policy.title }} - AquaPlant Cửa Hàng Thủy Sinh{% endblock %}
+
+{% block section_name %}
+<a href="{% url 'home' %}" class="hover:text-[#7AA88B]">Trang Chủ</a>
+<span class="mx-1.5 text-slate-300">/</span>
+<span class="text-slate-500">Chính Sách & Hỗ Trợ</span>
+<span class="mx-1.5 text-slate-300">/</span>
+<span class="text-slate-900 font-bold truncate max-w-xs inline-block align-bottom">{{ policy.title }}</span>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    
+    <!-- Cột Chính (8 Cột): Nội Dung Văn Bản Chính Sách -->
+    <article class="lg:col-span-8 bg-white border border-slate-200 rounded-none p-6 sm:p-10 space-y-8">
+        
+        <!-- Header Chính Sách -->
+        <header class="space-y-4 pb-6 border-b border-slate-200">
+            <div class="flex flex-wrap items-center gap-2">
+                <span class="bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] text-[10px] font-bold px-2.5 py-1 rounded-none uppercase tracking-wider">
+                    {{ policy.category }}
+                </span>
+                <span class="text-slate-300">·</span>
+                <span class="text-xs text-slate-400">
+                    <i class="fa-regular fa-clock mr-1 text-[#7AA88B]"></i>Cập nhật: {{ policy.updated_at }}
+                </span>
+                <span class="text-slate-300">·</span>
+                <span class="text-xs text-slate-400">
+                    <i class="fa-solid fa-circle-check mr-1 text-[#7AA88B]"></i>Hiệu lực toàn hệ thống
+                </span>
+            </div>
+
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug">
+                {{ policy.title }}
+            </h1>
+
+            <p class="text-xs sm:text-sm text-slate-600 leading-relaxed font-normal">
+                {{ policy.subtitle }}
+            </p>
+
+            <!-- Tóm Tắt Cam Kết (Executive Summary Box) -->
+            <div class="p-4 bg-[#F8FAF8] border-l-4 border-[#7AA88B] border-t border-r border-b border-slate-200 rounded-none">
+                <div class="flex items-start gap-3">
+                    <div class="w-6 h-6 bg-[#EEF5F0] text-[#2F5C3E] flex items-center justify-center rounded-none text-xs flex-shrink-0 mt-0.5">
+                        <i class="{{ policy.icon }}"></i>
+                    </div>
+                    <div class="text-xs text-slate-700 leading-relaxed">
+                        <strong class="text-[#2F5C3E] block mb-1 font-bold">Cam kết từ Cửa Hàng AquaPlant:</strong>
+                        {{ policy.summary }}
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Các Phần Nội Dung Chi Tiết -->
+        <div class="space-y-8 text-xs sm:text-sm text-slate-700 leading-relaxed">
+            {% for section in policy.sections %}
+            <section class="space-y-3 pb-6 {% if not forloop.last %}border-b border-slate-100{% endif %}">
+                <h2 class="text-sm sm:text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span class="w-1.5 h-4 bg-[#7AA88B] inline-block"></span>
+                    {{ section.heading }}
+                </h2>
+                <div class="text-slate-600 space-y-2.5 text-xs sm:text-sm leading-relaxed pl-3.5">
+                    {{ section.content|safe }}
+                </div>
+            </section>
+            {% endfor %}
+        </div>
+
+        <!-- Hộp Trợ Giúp & Hotline Phản Hồi -->
+        <div class="pt-6 border-t border-slate-200">
+            <div class="bg-slate-50 border border-slate-200 p-5 rounded-none flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="space-y-1 text-center sm:text-left">
+                    <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Cần hỗ trợ giải đáp trực tiếp?</h3>
+                    <p class="text-[11px] text-slate-500">Đội ngũ kỹ sư sinh học và tư vấn viên AquaPlant luôn sẵn sàng hỗ trợ bạn.</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <a href="tel:1900000" class="px-4 py-2.5 bg-[#7AA88B] hover:bg-[#638F73] text-white text-xs font-bold rounded-none transition flex items-center gap-2">
+                        <i class="fa-solid fa-phone"></i> Hotline: 1900000
+                    </a>
+                    <a href="mailto:tawa@gmail.com" class="px-4 py-2.5 bg-white border border-slate-300 hover:border-[#7AA88B] text-slate-700 text-xs font-bold rounded-none transition flex items-center gap-2">
+                        <i class="fa-solid fa-envelope text-[#7AA88B]"></i> Gửi Email
+                    </a>
+                </div>
+            </div>
+        </div>
+
+    </article>
+
+    <!-- Cột Phụ (4 Cột): Menu Điều Hướng & Tiện Ích Khác -->
+    <aside class="lg:col-span-4 space-y-6">
+        
+        <!-- Menu Các Chính Sách Khác -->
+        <div class="bg-white border border-slate-200 rounded-none p-5">
+            <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-4 pb-2 border-b border-slate-200 flex items-center justify-between">
+                <span>Chính Sách & Hướng Dẫn</span>
+                <i class="fa-solid fa-file-shield text-[#7AA88B]"></i>
+            </h3>
+            <nav class="space-y-1.5">
+                {% for item in all_policies %}
+                <a href="{% url 'policy_detail' item.slug %}" 
+                   class="p-2.5 rounded-none transition flex items-center justify-between text-xs font-medium {% if item.is_active %}bg-[#EEF5F0] text-[#2F5C3E] border-l-2 border-[#7AA88B] font-bold{% else %}text-slate-600 hover:bg-slate-50 hover:text-slate-900 border-l-2 border-transparent{% endif %}">
+                    <span class="flex items-center gap-2.5">
+                        <i class="{{ item.icon }} text-xs {% if item.is_active %}text-[#7AA88B]{% else %}text-slate-400{% endif %}"></i>
+                        <span>{{ item.title }}</span>
+                    </span>
+                    <i class="fa-solid fa-chevron-right text-[10px] text-slate-300"></i>
+                </a>
+                {% endfor %}
+            </nav>
+        </div>
+
+        <!-- Tiện Ích Tra Cứu Đơn Hàng -->
+        <div class="bg-white border border-slate-200 rounded-none p-5">
+            <h3 class="text-xs font-bold text-slate-900 uppercase tracking-wider mb-3 pb-2 border-b border-slate-200">
+                Kiểm Tra Tiến Độ Đơn Hàng
+            </h3>
+            <p class="text-[11px] text-slate-500 leading-relaxed mb-4">
+                Nhập mã đơn hàng <code>AQUA-XXXXXX</code> để tra cứu lộ trình xe lạnh và thời gian nhận cây sống.
+            </p>
+            <a href="{% url 'order_tracking' %}" class="w-full block text-center py-2.5 bg-slate-100 hover:bg-[#EEF5F0] hover:text-[#2F5C3E] border border-slate-200 hover:border-[#7AA88B] text-slate-700 text-xs font-bold rounded-none transition">
+                <i class="fa-solid fa-truck-fast mr-1 text-[#7AA88B]"></i> Đến Trang Tra Cứu
+            </a>
+        </div>
+
+        <!-- Khung Cam Kết Sinh Học -->
+        <div class="bg-[#EEF5F0] border border-[#C5DEC9] rounded-none p-5 text-[#2F5C3E] space-y-3">
+            <div class="flex items-center gap-2">
+                <div class="w-7 h-7 bg-white text-[#2F5C3E] border border-[#C5DEC9] flex items-center justify-center rounded-none text-xs font-bold">
+                    <i class="fa-solid fa-award"></i>
+                </div>
+                <h4 class="text-xs font-bold uppercase tracking-wider">Tiêu Chuẩn AquaPlant</h4>
+            </div>
+            <ul class="space-y-2 text-[11px] leading-relaxed">
+                <li class="flex items-start gap-2">
+                    <i class="fa-solid fa-check text-xs mt-0.5 text-[#2F5C3E]"></i>
+                    <span>100% Cây thuần lá nước, sinh trưởng khỏe mạnh</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <i class="fa-solid fa-check text-xs mt-0.5 text-[#2F5C3E]"></i>
+                    <span>Túi khí vi khí hậu giữ ẩm trong suốt 5 ngày</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <i class="fa-solid fa-check text-xs mt-0.5 text-[#2F5C3E]"></i>
+                    <span>Đổi mới tận nhà nếu cây dập úng trong 24h</span>
+                </li>
+            </ul>
+        </div>
+
+    </aside>
+
+</div>
+{% endblock %}

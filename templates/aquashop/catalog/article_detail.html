@@ -1,0 +1,242 @@
+{% extends 'aquashop/base.html' %}
+{% load static %}
+
+{% block title %}{{ article.title }} - Cẩm Nang Thủy Sinh | AquaPlant{% endblock %}
+
+{% block section_name %}
+<a href="{% url 'home' %}" class="hover:text-[#7AA88B]">Trang Chủ</a>
+<span class="mx-1.5 text-slate-300">/</span>
+<a href="{% url 'article_list' %}" class="hover:text-[#7AA88B]">Cẩm Nang Thủy Sinh</a>
+<span class="mx-1.5 text-slate-300">/</span>
+<span class="text-slate-900 font-bold truncate max-w-xs inline-block align-bottom">{{ article.title }}</span>
+{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+    
+    <!-- Cột Chính: Nội Dung Bài Viết Chuẩn Tạp Chí (8 Cột) -->
+    <article class="lg:col-span-8 bg-white border border-slate-200 rounded-none p-6 sm:p-10 space-y-6">
+        
+        <!-- Header Bài Viết -->
+        <header class="space-y-3 pb-6 border-b border-slate-200">
+            <div class="flex items-center gap-2">
+                <span class="bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] text-[10px] font-bold px-2.5 py-1 rounded-none uppercase tracking-wider">
+                    {{ article.category }}
+                </span>
+                <span class="text-slate-300">·</span>
+                <span class="text-xs text-slate-400">
+                    <i class="fa-regular fa-calendar mr-1"></i>{{ article.published_at|date:"d/m/Y H:i" }}
+                </span>
+                <span class="text-slate-300">·</span>
+                <span class="text-xs text-slate-400">
+                    <i class="fa-regular fa-clock mr-1"></i>5 phút đọc
+                </span>
+            </div>
+
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug">
+                {{ article.title }}
+            </h1>
+
+            <div class="flex items-center justify-between pt-2">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-8 h-8 bg-[#7AA88B] text-white flex items-center justify-center font-bold text-xs rounded-none">
+                        AP
+                    </div>
+                    <div>
+                        <span class="text-xs font-bold text-slate-900 block">Ban Biên Tập Kỹ Thuật AquaPlant</span>
+                        <span class="text-[10px] text-slate-500">Chuyên gia nông học thực vật thủy sinh</span>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 text-xs text-slate-500">
+                    <button type="button" onclick="navigator.clipboard.writeText(window.location.href); alert('Đã sao chép liên kết bài viết!');" class="p-2 border border-slate-200 hover:border-[#7AA88B] text-slate-600 hover:text-[#7AA88B] rounded-none transition" title="Sao chép liên kết">
+                        <i class="fa-solid fa-link"></i>
+                    </button>
+                    <button type="button" onclick="window.print();" class="p-2 border border-slate-200 hover:border-[#7AA88B] text-slate-600 hover:text-[#7AA88B] rounded-none transition" title="In tài liệu kỹ thuật">
+                        <i class="fa-solid fa-print"></i>
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Khung Tóm Tắt Lead Summary Phong Cách Biên Tập -->
+        <div class="p-4 bg-[#EEF5F0] border-l-4 border-[#7AA88B] rounded-none">
+            <span class="text-[11px] font-bold text-[#2F5C3E] uppercase tracking-wider block mb-1">
+                <i class="fa-solid fa-feather-pointed mr-1"></i> Tóm Lược Kỹ Thuật Cốt Lõi
+            </span>
+            <p class="text-xs sm:text-sm text-slate-700 leading-relaxed font-medium">
+                {{ article.summary }}
+            </p>
+        </div>
+
+        <!-- Ảnh Bìa Hero Bài Viết -->
+        <div class="relative aspect-16/9 overflow-hidden bg-slate-100 border border-slate-200 rounded-none">
+            <img src="{% if 'nana' in article.thumbnail %}{% static 'images/anubias_nana.jpg' %}{% elif 'rotala' in article.thumbnail %}{% static 'images/rotala_hra.jpg' %}{% elif 'monte' in article.thumbnail %}{% static 'images/monte_carlo.jpg' %}{% elif 'soil' in article.thumbnail %}{% static 'images/aquasoil.jpg' %}{% else %}{% static 'images/iwagumi_60cm.jpg' %}{% endif %}" 
+                 alt="{{ article.title }}" 
+                 class="w-full h-full object-cover">
+            <div class="absolute bottom-2 right-2 bg-black/60 text-white text-[10px] px-2 py-0.5 rounded-none font-mono">
+                AquaPlant Laboratory © 2026
+            </div>
+        </div>
+
+        <!-- Nội Dung Chi Tiết Bài Viết (Editorial Typography) -->
+        <div class="text-xs sm:text-sm text-slate-800 leading-relaxed space-y-4 pt-2">
+            <div class="prose prose-sm max-w-none text-slate-700 leading-relaxed">
+                {{ article.content|linebreaks }}
+            </div>
+        </div>
+
+        <!-- Quy Trình 5 Bước Setup Bể Chuẩn Kỹ Thuật (Infographic Góc Vuông) -->
+        <div class="mt-8 pt-6 border-t border-slate-200">
+            <h3 class="text-sm font-extrabold uppercase tracking-tight text-slate-900 mb-4 flex items-center gap-2">
+                <i class="fa-solid fa-list-check text-[#7AA88B]"></i> Quy Trình 5 Bước Setup Bể Không Bị Rữa Lá
+            </h3>
+            
+            <div class="space-y-3">
+                <div class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-none">
+                    <span class="w-6 h-6 bg-[#7AA88B] text-white flex-shrink-0 flex items-center justify-center font-bold text-xs rounded-none">1</span>
+                    <div>
+                        <strong class="text-xs text-slate-900 block">Trải Cốt Nền & Đất Nền Hạt Phân</strong>
+                        <span class="text-[11px] text-slate-600">Đổ lớp cốt dinh dưỡng chậm phía dưới (dày 1 - 2cm), phủ đất nền phân hạt chuyên dụng lên trên (dày 5 - 7cm) dốc từ sau ra trước để tạo chiều sâu quang học.</span>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-none">
+                    <span class="w-6 h-6 bg-[#7AA88B] text-white flex-shrink-0 flex items-center justify-center font-bold text-xs rounded-none">2</span>
+                    <div>
+                        <strong class="text-xs text-slate-900 block">Sắp Đặt Hardscape Lũa & Đá</strong>
+                        <span class="text-[11px] text-slate-600">Cố định lũa đá bằng keo thủy sinh và mùn cưa hoặc bông lọc để tránh bị sạt lở hoặc trôi dạt khi vào nước.</span>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-none">
+                    <span class="w-6 h-6 bg-[#7AA88B] text-white flex-shrink-0 flex items-center justify-center font-bold text-xs rounded-none">3</span>
+                    <div>
+                        <strong class="text-xs text-slate-900 block">Cắm Cây Thủy Sinh Bằng Nhíp Nghiêng</strong>
+                        <span class="text-[11px] text-slate-600">Phun sương giữ ẩm cho nền đất. Dùng nhíp kẹp rễ cây cắm góc nghiêng 45° sâu 3cm để rễ bám chặt không bị nổi lên.</span>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-none">
+                    <span class="w-6 h-6 bg-[#7AA88B] text-white flex-shrink-0 flex items-center justify-center font-bold text-xs rounded-none">4</span>
+                    <div>
+                        <strong class="text-xs text-slate-900 block">Vào Nước Chậm Qua Màng Bọc Giảm Lực</strong>
+                        <span class="text-[11px] text-slate-600">Trải một lớp túi nilon hoặc đĩa sứ lên mặt đáy, xả nước từ từ qua màng để dòng nước không làm xới tung bụi phân nền gây đục nước.</span>
+                    </div>
+                </div>
+
+                <div class="flex items-start gap-3 p-3 bg-slate-50 border border-slate-200 rounded-none">
+                    <span class="w-6 h-6 bg-[#7AA88B] text-white flex-shrink-0 flex items-center justify-center font-bold text-xs rounded-none">5</span>
+                    <div>
+                        <strong class="text-xs text-slate-900 block">Khởi Động Lọc Vi Sinh & Kiểm Soát Chu Kỳ Đèn</strong>
+                        <span class="text-[11px] text-slate-600">Bật máy lọc 24/24. Chiếu sáng 5 - 6 giờ/ngày trong 2 tuần đầu. Thay 30% nước 2 ngày một lần để rút bớt dinh dưỡng dư thừa.</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cẩm Nang Phòng Trị Rêu Hại (Algae Prevention Guide) -->
+        <div class="p-5 bg-amber-50 border border-amber-200 rounded-none text-xs text-amber-950 space-y-2">
+            <h4 class="font-bold uppercase tracking-wider text-amber-900 flex items-center gap-2">
+                <i class="fa-solid fa-shield-virus text-amber-700"></i> Bí Quyết Kiểm Soát Rêu Hại Hiệu Quả Nhất
+            </h4>
+            <p class="leading-relaxed text-[11px]">
+                Rêu hại (rêu tóc, rêu chùm đen BBA, tảo nâu) chỉ xuất hiện khi có sự mất cân bằng giữa 3 yếu tố: <strong>Ánh sáng dư thừa - Nồng độ khí CO2 bấp bênh - Dinh dưỡng nitrate thừa trong nước</strong>. Cách triệt tiêu rêu hại bền vững nhất là tăng cường vi sinh phân hủy, thả đội ngũ sinh vật ăn rêu như tép Amano, cá Otto, ốc Nerita và duy trì nồng độ CO2 đều đặn 30ppm.
+            </p>
+        </div>
+
+        <!-- Chữ Ký Biên Tập & Bản Quyền -->
+        <div class="pt-6 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-400">
+            <div>
+                Nguồn: <strong class="text-slate-700">AquaPlant Technical Research Center</strong>
+            </div>
+            <div>
+                Ghi rõ nguồn khi trích dẫn tài liệu từ AquaPlant.vn
+            </div>
+        </div>
+
+    </article>
+
+    <!-- Cột Phụ: Sidebar Bài Viết Liên Quan & Tư Vấn Cây (4 Cột) -->
+    <aside class="lg:col-span-4 space-y-6">
+        
+        <!-- Box Ban Biên Tập Kỹ Thuật -->
+        <div class="bg-white border border-slate-200 rounded-none p-5 text-xs text-slate-700">
+            <h3 class="font-bold uppercase tracking-wider text-slate-900 pb-2 mb-3 border-b border-slate-100 flex items-center gap-2">
+                <i class="fa-solid fa-microscope text-[#7AA88B]"></i> Trại Ươm Thực Nghiệm
+            </h3>
+            <p class="text-[11px] text-slate-600 leading-relaxed mb-3">
+                Mọi bài viết kỹ thuật trên AquaPlant đều được kiểm chứng qua các hồ sinh thái nuôi cấy thực tế tại phòng Lab thực vật thủy sinh ĐHQG-HCM.
+            </p>
+            <div class="bg-[#EEF5F0] border border-[#C5DEC9] p-2.5 rounded-none text-[#2F5C3E] text-[11px] font-semibold flex items-center gap-2">
+                <i class="fa-solid fa-circle-check text-[#7AA88B]"></i> Đã kiểm định lâm sàng 100%
+            </div>
+        </div>
+
+        <!-- Box Bài Viết Liên Quan -->
+        {% if related_articles %}
+        <div class="bg-white border border-slate-200 rounded-none p-5">
+            <h3 class="font-bold text-xs uppercase tracking-wider text-slate-900 pb-2 mb-4 border-b border-slate-100 flex items-center justify-between">
+                <span>Bài Viết Cùng Chuyên Mục</span>
+                <i class="fa-solid fa-book-open-reader text-slate-400"></i>
+            </h3>
+
+            <div class="space-y-4">
+                {% for ra in related_articles %}
+                <div class="flex items-start gap-3 group">
+                    <div class="w-16 h-14 bg-slate-100 overflow-hidden flex-shrink-0 border border-slate-200 rounded-none">
+                        <img src="{% if 'nana' in ra.thumbnail %}{% static 'images/anubias_nana.jpg' %}{% elif 'rotala' in ra.thumbnail %}{% static 'images/rotala_hra.jpg' %}{% elif 'monte' in ra.thumbnail %}{% static 'images/monte_carlo.jpg' %}{% else %}{% static 'images/cryptocoryne_brown.jpg' %}{% endif %}" 
+                             alt="{{ ra.title }}" 
+                             class="w-full h-full object-cover group-hover:scale-105 transition duration-300">
+                    </div>
+                    <div class="flex-grow">
+                        <span class="text-[9px] font-bold text-[#7AA88B] uppercase block">{{ ra.category }}</span>
+                        <h4 class="font-bold text-xs text-slate-800 group-hover:text-[#7AA88B] transition line-clamp-2 leading-tight">
+                            <a href="{% url 'article_detail' slug=ra.slug %}">{{ ra.title }}</a>
+                        </h4>
+                        <span class="text-[10px] text-slate-400 mt-0.5 block">{{ ra.published_at|date:"d/m/Y" }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Banner Sản Phẩm Đề Xuất Trồng Cho Người Mới -->
+        <div class="bg-white border border-slate-200 rounded-none overflow-hidden group">
+            <div class="relative aspect-16/10 overflow-hidden bg-slate-100">
+                <img src="{% static 'images/anubias_nana.jpg' %}" 
+                     alt="Ráy Nana Thủy Sinh" 
+                     class="w-full h-full object-cover group-hover:scale-105 transition duration-500">
+                <span class="absolute top-2.5 left-2.5 bg-[#8C2C2C] text-white text-[10px] font-bold px-2 py-0.5 rounded-none uppercase">
+                    CÂY QUỐC DÂN
+                </span>
+            </div>
+            <div class="p-4">
+                <span class="text-[10px] font-bold text-[#7AA88B] uppercase block">Dễ trồng không cần CO2</span>
+                <h4 class="font-bold text-xs text-slate-900 group-hover:text-[#7AA88B] transition mb-1">
+                    Cây Ráy Nana Thủy Sinh (Anubias Nana)
+                </h4>
+                <p class="text-[11px] text-slate-500 line-clamp-2 mb-3">
+                    Giống cây bền bỉ nhất cho người mới bắt đầu, không cần cắm nền đất, chỉ cần buộc vào đá lũa.
+                </p>
+                <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+                    <span class="text-sm font-black text-[#B91C1C]">45.000₫</span>
+                    <a href="{% url 'home' %}?q=Nana" class="bg-[#7AA88B] hover:bg-[#638F73] text-white text-[11px] font-bold px-3 py-1.5 rounded-none transition">
+                        Xem Sản Phẩm
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nút Điều Hướng Trở Về Cẩm Nang -->
+        <div class="pt-2">
+            <a href="{% url 'article_list' %}" class="w-full bg-[#EEF5F0] hover:bg-[#7AA88B] text-[#2F5C3E] hover:text-white border border-[#C5DEC9] text-xs font-bold py-3 px-4 rounded-none transition flex items-center justify-center gap-2">
+                <i class="fa-solid fa-arrow-left text-xs"></i> Xem Tất Cả Bài Viết Cẩm Nang
+            </a>
+        </div>
+
+    </aside>
+
+</div>
+{% endblock %}

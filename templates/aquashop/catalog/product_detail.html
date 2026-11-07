@@ -1,0 +1,707 @@
+{% extends 'aquashop/base.html' %}
+{% load static %}
+
+{% block title %}{{ product.name }} - Thông Số Sinh Học & Kỹ Thuật Trồng | AquaPlant{% endblock %}
+
+{% block section_name %}
+<a href="{% url 'home' %}" class="hover:text-[#7AA88B]">Cây Thủy Sinh</a>
+<span class="mx-1.5 text-slate-300">/</span>
+<a href="{% url 'home' %}?category={{ product.category.slug }}" class="hover:text-[#7AA88B]">{{ product.category.name }}</a>
+<span class="mx-1.5 text-slate-300">/</span>
+<span class="text-slate-900 font-bold">{{ product.name }}</span>
+{% endblock %}
+
+{% block content %}
+<!-- Thông báo Flash Messages nếu có -->
+{% if messages %}
+<div class="mb-6 space-y-2">
+    {% for message in messages %}
+    <div class="p-3.5 bg-[#EEF5F0] border border-[#C5DEC9] text-[#2F5C3E] text-xs font-semibold rounded-none flex items-center justify-between">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-circle-check text-[#7AA88B] text-sm"></i>
+            <span>{{ message }}</span>
+        </div>
+        <button type="button" onclick="this.parentElement.remove();" class="text-slate-400 hover:text-slate-700 text-xs font-bold">✕</button>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Phần 1: Hero Khối Thông Tin Sản Phẩm & Đặt Mua -->
+<div class="bg-white border border-slate-200 rounded-none p-6 sm:p-8 mb-8">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
+        <!-- Cột Trái: Ảnh Sản Phẩm & Gallery Sinh Học (5 Cột) -->
+        <div class="lg:col-span-5 space-y-4">
+            <div class="relative aspect-4/3 sm:aspect-square bg-slate-50 border border-slate-200 rounded-none overflow-hidden group">
+                <img id="main-product-image"
+                     src="{% if product.image_url %}{% static product.image_url %}{% elif 'Nana' in product.name %}{% static 'images/anubias_nana.jpg' %}{% elif 'Trân Châu' in product.name %}{% static 'images/monte_carlo.jpg' %}{% elif 'Tiêu Thảo' in product.name %}{% static 'images/cryptocoryne_brown.jpg' %}{% elif 'Vảy Ốc' in product.name %}{% static 'images/rotala_hra.jpg' %}{% elif 'Phân Nền' in product.name %}{% static 'images/aquasoil.jpg' %}{% else %}{% static 'images/anubias_nana.jpg' %}{% endif %}" 
+                     alt="{{ product.name }}" 
+                     class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
+                
+                <!-- Badge Tình trạng lá nước -->
+                <div class="absolute top-3 left-3 flex flex-col gap-1.5 items-start">
+                    {% if product.leaf_state == 'submerged' %}
+                    <span class="bg-[#2F5C3E] text-white text-[10px] font-bold px-2.5 py-1 tracking-wider uppercase rounded-none border border-[#1b3d27]">
+                        <i class="fa-solid fa-droplet text-emerald-300 mr-1"></i> 100% CÂY THUẦN LÁ NƯỚC
+                    </span>
+                    {% else %}
+                    <span class="bg-amber-700 text-white text-[10px] font-bold px-2.5 py-1 tracking-wider uppercase rounded-none">
+                        <i class="fa-solid fa-seedling mr-1"></i> CÂY ƯƠM VỈ LÁ CẠN
+                    </span>
+                    {% endif %}
+
+                    {% if product.sale_price %}
+                    <span class="bg-[#B91C1C] text-white text-[10px] font-bold px-2.5 py-1 tracking-wider uppercase rounded-none">
+                        <i class="fa-solid fa-tag mr-1"></i> ĐANG KHUYẾN MÃI
+                    </span>
+                    {% endif %}
+                </div>
+
+                <!-- Tình trạng tồn kho badge -->
+                <div class="absolute bottom-3 right-3 bg-white/95 text-slate-800 text-[11px] font-bold px-2.5 py-1 rounded-none border border-slate-200">
+                    <i class="fa-solid fa-box text-[#7AA88B] mr-1"></i> Còn {{ product.stock_quantity }} phần sẵn kho
+                </div>
+            </div>
+
+            <!-- Cam Kết Chất Lượng Thủy Sinh -->
+            <div class="grid grid-cols-3 gap-2 text-center text-slate-700 pt-1">
+                <div class="bg-[#EEF5F0] border border-[#C5DEC9] p-2.5 rounded-none">
+                    <i class="fa-solid fa-shield-heart text-[#7AA88B] text-base mb-1 block"></i>
+                    <span class="text-[10px] font-bold block text-[#2F5C3E]">Bảo Hiểm 24H</span>
+                    <span class="text-[9px] text-slate-500">1 đổi 1 nếu rữa lá</span>
+                </div>
+                <div class="bg-[#EEF5F0] border border-[#C5DEC9] p-2.5 rounded-none">
+                    <i class="fa-solid fa-box-open text-[#7AA88B] text-base mb-1 block"></i>
+                    <span class="text-[10px] font-bold block text-[#2F5C3E]">Túi Khí Giữ Ẩm</span>
+                    <span class="text-[9px] text-slate-500">Giữ rễ tươi 5 ngày</span>
+                </div>
+                <div class="bg-[#EEF5F0] border border-[#C5DEC9] p-2.5 rounded-none">
+                    <i class="fa-solid fa-flask-vial text-[#7AA88B] text-base mb-1 block"></i>
+                    <span class="text-[10px] font-bold block text-[#2F5C3E]">Sạch Ốc Hại</span>
+                    <span class="text-[9px] text-slate-500">Khử trùng trước giao</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cột Phải: Thông Tin Kỹ Thuật & Mua Hàng (7 Cột) -->
+        <div class="lg:col-span-7 flex flex-col justify-between space-y-6">
+            <div>
+                <!-- Danh mục & Mã nhận diện -->
+                <div class="flex items-center justify-between text-xs text-slate-400 mb-2">
+                    <span class="font-semibold uppercase tracking-wider text-[#7AA88B]">{{ product.category.name }}</span>
+                    <span>Mã SP: <strong class="text-slate-600 font-mono">AQ-{{ product.id|stringformat:"04d" }}</strong></span>
+                </div>
+
+                <!-- Tên Sản Phẩm -->
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-snug mb-1">
+                    {{ product.name }}
+                </h1>
+
+                <!-- Tên Khoa Học Quốc Tế -->
+                {% if product.scientific_name %}
+                <p class="text-xs sm:text-sm text-slate-500 italic font-serif mb-3">
+                    Tên khoa học: <span class="text-slate-700 font-semibold">{{ product.scientific_name }}</span>
+                </p>
+                {% endif %}
+
+                <!-- Điểm đánh giá sao & Lượt review -->
+                <div class="flex items-center gap-3 text-xs mb-5 pb-4 border-b border-slate-100">
+                    <div class="flex items-center gap-1.5 text-amber-500 font-bold">
+                        <div class="flex text-xs">
+                            <i class="fa-solid fa-star"></i>
+                            <i class="fa-solid fa-star"></i>
+                            <i class="fa-solid fa-star"></i>
+                            <i class="fa-solid fa-star"></i>
+                            <i class="fa-solid fa-star"></i>
+                        </div>
+                        <span class="text-slate-800 ml-1">{{ avg_rating }}</span>
+                    </div>
+                    <span class="text-slate-300">|</span>
+                    <a href="#reviews-section" class="text-slate-500 hover:text-[#7AA88B] transition">
+                        <strong class="text-slate-700">{{ reviews_count }}</strong> lượt đánh giá thực tế
+                    </a>
+                    <span class="text-slate-300">|</span>
+                    <span class="text-[#2F5C3E] font-medium"><i class="fa-solid fa-check-circle mr-1"></i>Có sẵn tại vườn ươm</span>
+                </div>
+
+                <!-- Khối Giá Bán Sắc Nét -->
+                <div class="bg-slate-50 border border-slate-200 rounded-none p-4 mb-6">
+                    <div class="flex items-baseline gap-3">
+                        <span class="text-3xl font-black text-[#B91C1C]">
+                            {{ product.current_price|floatformat:0 }}₫
+                        </span>
+                        {% if product.sale_price %}
+                        <span class="text-sm text-slate-400 line-through">
+                            {{ product.regular_price|floatformat:0 }}₫
+                        </span>
+                        <span class="bg-[#B91C1C] text-white text-[11px] font-bold px-2 py-0.5 rounded-none uppercase">
+                            Khuyến mãi đặc biệt
+                        </span>
+                        {% endif %}
+                    </div>
+                    <div class="text-[11px] text-slate-500 mt-1 flex items-center gap-2">
+                        <i class="fa-solid fa-truck-fast text-[#7AA88B]"></i>
+                        <span>Miễn phí vận chuyển cho đơn hàng cây từ <strong>300.000₫</strong> toàn quốc</span>
+                    </div>
+                </div>
+
+                <!-- Bảng Tóm Tắt Nhanh Tiêu Chuẩn Nước -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-6 text-xs">
+                    <div class="p-2.5 bg-white border border-slate-200 rounded-none">
+                        <span class="text-slate-400 text-[10px] block font-medium uppercase">Vị trí bố cục</span>
+                        <span class="text-slate-800 font-bold">{{ product.get_placement_position_display }}</span>
+                    </div>
+                    <div class="p-2.5 bg-white border border-slate-200 rounded-none">
+                        <span class="text-slate-400 text-[10px] block font-medium uppercase">Nhu cầu CO2</span>
+                        <span class="text-slate-800 font-bold">{{ product.get_co2_requirement_display }}</span>
+                    </div>
+                    <div class="p-2.5 bg-white border border-slate-200 rounded-none">
+                        <span class="text-slate-400 text-[10px] block font-medium uppercase">Nhiệt độ tối ưu</span>
+                        <span class="text-slate-800 font-bold">{{ product.temp_min }}°C - {{ product.temp_max }}°C</span>
+                    </div>
+                    <div class="p-2.5 bg-white border border-slate-200 rounded-none">
+                        <span class="text-slate-400 text-[10px] block font-medium uppercase">Độ pH hồ nuôi</span>
+                        <span class="text-slate-800 font-bold">{{ product.ph_min }} - {{ product.ph_max }}</span>
+                    </div>
+                </div>
+
+                <!-- Bộ Chọn Số Lượng & Nút Thêm Giỏ Hàng -->
+                <form method="POST" action="{% url 'cart' %}" class="space-y-4">
+                    {% csrf_token %}
+                    <input type="hidden" name="product_id" value="{{ product.id }}">
+                    
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                        <!-- Bộ đếm số lượng góc vuông -->
+                        <div class="flex items-center border border-slate-300 rounded-none w-32 bg-white">
+                            <button type="button" 
+                                    onclick="let input = document.getElementById('qty-input'); let val = parseInt(input.value); if(val > 1) input.value = val - 1;"
+                                    class="w-10 h-11 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-sm flex items-center justify-center transition border-r border-slate-200 rounded-none">
+                                <i class="fa-solid fa-minus text-xs"></i>
+                            </button>
+                            <input type="number" 
+                                   id="qty-input" 
+                                   name="quantity" 
+                                   value="1" 
+                                   min="1" 
+                                   max="{{ product.stock_quantity }}"
+                                   class="w-12 h-11 text-center font-bold text-slate-800 text-xs border-0 focus:outline-none focus:ring-0 rounded-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
+                            <button type="button" 
+                                    onclick="let input = document.getElementById('qty-input'); let val = parseInt(input.value); if(val < {{ product.stock_quantity }}) input.value = val + 1;"
+                                    class="w-10 h-11 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-sm flex items-center justify-center transition border-l border-slate-200 rounded-none">
+                                <i class="fa-solid fa-plus text-xs"></i>
+                            </button>
+                        </div>
+
+                        <!-- Nút Thêm Vào Giỏ Hàng Men Ngọc -->
+                        <button type="submit" 
+                                class="flex-grow bg-[#7AA88B] hover:bg-[#638F73] text-white font-bold text-xs py-3.5 px-6 rounded-none transition flex items-center justify-center gap-2 tracking-wide uppercase shadow-sm">
+                            <i class="fa-solid fa-cart-plus text-sm"></i> Thêm Vào Giỏ Hàng
+                        </button>
+
+                        <!-- Nút Tính số lượng cốc cần trồng -->
+                        <a href="{% url 'plant_quantity' %}" 
+                           title="Tính toán số lượng cây phù hợp với kích thước hồ"
+                           class="bg-[#EEF5F0] hover:bg-[#7AA88B] text-[#2F5C3E] hover:text-white border border-[#C5DEC9] font-bold text-xs py-3.5 px-4 rounded-none transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-calculator"></i> Tính Diện Tích
+                        </a>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Cam Kết Giao Hàng & Bảo Quản -->
+            <div class="pt-4 border-t border-slate-100 text-xs text-slate-500 space-y-1.5">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-truck-ramp-box text-[#7AA88B]"></i>
+                    <span>Đóng gói: Cây được xếp trong khay bọc màng ẩm thoáng khí chuyên dụng, không dập gãy thân rễ.</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-award text-[#7AA88B]"></i>
+                    <span>Bảo hành: Cam kết sống 100% khi về hồ, đổi trả miễn phí hoặc hoàn tiền nếu cây úng rữa.</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Phần 2: Bảng Điều Khiển Thông Số Sinh Học Chi Tiết (Biological Specs Dashboard) -->
+<div class="bg-white border border-slate-200 rounded-none p-6 sm:p-8 mb-8">
+    <div class="flex items-center justify-between pb-4 mb-6 border-b border-slate-200">
+        <div>
+            <h2 class="text-base font-extrabold uppercase tracking-tight text-slate-900 flex items-center gap-2.5">
+                <i class="fa-solid fa-dna text-[#7AA88B]"></i> Hồ Sơ Sinh Học & Điều Kiện Môi Trường
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">Các chỉ số đo lường thực tế tại trại ươm AquaPlant đảm bảo cây thích nghi tốt nhất</p>
+        </div>
+        <span class="hidden sm:inline-block bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] text-[11px] font-bold px-3 py-1 rounded-none">
+            Chuẩn Kỹ Thuật 2026
+        </span>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        <!-- Thẻ 1: Độ pH -->
+        <div class="p-4 bg-slate-50 border border-slate-200 rounded-none">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Độ pH Tối Ưu</span>
+                <div class="w-6 h-6 bg-blue-100 text-blue-700 flex items-center justify-center text-xs rounded-none">
+                    <i class="fa-solid fa-droplet"></i>
+                </div>
+            </div>
+            <div class="text-xl font-extrabold text-slate-900 mb-1">
+                {{ product.ph_min }} - {{ product.ph_max }}
+            </div>
+            <div class="text-[11px] text-slate-500">
+                Thích hợp nước mềm đến trung tính, đệm pH ổn định.
+            </div>
+        </div>
+
+        <!-- Thẻ 2: Nhiệt Độ -->
+        <div class="p-4 bg-slate-50 border border-slate-200 rounded-none">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Nhiệt Độ Nước</span>
+                <div class="w-6 h-6 bg-rose-100 text-[#B91C1C] flex items-center justify-center text-xs rounded-none">
+                    <i class="fa-solid fa-temperature-half"></i>
+                </div>
+            </div>
+            <div class="text-xl font-extrabold text-slate-900 mb-1">
+                {{ product.temp_min }}°C - {{ product.temp_max }}°C
+            </div>
+            <div class="text-[11px] text-slate-500">
+                Lý tưởng từ 24°C - 26°C giúp lá dày và giữ màu sắc nét.
+            </div>
+        </div>
+
+        <!-- Thẻ 3: Ánh Sáng -->
+        <div class="p-4 bg-slate-50 border border-slate-200 rounded-none">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Cường Độ Sáng</span>
+                <div class="w-6 h-6 bg-amber-100 text-amber-700 flex items-center justify-center text-xs rounded-none">
+                    <i class="fa-solid fa-sun"></i>
+                </div>
+            </div>
+            <div class="text-xl font-extrabold text-slate-900 mb-1">
+                {{ product.get_light_requirement_display }}
+            </div>
+            <div class="text-[11px] text-slate-500">
+                Thời lượng chiếu sáng khuyến nghị: 6 - 8 giờ/ngày.
+            </div>
+        </div>
+
+        <!-- Thẻ 4: Khí CO2 -->
+        <div class="p-4 bg-slate-50 border border-slate-200 rounded-none">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Bình Khí CO₂</span>
+                <div class="w-6 h-6 bg-emerald-100 text-[#2F5C3E] flex items-center justify-center text-xs rounded-none">
+                    <i class="fa-solid fa-wind"></i>
+                </div>
+            </div>
+            <div class="text-xl font-extrabold text-slate-900 mb-1">
+                {{ product.get_co2_requirement_display }}
+            </div>
+            <div class="text-[11px] text-slate-500">
+                Hòa tan 1 - 2 giọt/giây để cây quang hợp nhả bọt khí O2.
+            </div>
+        </div>
+
+        <!-- Thẻ 5: Vị Trí Cắm -->
+        <div class="p-4 bg-slate-50 border border-slate-200 rounded-none">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Vị Trí Trong Bể</span>
+                <div class="w-6 h-6 bg-teal-100 text-teal-700 flex items-center justify-center text-xs rounded-none">
+                    <i class="fa-solid fa-layer-group"></i>
+                </div>
+            </div>
+            <div class="text-lg font-extrabold text-slate-900 mb-1">
+                {{ product.get_placement_position_display }}
+            </div>
+            <div class="text-[11px] text-slate-500">
+                Phù hợp tạo chiều sâu tầng thứ cho hồ thủy sinh.
+            </div>
+        </div>
+
+        <!-- Thẻ 6: Tốc Độ Phát Triển -->
+        <div class="p-4 bg-slate-50 border border-slate-200 rounded-none">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tốc Độ Sinh Trưởng</span>
+                <div class="w-6 h-6 bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs rounded-none">
+                    <i class="fa-solid fa-gauge-high"></i>
+                </div>
+            </div>
+            <div class="text-lg font-extrabold text-slate-900 mb-1">
+                {{ product.get_growth_rate_display }}
+            </div>
+            <div class="text-[11px] text-slate-500">
+                Dễ kiểm soát dáng cây, không đòi hỏi cắt tỉa quá dày đặc.
+            </div>
+        </div>
+
+        <!-- Thẻ 7: Tình Trạng Lá Khi Giao -->
+        <div class="p-4 bg-slate-50 border border-slate-200 rounded-none">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tình Trạng Lá Cây</span>
+                <div class="w-6 h-6 bg-stone-200 text-stone-800 flex items-center justify-center text-xs rounded-none">
+                    <i class="fa-solid fa-leaf"></i>
+                </div>
+            </div>
+            <div class="text-lg font-extrabold text-[#2F5C3E] mb-1">
+                {{ product.get_leaf_state_display }}
+            </div>
+            <div class="text-[11px] text-slate-500">
+                Khả năng thích ứng tức thì khi thả vào nguồn nước mới.
+            </div>
+        </div>
+
+        <!-- Thẻ 8: Độ Phủ Khuyến Nghị -->
+        <div class="p-4 bg-slate-50 border border-slate-200 rounded-none">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Độ Phủ Mặt Đáy</span>
+                <div class="w-6 h-6 bg-purple-100 text-purple-700 flex items-center justify-center text-xs rounded-none">
+                    <i class="fa-solid fa-chart-area"></i>
+                </div>
+            </div>
+            <div class="text-xl font-extrabold text-slate-900 mb-1">
+                {{ product.coverage_area_cm2 }} cm² / đơn vị
+            </div>
+            <div class="text-[11px] text-slate-500">
+                Diện tích phủ kín tương đương một ô vuông 10 × 10 cm.
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<!-- Phần 3: Hệ Thống Tab Kiến Thức Chăm Sóc & Nhân Giống -->
+<div class="bg-white border border-slate-200 rounded-none p-6 sm:p-8 mb-8">
+    <!-- Tab Headers (Góc vuông sắc nét) -->
+    <div class="flex border-b border-slate-200 mb-6 gap-2 overflow-x-auto" id="info-tab-nav">
+        <button type="button" 
+                onclick="switchTab('tab-desc')" 
+                id="btn-tab-desc" 
+                class="px-5 py-3 text-xs font-bold transition rounded-none border-b-2 border-[#7AA88B] text-[#2F5C3E] bg-[#EEF5F0]">
+            <i class="fa-solid fa-book-open mr-1.5 text-[#7AA88B]"></i> 1. Mô Tả Kỹ Thuật & Sinh Thái
+        </button>
+        <button type="button" 
+                onclick="switchTab('tab-planting')" 
+                id="btn-tab-planting" 
+                class="px-5 py-3 text-xs font-bold transition rounded-none border-b-2 border-transparent text-slate-600 hover:text-[#7AA88B] hover:bg-slate-50">
+            <i class="fa-solid fa-seedling mr-1.5"></i> 2. Hướng Dẫn Cắm Cây & Dưỡng Nền
+        </button>
+        <button type="button" 
+                onclick="switchTab('tab-prop')" 
+                id="btn-tab-prop" 
+                class="px-5 py-3 text-xs font-bold transition rounded-none border-b-2 border-transparent text-slate-600 hover:text-[#7AA88B] hover:bg-slate-50">
+            <i class="fa-solid fa-scissors mr-1.5"></i> 3. Kỹ Thuật Nhân Giống & Cắt Tỉa
+        </button>
+    </div>
+
+    <!-- Tab Contents -->
+    <div class="text-xs sm:text-sm text-slate-700 leading-relaxed font-normal">
+        <!-- Tab 1: Mô tả kỹ thuật -->
+        <div id="tab-desc" class="space-y-4">
+            <div class="prose prose-sm max-w-none text-slate-700 leading-relaxed">
+                {{ product.description|linebreaks }}
+            </div>
+            
+            <div class="mt-6 p-4 bg-[#EEF5F0] border border-[#C5DEC9] rounded-none">
+                <h4 class="font-bold text-[#2F5C3E] text-xs uppercase mb-1.5 flex items-center gap-2">
+                    <i class="fa-solid fa-circle-info text-[#7AA88B]"></i> Lưu ý cho người chơi hồ mới bắt đầu
+                </h4>
+                <p class="text-[11px] text-slate-600 leading-relaxed">
+                    Khi mới thả vào hồ, cây cần khoảng thời gian từ 5 - 7 ngày để hệ thống rễ bám chắc vào các hạt phân nền. Trong tuần đầu tiên, hãy giữ mức ánh sáng vừa phải và duy trì thay 30% nước cách ngày để ngăn chặn các loại rêu hại bám lá non.
+                </p>
+            </div>
+        </div>
+
+        <!-- Tab 2: Hướng dẫn cắm cây -->
+        <div id="tab-planting" class="hidden space-y-4">
+            {% if product.planting_guide %}
+            <div class="prose prose-sm max-w-none text-slate-700 leading-relaxed">
+                {{ product.planting_guide|linebreaks }}
+            </div>
+            {% else %}
+            <p class="text-slate-500 italic">Hướng dẫn cắm cây đang được cập nhật thêm từ đội ngũ kỹ thuật viên.</p>
+            {% endif %}
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-4 border-t border-slate-100">
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-none">
+                    <span class="font-bold text-slate-900 block mb-1">Bước 1: Rửa Giá Thể</span>
+                    <span class="text-[11px] text-slate-500">Tách bỏ nhẹ lớp bông ươm hoặc giá thể thạch cấy mô dưới vòi nước nhẹ, tránh làm dập rễ.</span>
+                </div>
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-none">
+                    <span class="font-bold text-slate-900 block mb-1">Bước 2: Cắm Nghiêng 45°</span>
+                    <span class="text-[11px] text-slate-500">Dùng nhíp thủy sinh chuyên dụng kẹp sát gốc, cắm góc nghiêng 45 độ sâu 2 - 3cm xuống nền.</span>
+                </div>
+                <div class="p-3 bg-slate-50 border border-slate-200 rounded-none">
+                    <span class="font-bold text-slate-900 block mb-1">Bước 3: Dưỡng Ổn Định</span>
+                    <span class="text-[11px] text-slate-500">Bật lọc 24/24, không vội châm thêm phân nước trong 10 ngày đầu tiên để rễ tự kích hoạt.</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: Hướng dẫn nhân giống -->
+        <div id="tab-prop" class="hidden space-y-4">
+            {% if product.propagation_guide %}
+            <div class="prose prose-sm max-w-none text-slate-700 leading-relaxed">
+                {{ product.propagation_guide|linebreaks }}
+            </div>
+            {% else %}
+            <p class="text-slate-500 italic">Kỹ thuật nhân giống & tỉa ngọn đang được cập nhật thêm từ tài liệu nông học.</p>
+            {% endif %}
+
+            <div class="p-4 bg-amber-50 border border-amber-200 rounded-none text-xs text-amber-900">
+                <span class="font-bold block mb-1"><i class="fa-solid fa-triangle-exclamation mr-1.5"></i>Thời điểm tỉa ngọn lý tưởng:</span>
+                <span class="text-[11px] leading-relaxed">Nên tiến hành cắt tỉa khi bụi cây đạt độ phủ trên 80% hoặc các tán lá che khuất ánh sáng của tầng tiền cảnh bên dưới. Dùng kéo mũi cong bén để vết cắt dứt khoát, không làm thối ngọn mẹ.</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Phần 4: Đánh Giá Thực Tế Từ Khách Hàng (Customer Reviews & Form) -->
+<div id="reviews-section" class="bg-white border border-slate-200 rounded-none p-6 sm:p-8 mb-8">
+    <div class="pb-4 mb-6 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+            <h2 class="text-base font-extrabold uppercase tracking-tight text-slate-900 flex items-center gap-2.5">
+                <i class="fa-solid fa-comments text-[#7AA88B]"></i> Nhận Xét & Trải Nghiệm Khách Hàng
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">Đánh giá thực tế từ các anh em chơi thủy sinh đã mua và dưỡng cây trong bể</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-xs text-slate-500">Tổng cộng:</span>
+            <span class="bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] text-xs font-bold px-2.5 py-0.5 rounded-none">
+                {{ reviews_count }} đánh giá
+            </span>
+        </div>
+    </div>
+
+    <!-- Tổng quan điểm số & Thanh phân bố sao -->
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-6 p-5 bg-slate-50 border border-slate-200 rounded-none mb-8 items-center">
+        <!-- Điểm trung bình -->
+        <div class="md:col-span-4 text-center md:border-r md:border-slate-200 md:pr-6">
+            <div class="text-4xl sm:text-5xl font-black text-slate-900 leading-none mb-2">
+                {{ avg_rating }}<span class="text-xl text-slate-400 font-bold">/5</span>
+            </div>
+            <div class="flex justify-center text-amber-500 text-sm gap-1 mb-2">
+                <i class="fa-solid fa-star"></i>
+                <i class="fa-solid fa-star"></i>
+                <i class="fa-solid fa-star"></i>
+                <i class="fa-solid fa-star"></i>
+                <i class="fa-solid fa-star"></i>
+            </div>
+            <span class="text-xs text-slate-500 font-medium">Dựa trên {{ reviews_count }} phản hồi người dùng</span>
+        </div>
+
+        <!-- Thanh phân bố sao -->
+        <div class="md:col-span-8 space-y-1.5">
+            {% for star, data in rating_distribution.items %}
+            <div class="flex items-center gap-3 text-xs">
+                <span class="w-12 text-slate-600 font-medium text-right">{{ star }} sao</span>
+                <div class="flex-grow bg-slate-200 h-2 rounded-none overflow-hidden">
+                    <div class="bg-[#7AA88B] h-full rounded-none" style="width: {{ data.percent }}%;"></div>
+                </div>
+                <span class="w-10 text-slate-400 text-right text-[11px]">{{ data.count }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- Danh sách đánh giá & Form gửi nhận xét -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+        
+        <!-- Cột Danh sách nhận xét (7 cột) -->
+        <div class="lg:col-span-7 space-y-4">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-800 pb-2 border-b border-slate-100 flex items-center justify-between">
+                <span>Các nhận xét mới nhất</span>
+                <span class="text-slate-400 font-normal">Sắp xếp theo thời gian</span>
+            </h3>
+
+            {% if reviews %}
+                {% for rev in reviews %}
+                <div class="p-4 bg-white border border-slate-200 rounded-none space-y-2">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] flex items-center justify-center font-bold text-xs rounded-none">
+                                {{ rev.reviewer_name|slice:":1"|upper }}
+                            </div>
+                            <div>
+                                <span class="font-bold text-xs text-slate-900 block leading-tight">{{ rev.reviewer_name }}</span>
+                                <span class="text-[10px] text-emerald-700 font-semibold flex items-center gap-1">
+                                    <i class="fa-solid fa-circle-check text-[9px]"></i> Đã mua hàng tại AquaPlant
+                                </span>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-amber-500 text-xs">
+                                {% for i in "12345" %}
+                                    {% if forloop.counter <= rev.rating %}
+                                        <i class="fa-solid fa-star"></i>
+                                    {% else %}
+                                        <i class="fa-regular fa-star text-slate-300"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </div>
+                            <span class="text-[10px] text-slate-400 block mt-0.5">{{ rev.created_at|date:"d/m/Y H:i" }}</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed pt-1 border-t border-slate-50">
+                        {{ rev.comment|linebreaksbr }}
+                    </p>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="p-8 text-center bg-slate-50 border border-dashed border-slate-200 rounded-none text-slate-500 text-xs">
+                    <i class="fa-regular fa-comments text-3xl text-slate-300 mb-2 block"></i>
+                    <span>Chưa có đánh giá nào cho cây này. Hãy là người đầu tiên chia sẻ cảm nhận trải nghiệm hồ của bạn!</span>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Cột Form Gửi Đánh Giá (5 cột) -->
+        <div class="lg:col-span-5 bg-slate-50 border border-slate-200 rounded-none p-5 sm:p-6">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-900 pb-2 mb-4 border-b border-slate-200 flex items-center gap-2">
+                <i class="fa-solid fa-pen-to-square text-[#7AA88B]"></i> Viết Nhận Xét Của Bạn
+            </h3>
+
+            <form method="POST" action="{% url 'submit_review' slug=product.slug %}" class="space-y-4">
+                {% csrf_token %}
+                
+                <!-- Tên người đánh giá -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                        {{ review_form.reviewer_name.label }} <span class="text-[#B91C1C]">*</span>
+                    </label>
+                    {{ review_form.reviewer_name }}
+                    {% if review_form.reviewer_name.errors %}
+                    <p class="text-[11px] text-[#B91C1C] mt-1">{{ review_form.reviewer_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Đánh giá số sao -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                        {{ review_form.rating.label }} <span class="text-[#B91C1C]">*</span>
+                    </label>
+                    {{ review_form.rating }}
+                    {% if review_form.rating.errors %}
+                    <p class="text-[11px] text-[#B91C1C] mt-1">{{ review_form.rating.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Nội dung đánh giá -->
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                        {{ review_form.comment.label }} <span class="text-[#B91C1C]">*</span>
+                    </label>
+                    {{ review_form.comment }}
+                    {% if review_form.comment.errors %}
+                    <p class="text-[11px] text-[#B91C1C] mt-1">{{ review_form.comment.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- Nút Submit góc vuông men ngọc -->
+                <button type="submit" 
+                        class="w-full bg-[#7AA88B] hover:bg-[#638F73] text-white font-bold text-xs py-3 px-4 rounded-none transition flex items-center justify-center gap-2 uppercase tracking-wider">
+                    <i class="fa-solid fa-paper-plane text-xs"></i> Gửi Đánh Giá Trải Nghiệm
+                </button>
+
+                <p class="text-[10px] text-slate-400 text-center leading-tight">
+                    Đánh giá của bạn sẽ được hiển thị công khai để hỗ trợ cộng đồng người chơi thủy sinh chọn cây phù hợp.
+                </p>
+            </form>
+        </div>
+
+    </div>
+</div>
+
+<!-- Phần 5: Sản Phẩm Liên Quan Cùng Danh Mục -->
+{% if related_products %}
+<div class="bg-white border border-slate-200 rounded-none p-6 sm:p-8">
+    <div class="flex items-center justify-between pb-4 mb-6 border-b border-slate-200">
+        <div>
+            <h2 class="text-base font-extrabold uppercase tracking-tight text-slate-900 flex items-center gap-2.5">
+                <i class="fa-solid fa-shapes text-[#7AA88B]"></i> Cây Thủy Sinh Liên Quan Trong Danh Mục
+            </h2>
+            <p class="text-xs text-slate-500 mt-1">Các giống cây phối cảnh hài hòa cùng điều kiện nước và ánh sáng tương tự</p>
+        </div>
+        <a href="{% url 'home' %}?category={{ product.category.slug }}" class="text-xs font-bold text-[#7AA88B] hover:text-[#638F73] flex items-center gap-1">
+            Xem tất cả <i class="fa-solid fa-arrow-right text-[10px]"></i>
+        </a>
+    </div>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {% for rp in related_products %}
+        <div class="bg-white border border-slate-200 rounded-none overflow-hidden hover:border-slate-400 transition flex flex-col justify-between group">
+            <div>
+                <!-- Ảnh liên quan -->
+                <div class="relative aspect-4/3 overflow-hidden bg-slate-50 border-b border-slate-100">
+                    <a href="{% url 'product_detail' slug=rp.slug %}">
+                        <img src="{% if rp.image_url %}{% static rp.image_url %}{% elif 'Nana' in rp.name %}{% static 'images/anubias_nana.jpg' %}{% elif 'Trân Châu' in rp.name %}{% static 'images/monte_carlo.jpg' %}{% elif 'Tiêu Thảo' in rp.name %}{% static 'images/cryptocoryne_brown.jpg' %}{% elif 'Vảy Ốc' in rp.name %}{% static 'images/rotala_hra.jpg' %}{% elif 'Phân Nền' in rp.name %}{% static 'images/aquasoil.jpg' %}{% else %}{% static 'images/anubias_nana.jpg' %}{% endif %}" 
+                             alt="{{ rp.name }}" 
+                             class="w-full h-40 object-cover group-hover:scale-105 transition duration-300">
+                    </a>
+                    
+                    <span class="absolute top-2 left-2 bg-[#2F5C3E] text-white text-[9px] font-bold px-2 py-0.5 rounded-none uppercase">
+                        {{ rp.get_placement_position_display }}
+                    </span>
+                </div>
+
+                <div class="p-3.5">
+                    <h4 class="font-bold text-xs text-slate-900 group-hover:text-[#7AA88B] transition leading-snug mb-1 line-clamp-1">
+                        <a href="{% url 'product_detail' slug=rp.slug %}">{{ rp.name }}</a>
+                    </h4>
+                    {% if rp.scientific_name %}
+                    <p class="text-[11px] text-slate-400 italic mb-2 line-clamp-1">{{ rp.scientific_name }}</p>
+                    {% endif %}
+
+                    <div class="flex items-center gap-1 text-[10px] text-slate-500 mb-2">
+                        <span>pH: <strong>{{ rp.ph_min }}-{{ rp.ph_max }}</strong></span>
+                        <span>·</span>
+                        <span>{{ rp.temp_min }}-{{ rp.temp_max }}°C</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-3.5 pt-0 border-t border-slate-100 mt-2 flex items-center justify-between gap-2">
+                <div>
+                    <span class="text-sm font-black text-[#B91C1C]">{{ rp.current_price|floatformat:0 }}₫</span>
+                    {% if rp.sale_price %}
+                    <span class="text-[10px] text-slate-400 line-through ml-1">{{ rp.regular_price|floatformat:0 }}₫</span>
+                    {% endif %}
+                </div>
+                <a href="{% url 'product_detail' slug=rp.slug %}" class="bg-[#EEF5F0] hover:bg-[#7AA88B] text-[#2F5C3E] hover:text-white border border-[#C5DEC9] text-[11px] font-bold px-2.5 py-1.5 rounded-none transition">
+                    Xem Chi Tiết
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- JavaScript Đổi Tab -->
+<script>
+function switchTab(tabId) {
+    // Ẩn tất cả tab contents
+    document.getElementById('tab-desc').classList.add('hidden');
+    document.getElementById('tab-planting').classList.add('hidden');
+    document.getElementById('tab-prop').classList.add('hidden');
+
+    // Reset button styles
+    const buttons = ['btn-tab-desc', 'btn-tab-planting', 'btn-tab-prop'];
+    buttons.forEach(id => {
+        const btn = document.getElementById(id);
+        btn.classList.remove('border-[#7AA88B]', 'text-[#2F5C3E]', 'bg-[#EEF5F0]');
+        btn.classList.add('border-transparent', 'text-slate-600');
+    });
+
+    // Hiện tab được chọn
+    document.getElementById(tabId).classList.remove('hidden');
+
+    // Active button style
+    const activeBtn = document.getElementById('btn-' + tabId);
+    activeBtn.classList.remove('border-transparent', 'text-slate-600');
+    activeBtn.classList.add('border-[#7AA88B]', 'text-[#2F5C3E]', 'bg-[#EEF5F0]');
+}
+</script>
+{% endblock %}
