@@ -1,0 +1,3 @@
+# Các thư viện phụ thuộc của Đồ Án AquaPlant
+Django>=5.0,<7.0
+Pillow>=10.0.0
