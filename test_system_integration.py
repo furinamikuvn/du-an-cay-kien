@@ -10,7 +10,7 @@ from django.test import Client
 from django.contrib.auth.models import User
 from django.core import mail
 from aquashop.models import (
-    UserProfile, Category, Product, ProductVariant, ProductReview,
+    UserProfile, Category, Product, ProductImage, ProductVariant, ProductReview,
     InventoryLot, Coupon, Order, OrderItem, Article, FAQ,
     LayoutPreset, LayoutPresetItem
 )
@@ -287,7 +287,7 @@ else:
 # ==============================================================================
 # TC14: F02 & BR02 - Biến thể quy cách cây (ProductVariant)
 # ==============================================================================
-print("\n[TC14] Kiểm thử Biến thể quy cách cây (ProductVariant):")
+print("\n[TC14] Kiểm thử F02: Biến thể quy cách (ProductVariant) & Album ảnh (ProductImage):")
 variant_p = Product.objects.filter(variants__isnull=False).first()
 variants = variant_p.variants.all()
 if variants.count() >= 2:
@@ -303,6 +303,18 @@ if variants.count() >= 2:
         errors.append("TC14.2 Biến thể không hiển thị đúng trong giỏ hàng")
 else:
     errors.append("TC14.1 Không tìm thấy biến thể cây")
+
+# Kiểm thử F02 Album ảnh chi tiết và ImageField
+gallery_count = variant_p.images.count()
+if gallery_count >= 1:
+    first_img = variant_p.images.first()
+    detail_resp = client.get(f'/san-pham/{variant_p.slug}/')
+    if detail_resp.status_code == 200 and 'product-gallery-thumbnails' in detail_resp.content.decode('utf-8'):
+        print(f"  -> TC14.3 Album ảnh chi tiết F02 ({gallery_count} ảnh) hiển thị chuẩn xác trên trang chi tiết: PASS")
+    else:
+        errors.append("TC14.3 Album ảnh không hiển thị trên trang chi tiết")
+else:
+    errors.append("TC14.3 Không tìm thấy ảnh gallery cho cây")
 
 # ==============================================================================
 # TC15: E2E Tích Hợp Toàn Trình

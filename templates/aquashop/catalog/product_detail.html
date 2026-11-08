@@ -35,7 +35,7 @@
         <div class="lg:col-span-5 space-y-4">
             <div class="relative aspect-4/3 sm:aspect-square bg-slate-50 border border-slate-200 rounded-none overflow-hidden group">
                 <img id="main-product-image"
-                     src="{% if product.image_url %}{% static product.image_url %}{% elif 'Nana' in product.name %}{% static 'images/anubias_nana.jpg' %}{% elif 'Trân Châu' in product.name %}{% static 'images/monte_carlo.jpg' %}{% elif 'Tiêu Thảo' in product.name %}{% static 'images/cryptocoryne_brown.jpg' %}{% elif 'Vảy Ốc' in product.name %}{% static 'images/rotala_hra.jpg' %}{% elif 'Phân Nền' in product.name %}{% static 'images/aquasoil.jpg' %}{% else %}{% static 'images/anubias_nana.jpg' %}{% endif %}" 
+                     src="{{ product.display_image_url }}" 
                      alt="{{ product.name }}" 
                      class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105">
                 
@@ -63,6 +63,32 @@
                     <i class="fa-solid fa-box text-[#7AA88B] mr-1"></i> Còn {{ product.stock_quantity }} phần sẵn kho
                 </div>
             </div>
+
+            <!-- Album Ảnh Chi Tiết / Gallery (F02) -->
+            {% if product.images.exists %}
+            <div class="space-y-1.5 pt-1">
+                <div class="flex items-center justify-between">
+                    <span class="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-images text-[#7AA88B]"></i> Góc Chụp Thực Tế ({{ product.images.count }} ảnh):
+                    </span>
+                    <span class="text-[10px] text-slate-400 italic">Nhấp để xem ảnh lớn</span>
+                </div>
+                <div class="flex items-center gap-2 overflow-x-auto pb-1" id="product-gallery-thumbnails">
+                    <!-- Ảnh đại diện chính -->
+                    <div class="w-16 h-16 border-2 border-[#7AA88B] rounded-none overflow-hidden cursor-pointer flex-shrink-0 gallery-thumb active"
+                         onclick="changeMainImage('{{ product.display_image_url }}', this)">
+                        <img src="{{ product.display_image_url }}" alt="{{ product.name }}" class="w-full h-full object-cover">
+                    </div>
+                    {% for img_item in product.images.all %}
+                    <div class="w-16 h-16 border border-slate-200 hover:border-[#7AA88B] rounded-none overflow-hidden cursor-pointer flex-shrink-0 gallery-thumb transition"
+                         title="{{ img_item.caption|default:product.name }}"
+                         onclick="changeMainImage('{{ img_item.image.url }}', this)">
+                        <img src="{{ img_item.image.url }}" alt="{{ img_item.caption|default:product.name }}" class="w-full h-full object-cover">
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
 
             <!-- Cam Kết Chất Lượng Thủy Sinh -->
             <div class="grid grid-cols-3 gap-2 text-center text-slate-700 pt-1">
@@ -742,6 +768,24 @@ function selectVariant(el, varId, price, stock) {
     const priceDisplay = document.getElementById('main-product-price');
     if (priceDisplay) {
         priceDisplay.textContent = new Intl.NumberFormat('vi-VN').format(price) + '₫';
+    }
+}
+function changeMainImage(url, el) {
+    const mainImg = document.getElementById('main-product-image');
+    if (mainImg) {
+        mainImg.style.opacity = '0.3';
+        setTimeout(() => {
+            mainImg.src = url;
+            mainImg.style.opacity = '1';
+        }, 150);
+    }
+    document.querySelectorAll('.gallery-thumb').forEach(t => {
+        t.classList.remove('border-[#7AA88B]', 'border-2', 'active');
+        t.classList.add('border-slate-200', 'border');
+    });
+    if (el) {
+        el.classList.remove('border-slate-200', 'border');
+        el.classList.add('border-[#7AA88B]', 'border-2', 'active');
     }
 }
 </script>

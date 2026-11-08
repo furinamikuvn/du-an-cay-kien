@@ -1,9 +1,22 @@
 from django.contrib import admin
 from .models import (
-    Category, Product, ProductVariant, ProductReview, InventoryLot,
+    Category, Product, ProductImage, ProductVariant, ProductReview, InventoryLot,
     Coupon, LayoutPreset, LayoutPresetItem, Order, OrderItem,
     Article, FAQ, UserProfile
 )
+
+class ProductImageInline(admin.TabularInline):
+    model = ProductImage
+    extra = 1
+    fields = ('image', 'caption', 'order', 'preview')
+    readonly_fields = ('preview',)
+
+    def preview(self, obj):
+        if obj.image:
+            from django.utils.html import format_html
+            return format_html('<img src="{}" style="height: 48px; border-radius: 4px; border: 1px solid #ddd;" />', obj.image.url)
+        return "Chưa có ảnh"
+    preview.short_description = "Xem trước"
 
 class ProductVariantInline(admin.TabularInline):
     model = ProductVariant
@@ -17,11 +30,30 @@ class InventoryLotInline(admin.TabularInline):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ('name', 'category', 'regular_price', 'sale_price', 'placement_position', 'co2_requirement', 'care_level', 'stock_quantity')
+    list_display = ('thumbnail_preview', 'name', 'category', 'regular_price', 'sale_price', 'placement_position', 'co2_requirement', 'care_level', 'stock_quantity')
     list_filter = ('category', 'placement_position', 'co2_requirement', 'care_level')
     search_fields = ('name', 'scientific_name', 'description')
     list_editable = ('regular_price', 'sale_price', 'stock_quantity')
-    inlines = [ProductVariantInline, InventoryLotInline]
+    inlines = [ProductImageInline, ProductVariantInline, InventoryLotInline]
+
+    def thumbnail_preview(self, obj):
+        from django.utils.html import format_html
+        return format_html('<img src="{}" style="width: 38px; height: 38px; object-fit: cover; border-radius: 4px; border: 1px solid #cbd5e1;" />', obj.display_image_url)
+    thumbnail_preview.short_description = "Ảnh"
+
+
+@admin.register(ProductImage)
+class ProductImageAdmin(admin.ModelAdmin):
+    list_display = ('product', 'caption', 'order', 'created_at', 'preview')
+    list_filter = ('product',)
+    search_fields = ('product__name', 'caption')
+
+    def preview(self, obj):
+        if obj.image:
+            from django.utils.html import format_html
+            return format_html('<img src="{}" style="height: 48px; border-radius: 4px;" />', obj.image.url)
+        return "Chưa có ảnh"
+    preview.short_description = "Xem trước"
 
 @admin.register(ProductVariant)
 class ProductVariantAdmin(admin.ModelAdmin):

@@ -1,0 +1,63 @@
+{% extends 'shop/base.html' %}
+
+{% block title %}Đặt Hàng Thành Công - AquaPlant{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto bg-white border border-slate-200 p-8 sm:p-10 text-center space-y-6">
+    
+    <!-- Icon Thành Công -->
+    <div class="w-14 h-14 bg-[#EEF5F0] text-[#7AA88B] border border-[#C5DEC9] flex items-center justify-center mx-auto text-2xl">
+        <i class="fa-solid fa-check"></i>
+    </div>
+
+    <div>
+        <h1 class="text-xl sm:text-2xl font-bold text-slate-900">
+            Đặt Hàng Thành Công!
+        </h1>
+        <p class="text-xs text-slate-500 mt-1">
+            Cảm ơn bạn đã tin tưởng mua cây cảnh tại AquaPlant. Đơn hàng của bạn đã được ghi nhận vào hệ thống.
+        </p>
+    </div>
+
+    <!-- Hộp Thông Tin Mã Đơn -->
+    <div class="p-4 bg-[#EEF5F0] border border-[#C5DEC9] text-xs space-y-2 text-left">
+        <div class="flex justify-between items-center pb-2 border-b border-[#C5DEC9]">
+            <span class="text-slate-600">Mã đơn hàng:</span>
+            <span class="font-mono font-bold text-[#2F5C3E] text-sm">{{ order.order_code }}</span>
+        </div>
+        <div class="flex justify-between items-center">
+            <span class="text-slate-600">Người nhận:</span>
+            <span class="font-bold text-slate-800">{{ order.customer_name }}</span>
+        </div>
+        <div class="flex justify-between items-center">
+            <span class="text-slate-600">Số điện thoại:</span>
+            <span class="font-bold text-slate-800 font-mono">{{ order.phone }}</span>
+        </div>
+        <div class="flex justify-between items-start">
+            <span class="text-slate-600 flex-shrink-0">Địa chỉ giao:</span>
+            <span class="font-bold text-slate-800 text-right">{{ order.shipping_address }}</span>
+        </div>
+        {% if order.customer_note %}
+        <div class="flex justify-between items-start pt-1 text-amber-800">
+            <span class="flex-shrink-0">Ghi chú:</span>
+            <span class="italic text-right">{{ order.customer_note }}</span>
+        </div>
+        {% endif %}
+        <div class="flex justify-between items-center pt-2 border-t border-[#C5DEC9] font-bold text-sm">
+            <span class="text-slate-800">Tổng thanh toán:</span>
+            <span class="text-rose-700 font-mono font-black text-base">{{ order.total_amount|floatformat:0 }}₫</span>
+        </div>
+    </div>
+
+    <!-- Các Nút Điều Hướng -->
+    <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+        <a href="{% url 'order_tracking' %}?keyword={{ order.order_code }}" class="w-full sm:w-auto bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-6 py-2.5 transition">
+            <i class="fa-solid fa-magnifying-glass mr-1"></i> Tra Cứu Đơn Này
+        </a>
+        <a href="{% url 'home' %}" class="w-full sm:w-auto bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs px-6 py-2.5 transition uppercase tracking-wide">
+            Tiếp Tục Mua Sắm
+        </a>
+    </div>
+
+</div>
+{% endblock %}

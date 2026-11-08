@@ -146,6 +146,9 @@ class CommerceInventoryTestCase(TestCase):
         )
 
         # GET staff dashboard
+        staff_user = User.objects.create_user(username='staff_test', password='password123', is_staff=True)
+        UserProfile.objects.create(user=staff_user, role='staff')
+        self.client.login(username='staff_test', password='password123')
         res = self.client.get(reverse('staff_dashboard'))
         self.assertEqual(res.status_code, 200)
         self.assertContains(res, "AQ-TEST-9999")

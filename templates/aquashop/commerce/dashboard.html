@@ -169,215 +169,209 @@
     </div>
     {% endif %}
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <!-- BẢNG DANH SÁCH ĐƠN HÀNG MỚI NHẤT (TOÀN CHIỀU RỘNG, KHÔNG BỊ CHE KHUẤT HÀNH ĐỘNG NHANH) -->
+    <div class="bg-white border border-slate-200 p-5 rounded-none shadow-2xs space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 gap-2">
+            <div>
+                <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-list-check text-[#7AA88B]"></i>
+                    Danh Sách 10 Đơn Hàng Mới Nhất
+                </h2>
+                <span class="text-xs text-slate-500">Cập nhật trực tiếp hành trình đóng gói bọc ẩm và vận chuyển hỏa tốc</span>
+            </div>
+            <span class="text-xs bg-[#EEF5F0] text-[#2F5C3E] px-2.5 py-1 border border-[#C5DEC9] font-bold rounded-none">
+                Tự Động Trừ Lô Kho (FIFO)
+            </span>
+        </div>
+
+        <!-- Bảng Đơn Hàng -->
+        <div class="overflow-x-auto border border-slate-200">
+            <table class="w-full text-left text-xs min-w-[920px]">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
+                        <th class="p-3 w-[220px]">Mã Đơn / Khách</th>
+                        <th class="p-3 min-w-[240px]">Sản Phẩm Đặt Mua</th>
+                        <th class="p-3 text-right w-[120px] whitespace-nowrap">Tổng Tiền</th>
+                        <th class="p-3 text-center w-[120px] whitespace-nowrap">Trạng Thái</th>
+                        <th class="p-3 text-center w-[250px] whitespace-nowrap">Hành Động Nhanh</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for order in recent_orders %}
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <!-- Mã Đơn & Khách -->
+                        <td class="p-3 align-top">
+                            <div class="font-mono font-bold text-slate-900 text-xs">{{ order.order_code }}</div>
+                            <div class="font-bold text-slate-800 mt-0.5">{{ order.customer_name }}</div>
+                            <div class="text-[11px] text-slate-400 mt-0.5">
+                                <i class="fa-regular fa-clock"></i> {{ order.created_at|date:"H:i d/m/Y" }}
+                            </div>
+                            {% if order.customer_note %}
+                            <div class="mt-1.5 p-1.5 bg-amber-50 border border-amber-200 text-amber-900 text-[10px] leading-tight">
+                                <i class="fa-solid fa-note-sticky text-amber-700 mr-0.5"></i> <strong>Khách dặn:</strong> {{ order.customer_note }}
+                            </div>
+                            {% endif %}
+                            {% if order.coupon %}
+                            <div class="mt-1">
+                                <span class="inline-block px-1.5 py-0.2 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] text-[10px] font-bold rounded-none">
+                                    Voucher: {{ order.coupon.code }} (-{{ order.discount_amount|floatformat:0 }}₫)
+                                </span>
+                            </div>
+                            {% endif %}
+                        </td>
+
+                        <!-- Sản Phẩm Đặt Mua -->
+                        <td class="p-3 align-top">
+                            <ul class="space-y-1">
+                                {% for item in order.items.all %}
+                                <li class="flex items-center justify-between gap-2 text-[11px]">
+                                    <span class="font-semibold text-slate-800">
+                                        • {{ item.product.name }}
+                                        {% if item.variant_name %}
+                                        <span class="text-[10px] text-emerald-700 font-normal">({{ item.variant_name }})</span>
+                                        {% endif %}
+                                    </span>
+                                    <span class="text-slate-500 font-mono font-bold flex-shrink-0">x{{ item.quantity }}</span>
+                                </li>
+                                {% empty %}
+                                <li class="text-slate-400 italic text-[11px]">Đơn mẫu khởi tạo ban đầu</li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+
+                        <!-- Tổng Tiền -->
+                        <td class="p-3 align-top text-right whitespace-nowrap">
+                            <div class="font-black text-sm text-[#B91C1C]">
+                                {{ order.total_amount|floatformat:0 }}₫
+                            </div>
+                            <div class="text-[10px] text-slate-400">
+                                Tạm tính: {{ order.subtotal_amount|floatformat:0 }}₫
+                            </div>
+                        </td>
+
+                        <!-- Trạng Thái Hiện Tại -->
+                        <td class="p-3 align-top text-center whitespace-nowrap">
+                            {% if order.status == 'pending' %}
+                                <span class="inline-block px-2.5 py-1 bg-amber-50 text-amber-800 border border-amber-200 font-bold text-[10px] rounded-none">
+                                    <i class="fa-solid fa-hourglass-start"></i> Chờ duyệt
+                                </span>
+                            {% elif order.status == 'confirmed' %}
+                                <span class="inline-block px-2.5 py-1 bg-blue-50 text-blue-800 border border-blue-200 font-bold text-[10px] rounded-none">
+                                    <i class="fa-solid fa-box-archive"></i> Đang bọc ẩm
+                                </span>
+                            {% elif order.status == 'shipping' %}
+                                <span class="inline-block px-2.5 py-1 bg-indigo-50 text-indigo-800 border border-indigo-200 font-bold text-[10px] rounded-none">
+                                    <i class="fa-solid fa-truck-fast"></i> Đang giao
+                                </span>
+                            {% elif order.status == 'completed' %}
+                                <span class="inline-block px-2.5 py-1 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] font-bold text-[10px] rounded-none">
+                                    <i class="fa-solid fa-circle-check"></i> Hoàn tất
+                                </span>
+                            {% elif order.status == 'cancelled' %}
+                                <span class="inline-block px-2.5 py-1 bg-red-50 text-red-700 border border-red-200 font-bold text-[10px] rounded-none">
+                                    <i class="fa-solid fa-ban"></i> Đã hủy
+                                </span>
+                            {% else %}
+                                <span class="inline-block px-2.5 py-1 bg-slate-100 text-slate-700 border border-slate-200 font-bold text-[10px] rounded-none">
+                                    {{ order.status }}
+                                </span>
+                            {% endif %}
+                        </td>
+
+                        <!-- Form Cập Nhật Nhanh & In Phiếu Giao Hàng -->
+                        <td class="p-3 align-top text-center space-y-2 whitespace-nowrap">
+                            <form method="POST" action="{% url 'update_order_status' order.id %}" class="inline-flex items-center justify-center gap-1.5 w-full">
+                                {% csrf_token %}
+                                <select name="status" class="bg-white border border-slate-300 text-[11px] px-2.5 py-1.5 rounded-none text-slate-800 focus:outline-none focus:border-[#7AA88B] max-w-[190px]">
+                                    {% for st_val, st_lbl in status_choices %}
+                                    <option value="{{ st_val }}" {% if order.status == st_val %}selected{% endif %}>{{ st_lbl }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button type="submit" title="Lưu trạng thái mới" class="bg-[#7AA88B] hover:bg-[#638F73] text-white px-2.5 py-1.5 text-xs font-bold rounded-none transition flex-shrink-0 cursor-pointer">
+                                    <i class="fa-solid fa-check"></i>
+                                </button>
+                            </form>
+                            <div>
+                                <a href="{% url 'print_packing_slip' order.id %}" target="_blank" title="In Phiếu Đóng Gói Chuẩn A4/A5" class="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-300 text-[11px] font-bold rounded-none transition shadow-2xs w-full max-w-[225px]">
+                                    <i class="fa-solid fa-print text-[#7AA88B]"></i> In Phiếu Đóng Gói
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="5" class="p-6 text-center text-slate-400">
+                            Hiện chưa có đơn hàng nào được ghi nhận.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- HÀNG PHỤ (2 CỘT): TOP CÂY BÁN CHẠY NHẤT & QUY CHUẨN ĐÓNG GÓI CÂY SỐNG -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-8">
         
-        <!-- Cột Trái (2/3): Bảng Danh Sách 10 Đơn Hàng Gần Nhất & Cập Nhật Nhanh -->
-        <div class="lg:col-span-2 space-y-4">
-            <div class="bg-white border border-slate-200 p-5 rounded-none">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 gap-2">
-                    <div>
-                        <h2 class="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                            <i class="fa-solid fa-list-check text-[#7AA88B]"></i>
-                            Danh Sách 10 Đơn Hàng Mới Nhất
-                        </h2>
-                        <span class="text-xs text-slate-500">Cập nhật trực tiếp hành trình đóng gói bọc ẩm và vận chuyển hỏa tốc</span>
+        <!-- Cột Trái: Top Cây Bán Chạy Nhất -->
+        <div class="bg-white border border-slate-200 p-5 rounded-none space-y-4 shadow-2xs">
+            <div class="border-b border-slate-100 pb-3 flex items-center justify-between">
+                <h3 class="font-extrabold text-sm text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-fire text-[#B91C1C]"></i> Top Cây Thủy Sinh Bán Chạy
+                </h3>
+                <span class="text-[10px] font-bold text-slate-400 uppercase">Xuất kho nhiều nhất</span>
+            </div>
+
+            <div class="space-y-3">
+                {% for plant in top_plants %}
+                <div class="flex items-center gap-3 p-2.5 bg-slate-50 border border-slate-200 rounded-none hover:border-[#7AA88B] transition">
+                    <div class="w-12 h-12 bg-slate-100 flex-shrink-0 overflow-hidden border border-slate-200 rounded-none">
+                        {% if plant.image_url %}
+                            <img src="{% static plant.image_url %}" alt="{{ plant.name }}" class="w-full h-full object-cover">
+                        {% else %}
+                            <div class="w-full h-full flex items-center justify-center text-slate-300">
+                                <i class="fa-solid fa-seedling"></i>
+                            </div>
+                        {% endif %}
                     </div>
-                    <span class="text-xs bg-[#EEF5F0] text-[#2F5C3E] px-2.5 py-1 border border-[#C5DEC9] font-bold rounded-none">
-                        Tự Động Trừ Lô Kho (FIFO)
-                    </span>
+                    <div class="flex-grow min-w-0">
+                        <h4 class="font-bold text-xs text-slate-900 truncate">{{ plant.name }}</h4>
+                        <p class="text-[11px] text-[#B91C1C] font-black mt-0.5">
+                            {{ plant.current_price|floatformat:0 }}₫
+                        </p>
+                        <div class="flex items-center justify-between text-[10px] text-slate-500 mt-1">
+                            <span>Tồn kho: <strong class="text-slate-800">{{ plant.stock_quantity }}</strong></span>
+                            <span class="text-[#2F5C3E] font-bold">
+                                {% if plant.total_sold %}Đã bán: {{ plant.total_sold }}{% else %}Bán chạy{% endif %}
+                            </span>
+                        </div>
+                    </div>
                 </div>
-
-                <!-- Bảng Đơn Hàng -->
-                <div class="overflow-x-auto mt-4">
-                    <table class="w-full text-left text-xs">
-                        <thead>
-                            <tr class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
-                                <th class="p-3">Mã Đơn / Khách</th>
-                                <th class="p-3">Sản Phẩm Đặt Mua</th>
-                                <th class="p-3 text-right">Tổng Tiền</th>
-                                <th class="p-3 text-center">Trạng Thái</th>
-                                <th class="p-3 text-center">Hành Động Nhanh</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            {% for order in recent_orders %}
-                            <tr class="hover:bg-slate-50/80 transition">
-                                <!-- Mã Đơn & Khách -->
-                                <td class="p-3 align-top">
-                                    <div class="font-mono font-bold text-slate-900 text-xs">{{ order.order_code }}</div>
-                                    <div class="font-bold text-slate-800 mt-0.5">{{ order.customer_name }}</div>
-                                    <div class="text-[11px] text-slate-400 mt-0.5">
-                                        <i class="fa-regular fa-clock"></i> {{ order.created_at|date:"H:i d/m/Y" }}
-                                    </div>
-                                    {% if order.customer_note %}
-                                    <div class="mt-1.5 p-1.5 bg-amber-50 border border-amber-200 text-amber-900 text-[10px] leading-tight">
-                                        <i class="fa-solid fa-note-sticky text-amber-700 mr-0.5"></i> <strong>Khách dặn:</strong> {{ order.customer_note }}
-                                    </div>
-                                    {% endif %}
-                                    {% if order.coupon %}
-                                    <div class="mt-1">
-                                        <span class="inline-block px-1.5 py-0.2 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] text-[10px] font-bold rounded-none">
-                                            Voucher: {{ order.coupon.code }} (-{{ order.discount_amount|floatformat:0 }}₫)
-                                        </span>
-                                    </div>
-                                    {% endif %}
-                                </td>
-
-                                <!-- Sản Phẩm Đặt Mua -->
-                                <td class="p-3 align-top max-w-xs">
-                                    <ul class="space-y-1">
-                                        {% for item in order.items.all %}
-                                        <li class="flex items-center justify-between gap-2 text-[11px]">
-                                            <span class="font-semibold text-slate-800 truncate">
-                                                • {{ item.product.name }}
-                                                {% if item.variant_name %}
-                                                <span class="text-[10px] text-emerald-700 font-normal">({{ item.variant_name }})</span>
-                                                {% endif %}
-                                            </span>
-                                            <span class="text-slate-500 font-mono font-bold flex-shrink-0">x{{ item.quantity }}</span>
-                                        </li>
-                                        {% empty %}
-                                        <li class="text-slate-400 italic text-[11px]">Đơn mẫu khởi tạo ban đầu</li>
-                                        {% endfor %}
-                                    </ul>
-                                </td>
-
-                                <!-- Tổng Tiền -->
-                                <td class="p-3 align-top text-right">
-                                    <div class="font-black text-sm text-[#B91C1C]">
-                                        {{ order.total_amount|floatformat:0 }}₫
-                                    </div>
-                                    <div class="text-[10px] text-slate-400">
-                                        Tạm tính: {{ order.subtotal_amount|floatformat:0 }}₫
-                                    </div>
-                                </td>
-
-                                <!-- Trạng Thái Hiện Tại -->
-                                <td class="p-3 align-top text-center">
-                                    {% if order.status == 'pending' %}
-                                        <span class="inline-block px-2 py-1 bg-amber-50 text-amber-800 border border-amber-200 font-bold text-[10px] rounded-none">
-                                            <i class="fa-solid fa-hourglass-start"></i> Chờ duyệt
-                                        </span>
-                                    {% elif order.status == 'confirmed' %}
-                                        <span class="inline-block px-2 py-1 bg-blue-50 text-blue-800 border border-blue-200 font-bold text-[10px] rounded-none">
-                                            <i class="fa-solid fa-box-archive"></i> Đang bọc ẩm
-                                        </span>
-                                    {% elif order.status == 'shipping' %}
-                                        <span class="inline-block px-2 py-1 bg-indigo-50 text-indigo-800 border border-indigo-200 font-bold text-[10px] rounded-none">
-                                            <i class="fa-solid fa-truck-fast"></i> Đang giao
-                                        </span>
-                                    {% elif order.status == 'completed' %}
-                                        <span class="inline-block px-2 py-1 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] font-bold text-[10px] rounded-none">
-                                            <i class="fa-solid fa-circle-check"></i> Hoàn tất
-                                        </span>
-                                    {% elif order.status == 'cancelled' %}
-                                        <span class="inline-block px-2 py-1 bg-red-50 text-red-700 border border-red-200 font-bold text-[10px] rounded-none">
-                                            <i class="fa-solid fa-ban"></i> Đã hủy
-                                        </span>
-                                    {% else %}
-                                        <span class="inline-block px-2 py-1 bg-slate-100 text-slate-700 border border-slate-200 font-bold text-[10px] rounded-none">
-                                            {{ order.status }}
-                                        </span>
-                                    {% endif %}
-                                </td>
-
-                                <!-- Form Cập Nhật Nhanh & In Phiếu Giao Hàng -->
-                                <td class="p-3 align-top text-center space-y-1.5">
-                                    <form method="POST" action="{% url 'update_order_status' order.id %}" class="inline-flex items-center gap-1">
-                                        {% csrf_token %}
-                                        <select name="status" class="bg-white border border-slate-300 text-[11px] px-2 py-1.5 rounded-none text-slate-800 focus:outline-none focus:border-[#7AA88B]">
-                                            {% for st_val, st_lbl in status_choices %}
-                                            <option value="{{ st_val }}" {% if order.status == st_val %}selected{% endif %}>{{ st_lbl }}</option>
-                                            {% endfor %}
-                                        </select>
-                                        <button type="submit" title="Lưu trạng thái mới" class="bg-[#7AA88B] hover:bg-[#638F73] text-white px-2.5 py-1.5 text-xs font-bold rounded-none transition">
-                                            <i class="fa-solid fa-check"></i>
-                                        </button>
-                                    </form>
-                                    <div>
-                                        <a href="{% url 'print_packing_slip' order.id %}" target="_blank" title="In Phiếu Đóng Gói Chuẩn A4/A5" class="inline-flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-slate-50 text-slate-700 hover:text-slate-900 border border-slate-300 text-[11px] font-bold rounded-none transition shadow-xs">
-                                            <i class="fa-solid fa-print text-[#7AA88B]"></i> In Phiếu Đóng Gói
-                                        </a>
-                                    </div>
-                                </td>
-                            </tr>
-                            {% empty %}
-                            <tr>
-                                <td colspan="5" class="p-6 text-center text-slate-400">
-                                    Hiện chưa có đơn hàng nào được ghi nhận.
-                                </td>
-                            </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
+                {% empty %}
+                <p class="text-xs text-slate-400 text-center py-4">Chưa có dữ liệu thống kê sản phẩm bán chạy.</p>
+                {% endfor %}
             </div>
         </div>
 
-        <!-- Cột Phải (1/3): Top Cây Bán Chạy & Thông Tin Vận Hành -->
-        <div class="space-y-6">
-            
-            <!-- Top Cây Bán Chạy Nhất -->
-            <div class="bg-white border border-slate-200 p-5 rounded-none space-y-4">
-                <div class="border-b border-slate-100 pb-3 flex items-center justify-between">
-                    <h3 class="font-extrabold text-sm text-slate-900 flex items-center gap-2">
-                        <i class="fa-solid fa-fire text-[#B91C1C]"></i> Top Cây Thủy Sinh Bán Chạy
-                    </h3>
-                    <span class="text-[10px] font-bold text-slate-400 uppercase">Xuất kho nhiều nhất</span>
-                </div>
-
-                <div class="space-y-3">
-                    {% for plant in top_plants %}
-                    <div class="flex items-center gap-3 p-2 bg-slate-50 border border-slate-200 rounded-none hover:border-[#7AA88B] transition">
-                        <div class="w-12 h-12 bg-slate-100 flex-shrink-0 overflow-hidden border border-slate-200 rounded-none">
-                            {% if plant.image_url %}
-                                <img src="{% static plant.image_url %}" alt="{{ plant.name }}" class="w-full h-full object-cover">
-                            {% else %}
-                                <div class="w-full h-full flex items-center justify-center text-slate-300">
-                                    <i class="fa-solid fa-seedling"></i>
-                                </div>
-                            {% endif %}
-                        </div>
-                        <div class="flex-grow min-w-0">
-                            <h4 class="font-bold text-xs text-slate-900 truncate">{{ plant.name }}</h4>
-                            <p class="text-[11px] text-[#B91C1C] font-black mt-0.5">
-                                {{ plant.current_price|floatformat:0 }}₫
-                            </p>
-                            <div class="flex items-center justify-between text-[10px] text-slate-500 mt-1">
-                                <span>Tồn kho: <strong class="text-slate-800">{{ plant.stock_quantity }}</strong></span>
-                                <span class="text-[#2F5C3E] font-bold">
-                                    {% if plant.total_sold %}Đã bán: {{ plant.total_sold }}{% else %}Bán chạy{% endif %}
-                                </span>
-                            </div>
-                        </div>
-                    </div>
-                    {% empty %}
-                    <p class="text-xs text-slate-400 text-center py-4">Chưa có dữ liệu thống kê sản phẩm bán chạy.</p>
-                    {% endfor %}
-                </div>
-            </div>
-
-            <!-- Hướng Dẫn Vận Hành Kho Sinh Học Cho Nhân Viên -->
-            <div class="bg-[#EEF5F0] border border-[#C5DEC9] p-5 rounded-none space-y-3">
-                <h3 class="font-extrabold text-xs text-[#2F5C3E] uppercase tracking-wide flex items-center gap-2">
-                    <i class="fa-solid fa-temperature-half"></i> Quy Chuẩn Đóng Gói Cây Sống
-                </h3>
-                <ul class="text-[11px] text-slate-600 space-y-2 leading-relaxed">
-                    <li class="flex items-start gap-2">
-                        <i class="fa-solid fa-check text-[#7AA88B] mt-0.5"></i>
-                        <span><strong>Bọc ẩm túi khí:</strong> Cây lá nước phải được bọc bông ẩm chứa dung dịch khoáng vi lượng, thổi phồng túi bóng 80%.</span>
-                    </li>
-                    <li class="flex items-start gap-2">
-                        <i class="fa-solid fa-check text-[#7AA88B] mt-0.5"></i>
-                        <span><strong>Kiểm định FIFO:</strong> Luôn lấy từ lô nhập sớm nhất trước. Tuyệt đối không chọn cây từ lô đang gắn thẻ cách ly.</span>
-                    </li>
-                    <li class="flex items-start gap-2">
-                        <i class="fa-solid fa-check text-[#7AA88B] mt-0.5"></i>
-                        <span><strong>Kích hoạt bảo hiểm:</strong> Mọi đơn chuyển thành trạng thái Hoàn tất sẽ tự động kích hoạt bảo hành 24H bù cây 1 đổi 1 nếu dập úng.</span>
-                    </li>
-                </ul>
-            </div>
-
+        <!-- Cột Phải: Hướng Dẫn Vận Hành Kho Sinh Học Cho Nhân Viên -->
+        <div class="bg-[#EEF5F0] border border-[#C5DEC9] p-5 rounded-none space-y-3 shadow-2xs">
+            <h3 class="font-extrabold text-xs text-[#2F5C3E] uppercase tracking-wide flex items-center gap-2">
+                <i class="fa-solid fa-temperature-half"></i> Quy Chuẩn Đóng Gói Cây Sống
+            </h3>
+            <ul class="text-[11px] text-slate-600 space-y-2.5 leading-relaxed">
+                <li class="flex items-start gap-2">
+                    <i class="fa-solid fa-check text-[#7AA88B] mt-0.5"></i>
+                    <span><strong>Bọc ẩm túi khí:</strong> Cây lá nước phải được bọc bông ẩm chứa dung dịch khoáng vi lượng, thổi phồng túi bóng 80%.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <i class="fa-solid fa-check text-[#7AA88B] mt-0.5"></i>
+                    <span><strong>Kiểm định FIFO:</strong> Luôn lấy từ lô nhập sớm nhất trước. Tuyệt đối không chọn cây từ lô đang gắn thẻ cách ly.</span>
+                </li>
+                <li class="flex items-start gap-2">
+                    <i class="fa-solid fa-check text-[#7AA88B] mt-0.5"></i>
+                    <span><strong>Kích hoạt bảo hiểm:</strong> Mọi đơn chuyển thành trạng thái Hoàn tất sẽ tự động kích hoạt bảo hành 24H bù cây 1 đổi 1 nếu dập úng.</span>
+                </li>
+            </ul>
         </div>
 
     </div>

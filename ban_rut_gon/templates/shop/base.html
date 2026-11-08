@@ -1,0 +1,185 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Cửa Hàng Cây Cảnh & Thủy Sinh{% endblock %}</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                    },
+                    colors: {
+                        sage: {
+                            50: '#F5F8F5',
+                            100: '#EEF5F0',
+                            200: '#C5DEC9',
+                            300: '#9FC7A8',
+                            400: '#7AA88B',
+                            500: '#6B997C',
+                            600: '#447653',
+                            700: '#2F5C3E',
+                            800: '#23442E',
+                            900: '#172C1E',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #F8FAFC;
+            color: #0F172A;
+            -webkit-font-smoothing: antialiased;
+        }
+    </style>
+</head>
+<body class="bg-[#F8FAFC] text-slate-800 font-sans flex flex-col min-h-screen">
+
+    <!-- 0. THANH THÔNG BÁO TRÊN CÙNG -->
+    <div class="bg-[#F5F8F5] text-slate-600 text-[11px] py-1.5 px-4 border-b border-[#E3EDE5]">
+        <div class="max-w-6xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-1 font-bold text-[#447653] uppercase tracking-wide">
+                    <i class="fa-solid fa-seedling text-[#7AA88B]"></i> AquaPlant Shop:
+                </span>
+                <span>Cây thủy sinh thuần dưỡng lá nước · Giao bọc ẩm bảo đảm sống sót 100%</span>
+            </div>
+            <div class="flex items-center gap-4 text-slate-500">
+                <span><i class="fa-solid fa-phone text-[#7AA88B]"></i> Hotline: 1900-xxxx</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. THANH ĐIỀU HƯỚNG TRÊN CÙNG (HEADER / NAVBAR) -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 gap-4">
+                
+                <!-- Logo & Tên Cửa Hàng -->
+                <a href="{% url 'home' %}" class="flex items-center gap-2.5 flex-shrink-0 group">
+                    <div class="w-9 h-9 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] flex items-center justify-center font-bold text-base group-hover:bg-[#7AA88B] group-hover:text-white transition">
+                        <i class="fa-solid fa-seedling text-sm"></i>
+                    </div>
+                    <div>
+                        <span class="text-base font-extrabold tracking-tight text-slate-900 block leading-tight">
+                            Aqua<span class="text-[#7AA88B]">Plant</span>
+                        </span>
+                        <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block">Cửa Hàng Cây Cảnh & Thủy Sinh</span>
+                    </div>
+                </a>
+
+                <!-- Thanh Tìm Kiếm Cây Cảnh -->
+                <form action="{% url 'home' %}" method="GET" class="hidden md:flex flex-grow max-w-md mx-4">
+                    <div class="relative w-full">
+                        <input type="text" name="q" value="{{ request.GET.q|default:'' }}" 
+                               placeholder="Tìm tên cây cảnh, trân châu, ráy nana..." 
+                               class="w-full pl-9 pr-16 py-2 text-xs bg-slate-50 border border-slate-300 focus:outline-none focus:border-[#7AA88B] focus:bg-white transition">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                        <button type="submit" class="absolute right-0 top-0 bottom-0 bg-[#7AA88B] hover:bg-[#6B997C] text-white text-xs font-bold px-4 transition">
+                            Tìm
+                        </button>
+                    </div>
+                </form>
+
+                <!-- Menu Phải: Tra Cứu, Giỏ Hàng & Tài Khoản -->
+                <div class="flex items-center gap-3 text-xs font-medium">
+                    <a href="{% url 'order_tracking' %}" class="hidden sm:inline-flex items-center gap-1.5 text-slate-600 hover:text-[#2F5C3E] py-1.5 px-2 transition">
+                        <i class="fa-solid fa-truck-fast text-[#7AA88B]"></i> Tra cứu đơn
+                    </a>
+
+                    <!-- Nút Giỏ Hàng -->
+                    <a href="{% url 'cart' %}" class="inline-flex items-center gap-2 bg-[#EEF5F0] hover:bg-[#E3EDE5] text-[#2F5C3E] border border-[#C5DEC9] px-3 py-1.5 transition font-bold text-xs">
+                        <i class="fa-solid fa-cart-shopping text-[#7AA88B]"></i>
+                        <span>Giỏ hàng</span>
+                        <span class="bg-[#7AA88B] text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono">{{ cart_count }}</span>
+                    </a>
+
+                    <!-- Tài Khoản -->
+                    {% if user.is_authenticated %}
+                        <a href="{% url 'profile' %}" class="text-slate-700 hover:text-[#2F5C3E] font-bold hidden sm:block">
+                            <i class="fa-regular fa-user text-[#7AA88B]"></i> {{ user.first_name|default:user.username }}
+                        </a>
+                        {% if user.is_staff or user.is_superuser %}
+                        <a href="/admin/" target="_blank" class="bg-amber-50 text-amber-900 border border-amber-200 px-2 py-1 font-bold hover:bg-amber-100 text-[11px]">
+                            Admin
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'logout' %}" class="text-rose-600 hover:text-rose-800 ml-1" title="Đăng xuất">
+                            <i class="fa-solid fa-arrow-right-from-bracket"></i>
+                        </a>
+                    {% else %}
+                        <a href="{% url 'login' %}" class="text-slate-700 hover:text-[#2F5C3E] font-semibold">
+                            Đăng nhập
+                        </a>
+                        <a href="{% url 'register' %}" class="bg-[#7AA88B] hover:bg-[#6B997C] text-white px-3 py-1.5 font-bold transition text-xs">
+                            Đăng ký
+                        </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- 2. THÔNG BÁO FLASH (MESSAGES) -->
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 w-full mt-4">
+        {% if messages %}
+            {% for message in messages %}
+            <div class="mb-3 p-3 text-xs font-semibold flex items-center justify-between {% if message.tags == 'error' %}bg-rose-50 border border-rose-200 text-rose-800{% else %}bg-[#EEF5F0] border border-[#C5DEC9] text-[#2F5C3E]{% endif %}">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid {% if message.tags == 'error' %}fa-circle-exclamation text-rose-600{% else %}fa-circle-check text-[#7AA88B]{% endif %}"></i>
+                    <span>{{ message }}</span>
+                </div>
+                <button type="button" onclick="this.parentElement.remove();" class="text-slate-400 hover:text-slate-700">✕</button>
+            </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+
+    <!-- 3. NỘI DUNG CHÍNH (MAIN CONTENT) -->
+    <main class="flex-grow max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-6">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- 4. CHÂN TRANG (FOOTER) -->
+    <footer class="bg-white border-t border-slate-200 text-slate-500 text-xs mt-12 py-8">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+                <h4 class="font-bold text-slate-800 text-sm mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-leaf text-[#7AA88B]"></i> AquaPlant Shop
+                </h4>
+                <p class="leading-relaxed text-[11px] text-slate-500">
+                    Hệ thống bán cây cảnh & thực vật thủy sinh phục vụ trang trí bể cá cảnh, hồ thủy sinh tự nhiên.
+                </p>
+            </div>
+            <div>
+                <h4 class="font-bold text-slate-800 text-sm mb-2">Đồ Án Môn Học</h4>
+                <p class="text-[11px]">Môn: Phát triển Ứng dụng Web với Python & Django</p>
+                <p class="mt-1 text-[11px]">Lớp: 26CTT2 - Trường ĐH Khoa Học Tự Nhiên, ĐHQG-HCM</p>
+            </div>
+            <div>
+                <h4 class="font-bold text-slate-800 text-sm mb-2">Hỗ Trợ Khách Hàng</h4>
+                <p class="text-[11px]"><i class="fa-solid fa-phone text-[#7AA88B] mr-1"></i> Hotline: 1900-xxxx</p>
+                <p class="mt-1 text-[11px]"><i class="fa-solid fa-location-dot text-[#7AA88B] mr-1"></i> Địa chỉ: 227 Nguyễn Văn Cừ, Quận 5, TP.HCM</p>
+            </div>
+        </div>
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 pt-4 border-t border-slate-100 text-center text-slate-400 text-[11px]">
+            &copy; 2026 AquaPlant &middot; Hệ Thống Website Thương Mại Điện Tử Cây Thủy Sinh &middot; ĐHQG-HCM
+        </div>
+    </footer>
+
+</body>
+</html>

@@ -152,6 +152,7 @@ class Product(models.Model):
     planting_guide = models.TextField(blank=True, verbose_name="Hướng dẫn trồng & cắm nền")
     propagation_guide = models.TextField(blank=True, verbose_name="Hướng dẫn nhân giống & tỉa ngọn")
     image_url = models.CharField(max_length=255, blank=True, verbose_name="Đường dẫn ảnh tĩnh")
+    image = models.ImageField(upload_to='products/', blank=True, null=True, verbose_name="Ảnh đại diện tải lên (ImageField)")
 
     class Meta:
         verbose_name = "Sản phẩm cây cảnh"
@@ -170,6 +171,76 @@ class Product(models.Model):
     def current_price(self):
         """Trả về giá đang áp dụng (ưu tiên giá sale nếu có)."""
         return self.sale_price if self.sale_price else self.regular_price
+
+    @property
+    def display_image_url(self):
+        """
+        Tra ve URL anh hop le da tang (F02):
+        1. Uu tien tep anh tai len tu may tinh qua truong image (ImageField).
+        2. Neu chua co, fallback ve image_url tinh.
+        3. Cuoi cung fallback ve anh minh hoa chuan theo ten cay.
+        """
+        if self.image:
+            return self.image.url
+        if self.image_url:
+            if self.image_url.startswith('http') or self.image_url.startswith('/'):
+                return self.image_url
+            return f"/static/{self.image_url}"
+        if 'Nana' in self.name:
+            return "/static/images/anubias_nana.jpg"
+        elif 'Trân Châu' in self.name:
+            return "/static/images/monte_carlo.jpg"
+        elif 'Tiêu Thảo' in self.name:
+            return "/static/images/cryptocoryne_brown.jpg"
+        elif 'Vảy Ốc' in self.name:
+            return "/static/images/rotala_hra.jpg"
+        elif 'Phân Nền' in self.name:
+            return "/static/images/aquasoil.jpg"
+        return "/static/images/anubias_nana.jpg"
+
+
+# ------------------------------------------------------------------------------
+# 3.1. ALBUM ANH CHI TIET SAN PHAM (PRODUCT IMAGE GALLERY - F02)
+# ------------------------------------------------------------------------------
+class ProductImage(models.Model):
+    """
+    Quan ly bo suu tap nhieu anh thuc te cho cay canh (F02):
+    - Anh chup goc nghieng, anh re cay mo, anh la can vs la nuoc, anh phoi ho thuc te.
+    - Ho tro tai truc tiep tep anh tu may tinh va sap xep thu tu hien thi linh hoat.
+    """
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="images",
+        verbose_name="Sản phẩm cây cảnh"
+    )
+    image = models.ImageField(
+        upload_to='products/gallery/',
+        verbose_name="Tệp ảnh chi tiết tải lên"
+    )
+    caption = models.CharField(
+        max_length=150,
+        blank=True,
+        default="",
+        verbose_name="Mô tả ảnh (vd: Tán lá nước, Rễ cấy mô, Phối đá)"
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Thứ tự hiển thị"
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Thời điểm tải lên"
+    )
+
+    class Meta:
+        ordering = ['order', 'id']
+        verbose_name = "Ảnh chi tiết cây cảnh"
+        verbose_name_plural = "Album ảnh chi tiết cây cảnh (Gallery)"
+
+    def __str__(self):
+        desc = f": {self.caption}" if self.caption else ""
+        return f"Ảnh {self.product.name} (#{self.order}){desc}"
 
 
 # ------------------------------------------------------------------------------

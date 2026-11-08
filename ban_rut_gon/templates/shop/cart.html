@@ -1,0 +1,128 @@
+{% extends 'shop/base.html' %}
+
+{% block title %}Giỏ Hàng Mua Sắm - AquaPlant{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+
+    <div class="border-b border-slate-200 pb-3 flex items-center justify-between">
+        <h1 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <i class="fa-solid fa-cart-shopping text-[#7AA88B]"></i> Giỏ Hàng Mua Sắm
+        </h1>
+        <a href="{% url 'home' %}" class="text-xs text-[#2F5C3E] hover:underline font-semibold">
+            ← Tiếp tục chọn cây
+        </a>
+    </div>
+
+    {% if cart_items %}
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        
+        <!-- Bảng Sản Phẩm Trong Giỏ (2 Cột) -->
+        <div class="lg:col-span-2 bg-white border border-slate-200 overflow-hidden">
+            <table class="w-full text-left text-xs">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
+                    <tr>
+                        <th class="p-3.5">Cây Cảnh</th>
+                        <th class="p-3.5 text-right">Đơn Giá</th>
+                        <th class="p-3.5 text-center">Số Lượng</th>
+                        <th class="p-3.5 text-right">Thành Tiền</th>
+                        <th class="p-3.5 text-center">Xóa</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for item in cart_items %}
+                    <tr class="hover:bg-slate-50/80 transition">
+                        <!-- Tên & Ảnh -->
+                        <td class="p-3.5 flex items-center gap-3">
+                            <img src="{{ item.product.display_image_url }}" alt="{{ item.product.name }}" class="w-12 h-12 object-cover border border-slate-200">
+                            <div>
+                                <a href="{% url 'product_detail' slug=item.product.slug %}" class="font-bold text-slate-900 hover:text-[#2F5C3E] block">
+                                    {{ item.product.name }}
+                                </a>
+                                <span class="text-[10px] text-slate-400">{{ item.product.category.name }}</span>
+                            </div>
+                        </td>
+
+                        <!-- Đơn Giá -->
+                        <td class="p-3.5 text-right font-mono text-slate-700 font-semibold">
+                            {{ item.product.current_price|floatformat:0 }}₫
+                        </td>
+
+                        <!-- Bộ Đếm Số Lượng (+/-) -->
+                        <td class="p-3.5 text-center">
+                            <div class="inline-flex items-center border border-slate-300 overflow-hidden bg-white">
+                                <a href="{% url 'update_cart' product_id=item.product.id action='decrease' %}" class="w-6 h-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center transition">
+                                    -
+                                </a>
+                                <span class="w-8 text-center font-bold text-slate-800 text-xs font-mono">{{ item.quantity }}</span>
+                                <a href="{% url 'update_cart' product_id=item.product.id action='increase' %}" class="w-6 h-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center transition">
+                                    +
+                                </a>
+                            </div>
+                        </td>
+
+                        <!-- Thành Tiền -->
+                        <td class="p-3.5 text-right font-mono font-bold text-rose-700">
+                            {{ item.subtotal|floatformat:0 }}₫
+                        </td>
+
+                        <!-- Nút Xóa -->
+                        <td class="p-3.5 text-center">
+                            <a href="{% url 'remove_from_cart' product_id=item.product.id %}" onclick="return confirm('Bạn có chắc muốn xóa cây này khỏi giỏ hàng?');" class="text-slate-400 hover:text-rose-600 transition" title="Xóa món này">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Khối Tóm Tắt Thanh Toán (1 Cột) -->
+        <div class="bg-white border border-slate-200 p-5 space-y-4">
+            <h3 class="font-bold text-xs uppercase tracking-wider text-slate-900 pb-2 border-b border-slate-100">
+                Tóm Tắt Đơn Hàng
+            </h3>
+            
+            <div class="space-y-2 text-xs">
+                <div class="flex justify-between text-slate-600">
+                    <span>Tạm tính tiền cây:</span>
+                    <span class="font-bold font-mono text-slate-800">{{ total_amount|floatformat:0 }}₫</span>
+                </div>
+                <div class="flex justify-between text-slate-600">
+                    <span>Phí vận chuyển:</span>
+                    <span class="text-[#2F5C3E] font-bold">Miễn phí giao hàng</span>
+                </div>
+                <div class="pt-2 border-t border-slate-100 flex justify-between text-sm font-bold text-slate-900">
+                    <span>Tổng thanh toán:</span>
+                    <span class="text-rose-700 font-black font-mono text-lg">{{ total_amount|floatformat:0 }}₫</span>
+                </div>
+            </div>
+
+            <a href="{% url 'checkout' %}" class="w-full bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs py-3 transition flex items-center justify-center gap-2 uppercase tracking-wider block text-center">
+                Tiến Hành Đặt Hàng <i class="fa-solid fa-arrow-right"></i>
+            </a>
+
+            <p class="text-[11px] text-slate-400 text-center">
+                <i class="fa-solid fa-shield-halved text-[#7AA88B] mr-1"></i> Thanh toán an toàn khi nhận hàng (COD)
+            </p>
+        </div>
+
+    </div>
+    {% else %}
+    <div class="bg-white border border-slate-200 p-12 text-center space-y-4 max-w-lg mx-auto">
+        <div class="w-16 h-16 bg-[#EEF5F0] text-[#7AA88B] mx-auto flex items-center justify-center text-2xl border border-[#C5DEC9]">
+            <i class="fa-solid fa-basket-shopping"></i>
+        </div>
+        <h2 class="text-base font-bold text-slate-800">Giỏ hàng của bạn đang trống</h2>
+        <p class="text-xs text-slate-500 leading-relaxed">
+            Hãy khám phá các loại cây cảnh thủy sinh tươi đẹp của chúng tôi để bổ sung cho hồ cá của bạn.
+        </p>
+        <a href="{% url 'home' %}" class="inline-block bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs px-6 py-2.5 transition uppercase tracking-wide">
+            Xem Sản Phẩm Ngay
+        </a>
+    </div>
+    {% endif %}
+
+</div>
+{% endblock %}
