@@ -54,3 +54,16 @@ python manage.py runserver 8080
 # Truy cập cửa hàng: http://127.0.0.1:8080/
 # Quản trị Django Admin: http://127.0.0.1:8080/admin/
 ```
+
+
+---
+
+## 6. NGUỒN GỐC TÀI NGUYÊN HÌNH ẢNH (WIKIMEDIA COMMONS VERIFIED)
+Toàn bộ hình ảnh trong `static/images/` đã được kiểm định mã SHA-1, tác giả và giấy phép Creative Commons từ Wikimedia Commons:
+1. `anubias_nana.jpg` -> `File:Anubias barteri var. nana.jpg` (Tác giả: Abhik.Mazumdar.73, CC BY 4.0)
+2. `rotala_hra.jpg` -> `File:Rotala rotundifolia.jpg` (Tác giả: Vinayaraj, CC BY-SA 3.0)
+3. `monte_carlo.jpg` -> `File:Micranthemum umbrosum (J.F. Gmel.) S.F. Blake (9714579961).jpg` (Tác giả: Alex Popovkin, CC BY 2.0)
+4. `cryptocoryne_brown.jpg` -> `File:-Cryptocoryne wendtii- from Tropica farm.JPG` (Tác giả: S. Tanaka, Public Domain)
+5. `aquasoil.jpg` -> `File:Akadama wet 2.jpg` (Tác giả: Globalist1789, Public Domain)
+6. `iwagumi_60cm.jpg` -> `File:Aquascaping-minilandschaft-lennart.jpg` (Tác giả: Lennart Jähnk, CC BY-SA 4.0)
+7. `nature_wood_90cm.png` -> `File:Nature style aquascape.png` (Tác giả: Duc Viet Bui, CC BY-SA 4.0)

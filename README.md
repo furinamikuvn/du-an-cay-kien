@@ -207,8 +207,24 @@ du-an-cay-kien/
 * **Cách khắc phục:** Chạy `.\venv\Scripts\Activate.ps1` rồi chạy `pip install -r requirements.txt`.
 
 ### Lỗi 4: Muốn chạy kiểm tra toàn bộ hệ thống xem code có lỗi không?
-* **Cách thực hiện:** Chạy bộ kiểm thử tự động 12 test cases:
+* **Cách thực hiện:** Chạy bộ kiểm thử tự động 15 test cases:
   ```powershell
   python test_system_integration.py
   ```
-  *(Nếu xuất hiện dòng `ALL 12/12 TEST CASES PASSED SUCCESSFULLY` tức là hệ thống đang hoạt động hoàn hảo 100%).*
+  *(Nếu xuất hiện dòng `KẾT QUẢ TỔNG KẾT: 100% TẤT CẢ 15 TEST CASES (TC01 - TC15) ĐỀU PASS HOÀN HẢO!` tức là hệ thống đang hoạt động hoàn hảo 100%).*
+
+---
+
+## 10. NGUỒN GỐC TÀI NGUYÊN HÌNH ẢNH & BẢN QUYỀN (IMAGE ATTRIBUTION)
+
+Toàn bộ hình ảnh cây thủy sinh và bố cục hồ trong thư mục `static/images/` được tuyển chọn từ nguồn mở **Wikimedia Commons** với bản quyền Creative Commons hoặc Public Domain, đã được kiểm định mã SHA-1 và URL thực tế:
+
+| Tên tệp trong dự án | Danh mục / Loài cây | Tệp gốc trên Wikimedia Commons | Tác giả | Giấy phép |
+| :--- | :--- | :--- | :--- | :--- |
+| `anubias_nana.jpg` | Cây Ráy Nana (*Anubias barteri var. nana*) | [File:Anubias barteri var. nana.jpg](https://commons.wikimedia.org/wiki/File:Anubias_barteri_var._nana.jpg) | Abhik.Mazumdar.73 | CC BY 4.0 |
+| `rotala_hra.jpg` | Cây Vảy Ốc Siêu Đỏ (*Rotala rotundifolia*) | [File:Rotala rotundifolia.jpg](https://commons.wikimedia.org/wiki/File:Rotala_rotundifolia.jpg) | Vinayaraj | CC BY-SA 3.0 |
+| `monte_carlo.jpg` | Cây Trân Châu Ngọc Trai (*Micranthemum umbrosum*) | [File:Micranthemum umbrosum (J.F. Gmel.) S.F. Blake (9714579961).jpg](https://commons.wikimedia.org/wiki/File:Micranthemum_umbrosum_(J.F._Gmel.)_S.F._Blake_(9714579961).jpg) | Alex Popovkin | CC BY 2.0 |
+| `cryptocoryne_brown.jpg` | Cây Tiêu Thảo Nâu (*Cryptocoryne wendtii*) | [File:-Cryptocoryne wendtii- from Tropica farm.JPG](https://commons.wikimedia.org/wiki/File:-Cryptocoryne_wendtii-_from_Tropica_farm.JPG) | S. Tanaka | Public Domain |
+| `aquasoil.jpg` | Phân Nền Thủy Sinh Đất Nung (Akadama Soil) | [File:Akadama wet 2.jpg](https://commons.wikimedia.org/wiki/File:Akadama_wet_2.jpg) | Globalist1789 | Public Domain |
+| `iwagumi_60cm.jpg` | Bố Cục Đá Iwagumi (Mini-Landschaft Aquascape) | [File:Aquascaping-minilandschaft-lennart.jpg](https://commons.wikimedia.org/wiki/File:Aquascaping-minilandschaft-lennart.jpg) | Lennart Jähnk | CC BY-SA 4.0 |
+| `nature_wood_90cm.png` | Bố Cục Rừng Lũa Tự Nhiên (Nature Style Aquascape) | [File:Nature style aquascape.png](https://commons.wikimedia.org/wiki/File:Nature_style_aquascape.png) | Duc Viet Bui | CC BY-SA 4.0 |
