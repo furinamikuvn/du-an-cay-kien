@@ -2,7 +2,9 @@
 
 > **Đồ án môn học:** Phát triển Hệ thống Web Thương mại Điện tử Chuyên ngành Thực vật Thủy sinh  
 > **Đơn vị thực hiện:** Nhóm sinh viên - Trường Đại Học Khoa Học Tự Nhiên, ĐHQG-HCM  
-> **Công nghệ cốt lõi:** Python 3.12 · Django (MVT) · Tailwind CSS (Chuẩn ADA/Muji) · SQLite 3  
+> **Frontend:** HTML5, CSS3, JavaScript, Tailwind CSS  
+> **Backend:** Python (Django)  
+> **Database:** SQLite 3 (đang dùng demo thử nghiệm)  
 > **Mã nguồn GitHub:** [https://github.com/bamre990/du-an-cay-kien](https://github.com/bamre990/du-an-cay-kien)
 
 ---
