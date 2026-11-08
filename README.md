@@ -1,7 +1,7 @@
 # 🌿 AQUAPLANT - HỆ THỐNG THƯƠNG MẠI ĐIỆN TỬ CÂY THỦY SINH & LAYOUT HỒ
 
-> **Đồ án môn học:** Phát triển Hệ thống Web Thương mại Điện tử Chuyên ngành Thực vật Thủy sinh  
-> **Đơn vị thực hiện:** Nhóm sinh viên - Trường Đại Học Khoa Học Tự Nhiên, ĐHQG-HCM  
+> **Đồ án môn học:** Phát triển Hệ thống Web bán hàng Thực vật Thủy sinh  
+> **Đơn vị thực hiện:** Nhóm X 26CTT2 - Trường Đại Học Khoa Học Tự Nhiên, ĐHQG-HCM  
 > **Frontend:** HTML5, CSS3, JavaScript, Tailwind CSS  
 > **Backend:** Python (Django)  
 > **Database:** SQLite 3 (đang dùng demo thử nghiệm)  
