@@ -1,3 +1,17 @@
+# ==============================================================================
+# AQUASHOP - XỬ LÝ THƯƠNG MẠI, GIỎ HÀNG, KHẤU TRỪ KHO FIFO & BẢNG QUẢN TRỊ
+# ==============================================================================
+# Tệp này xử lý các nghiệp vụ thương mại điện tử cốt lõi của đồ án:
+# 1. get_cart_items: Trích xuất và phân tích giỏ hàng từ session (hỗ trợ cả cây thường và biến thể quy cách).
+# 2. cart_view: Hiển thị giỏ hàng, tính toán tạm tính, tiền tiết kiệm và chiết khấu voucher.
+# 3. add_to_cart_view: Thêm cây hoặc biến thể vào giỏ hàng session.
+# 4. remove_from_cart_view & update_cart_quantity_view: Xóa hoặc tăng/giảm số lượng cây trong giỏ.
+# 5. apply_coupon_view & remove_coupon_view: Áp dụng mã ưu đãi (AQUA2026, FREESHIP) và hủy mã.
+# 6. enhanced_checkout_view: Luồng thanh toán toàn trình, tạo Order, OrderItem và khấu trừ kho FIFO theo lô.
+# 7. staff_dashboard_view: Bảng quản trị kho vận dành riêng cho Admin/Nhân viên.
+# 8. print_packing_slip_view: Trang in phiếu đóng gói bọc ẩm chuyên dụng thực vật thủy sinh (chuẩn A4/A5).
+# ==============================================================================
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse
@@ -10,12 +24,21 @@ import random
 from .models import Product, ProductVariant, Coupon, InventoryLot, Order, OrderItem, UserProfile
 from .forms_commerce import CouponApplyForm
 
+# ------------------------------------------------------------------------------
+# 1. HÀM TIỆN ÍCH TRÍCH XUẤT GIỎ HÀNG TỪ SESSION (CART HELPER)
+# ------------------------------------------------------------------------------
 def get_cart_items(request):
     """
     Trích xuất danh sách sản phẩm trong giỏ hàng từ session.
+    
     Hỗ trợ cơ chế lưỡng tính (Dual-Mode):
-    - Key 'product_id': Sản phẩm theo quy cách mặc định.
-    - Key 'product_id:variant_id': Sản phẩm theo biến thể quy cách cụ thể (ProductVariant).
+    - Key dạng 'product_id' (ví dụ: '1'): Cây theo quy cách mặc định (Lá nước).
+    - Key dạng 'product_id:variant_id' (ví dụ: '1:3'): Cây theo biến thể quy cách (vd: Cốc invitro, Bụi cạn).
+    
+    Trả về:
+    - items: Danh sách thông tin chi tiết từng món hàng trong giỏ.
+    - subtotal: Tổng tiền tạm tính trước khi giảm giá.
+    - savings: Tổng số tiền tiết kiệm được từ các mặt hàng đang giảm giá.
     """
     cart = request.session.get('cart', {})
     if not isinstance(cart, dict):
@@ -25,10 +48,13 @@ def get_cart_items(request):
     subtotal = Decimal('0')
     savings = Decimal('0')
 
+    # Duyệt qua từng sản phẩm trong giỏ hàng session
     for cart_key, qty in list(cart.items()):
         cart_key_str = str(cart_key)
         prod_id = None
         var_id = None
+        
+        # Phân tích key xem là sản phẩm thường hay có kèm biến thể
         if ':' in cart_key_str:
             parts = cart_key_str.split(':', 1)
             try:
@@ -51,6 +77,7 @@ def get_cart_items(request):
                 except ProductVariant.DoesNotExist:
                     variant = None
 
+            # Xác định giá bán và tên quy cách
             if variant:
                 unit_price = variant.price
                 regular_price = variant.price
@@ -61,6 +88,7 @@ def get_cart_items(request):
                 variant_name = "Mặc định (Lá nước)"
 
             item_subtotal = unit_price * qty
+            # Tính tiền tiết kiệm nếu sản phẩm có giá khuyến mãi
             if not variant and prod.sale_price and prod.sale_price < prod.regular_price:
                 savings += (prod.regular_price - prod.sale_price) * qty
             subtotal += item_subtotal
@@ -80,9 +108,16 @@ def get_cart_items(request):
 
     return items, subtotal, savings
 
+
+# ------------------------------------------------------------------------------
+# 2. TÍNH TOÁN VÀ XÁC MINH COUPON (DISCOUNT CALCULATOR)
+# ------------------------------------------------------------------------------
 def calculate_coupon_discount(coupon, subtotal):
     """
-    Tính số tiền chiết khấu thực tế của coupon dựa trên giá trị đơn hàng.
+    Tính số tiền chiết khấu thực tế của coupon dựa trên giá trị đơn hàng:
+    - Loại 'percent': Giảm theo phần trăm (%) tổng hóa đơn.
+    - Loại 'fixed': Giảm số tiền cố định (VNĐ).
+    - Đảm bảo số tiền giảm tối đa không vượt quá tổng giá trị đơn hàng.
     """
     if not coupon or not coupon.is_active:
         return Decimal('0')
@@ -98,9 +133,13 @@ def calculate_coupon_discount(coupon, subtotal):
         discount = subtotal
     return discount
 
+
 def get_valid_coupon_from_session(request, subtotal):
     """
-    Xác minh và lấy đối tượng Coupon hợp lệ từ session nếu thỏa mãn điều kiện.
+    Xác minh và lấy đối tượng Coupon hợp lệ từ session:
+    - Kiểm tra mã còn kích hoạt không (is_active).
+    - Kiểm tra thời hạn hiệu lực (valid_from, valid_to).
+    - Kiểm tra giá trị đơn hàng có đạt mức tối thiểu (min_order_value) không.
     """
     coupon_id = request.session.get('applied_coupon_id')
     if not coupon_id:
@@ -121,9 +160,15 @@ def get_valid_coupon_from_session(request, subtotal):
     except Coupon.DoesNotExist:
         return None, Decimal('0')
 
+
+# ------------------------------------------------------------------------------
+# 3. TRANG GIỎ HÀNG (CART VIEW)
+# ------------------------------------------------------------------------------
 def cart_view(request):
     """
-    Trang xem và quản lý giỏ hàng tích hợp coupon và tổng chi phí.
+    Trang xem và quản lý giỏ hàng:
+    - Hiển thị danh sách các cây và biến thể đã chọn.
+    - Tính toán tạm tính, giảm giá từ voucher và tổng tiền thanh toán cuối cùng.
     """
     items, subtotal, savings = get_cart_items(request)
     coupon, discount = get_valid_coupon_from_session(request, subtotal)
@@ -142,9 +187,20 @@ def cart_view(request):
     }
     return render(request, 'aquashop/cart.html', context)
 
+
+# ------------------------------------------------------------------------------
+# 4. THÊM SẢN PHẨM VÀO GIỎ HÀNG (ADD TO CART)
+# ------------------------------------------------------------------------------
 def add_to_cart_view(request, product_id):
     """
-    Thêm sản phẩm hoặc biến thể quy cách vào giỏ hàng session.
+    Thêm một loài cây hoặc biến thể quy cách vào giỏ hàng trong session.
+    
+    Quy trình hoạt động:
+    - Bước 1: Lấy đối tượng Product theo ID.
+    - Bước 2: Kiểm tra xem người dùng có chọn biến thể quy cách (variant_id) không.
+    - Bước 3: Đọc số lượng cần thêm (quantity).
+    - Bước 4: Kiểm tra số lượng tồn kho khả dụng để không vượt quá giới hạn.
+    - Bước 5: Cập nhật dữ liệu vào request.session['cart'] và lưu phiên.
     """
     product = get_object_or_404(Product, id=product_id)
     cart = request.session.get('cart', {})
@@ -181,10 +237,14 @@ def add_to_cart_view(request, product_id):
     messages.success(request, f"Đã thêm {qty} {display_title} vào giỏ hàng.")
     return redirect('cart')
 
+
+# ------------------------------------------------------------------------------
+# 5. XÓA SẢN PHẨM KHỎI GIỎ HÀNG (REMOVE FROM CART)
+# ------------------------------------------------------------------------------
 def remove_from_cart_view(request, item_key):
     """
-    Xóa sản phẩm hoặc biến thể khỏi giỏ hàng session.
-    item_key có thể là ID dạng int ('1') hoặc key dạng '1:2'.
+    Xóa một mục khỏi giỏ hàng session.
+    Tham số item_key có thể là ID sản phẩm thường ('1') hoặc biến thể ('1:2').
     """
     cart = request.session.get('cart', {})
     key = str(item_key)
@@ -206,10 +266,14 @@ def remove_from_cart_view(request, item_key):
         messages.info(request, "Đã xóa sản phẩm khỏi giỏ hàng.")
     return redirect('cart')
 
+
+# ------------------------------------------------------------------------------
+# 6. TĂNG / GIẢM SỐ LƯỢNG SẢN PHẨM TRONG GIỎ (UPDATE CART QUANTITY)
+# ------------------------------------------------------------------------------
 def update_cart_quantity_view(request, item_key, action):
     """
-    Tăng, giảm hoặc cập nhật số lượng sản phẩm/biến thể trong giỏ hàng.
-    action: 'increase', 'decrease'
+    Tăng hoặc giảm số lượng của một mục trong giỏ hàng.
+    action: 'increase' (+1) hoặc 'decrease' (-1, nếu <= 0 thì tự động xóa).
     """
     cart = request.session.get('cart', {})
     key = str(item_key)
@@ -238,11 +302,19 @@ def update_cart_quantity_view(request, item_key, action):
         request.session.modified = True
     return redirect('cart')
 
+
+# ------------------------------------------------------------------------------
+# 7. ÁP DỤNG & HỦY MÃ GIẢM GIÁ (COUPON MANAGEMENT)
+# ------------------------------------------------------------------------------
 def apply_coupon_view(request):
     """
-    Xử lý nhận POST mã coupon (ví dụ: AQUA2026, FREESHIP).
-    Kiểm tra điều kiện: active, hạn sử dụng, min_order_value.
-    Lưu vào session nếu hợp lệ.
+    Xử lý nhận mã ưu đãi giảm giá qua POST (ví dụ: AQUA2026, FREESHIP).
+    
+    Quy trình kiểm tra:
+    - Bước 1: Kiểm tra mã có tồn tại trong hệ thống không.
+    - Bước 2: Kiểm tra trạng thái hoạt động và thời hạn hiệu lực.
+    - Bước 3: Kiểm tra tổng tiền đơn hàng có đạt giá trị tối thiểu không.
+    - Bước 4: Lưu thông tin mã đã áp dụng vào session['applied_coupon_id'].
     """
     if request.method != 'POST':
         return redirect('cart')
@@ -263,40 +335,46 @@ def apply_coupon_view(request):
                 return JsonResponse({'success': False, 'message': err_msg}, status=400)
             return redirect(request.META.get('HTTP_REFERER', 'cart'))
 
+        # Kiểm tra trạng thái kích hoạt
         if not coupon.is_active:
-            err_msg = f"Mã ưu đãi '{coupon.code}' hiện đang tạm ngừng kích hoạt."
+            err_msg = f"Mã ưu đãi '{coupon.code}' hiện đang bị tạm khóa."
             messages.error(request, err_msg)
             if is_ajax:
                 return JsonResponse({'success': False, 'message': err_msg}, status=400)
             return redirect(request.META.get('HTTP_REFERER', 'cart'))
 
+        # Kiểm tra thời hạn hiệu lực
         today = timezone.now().date()
         if coupon.valid_from and coupon.valid_from > today:
-            err_msg = f"Mã ưu đãi '{coupon.code}' chưa đến thời điểm áp dụng (bắt đầu từ {coupon.valid_from.strftime('%d/%m/%Y')})."
+            err_msg = f"Mã ưu đãi '{coupon.code}' chưa đến ngày có hiệu lực sử dụng."
             messages.error(request, err_msg)
             if is_ajax:
                 return JsonResponse({'success': False, 'message': err_msg}, status=400)
             return redirect(request.META.get('HTTP_REFERER', 'cart'))
 
         if coupon.valid_to and coupon.valid_to < today:
-            err_msg = f"Mã ưu đãi '{coupon.code}' đã hết hạn vào ngày {coupon.valid_to.strftime('%d/%m/%Y')}."
+            err_msg = f"Mã ưu đãi '{coupon.code}' đã hết hạn sử dụng."
             messages.error(request, err_msg)
             if is_ajax:
                 return JsonResponse({'success': False, 'message': err_msg}, status=400)
             return redirect(request.META.get('HTTP_REFERER', 'cart'))
 
+        # Kiểm tra giá trị đơn hàng tối thiểu
         if subtotal < coupon.min_order_value:
-            err_msg = f"Đơn hàng của bạn đạt {subtotal:,.0f}₫, chưa đạt mức tối thiểu {coupon.min_order_value:,.0f}₫ để dùng mã '{coupon.code}'."
+            err_msg = (
+                f"Đơn hàng của bạn chưa đạt giá trị tối thiểu "
+                f"({coupon.min_order_value:,.0f}₫) để áp dụng mã '{coupon.code}'."
+            )
             messages.error(request, err_msg)
             if is_ajax:
                 return JsonResponse({'success': False, 'message': err_msg}, status=400)
             return redirect(request.META.get('HTTP_REFERER', 'cart'))
 
-        # Coupon hoàn toàn hợp lệ
+        # Tính chiết khấu và lưu vào session
         discount = calculate_coupon_discount(coupon, subtotal)
         request.session['applied_coupon_id'] = coupon.id
         request.session['applied_coupon_code'] = coupon.code
-        request.session['coupon_discount'] = str(discount)
+        request.session['coupon_discount'] = float(discount)
         request.session.modified = True
 
         succ_msg = f"Áp dụng thành công mã '{coupon.code}'! Bạn được giảm {discount:,.0f}₫ trên tổng hóa đơn."
@@ -318,9 +396,10 @@ def apply_coupon_view(request):
             return JsonResponse({'success': False, 'message': err_msg}, status=400)
         return redirect(request.META.get('HTTP_REFERER', 'cart'))
 
+
 def remove_coupon_view(request):
     """
-    Hủy mã coupon khỏi session.
+    Hủy mã giảm giá đang áp dụng khỏi phiên làm việc (Session).
     """
     removed = False
     if 'applied_coupon_id' in request.session:
@@ -341,16 +420,27 @@ def remove_coupon_view(request):
         return JsonResponse({'success': True, 'message': "Đã hủy áp dụng mã ưu đãi."})
     return redirect(request.META.get('HTTP_REFERER', 'cart'))
 
+
+# ------------------------------------------------------------------------------
+# 8. THANH TOÁN & KHẤU TRỪ KHO FIFO (ENHANCED CHECKOUT VIEW)
+# ------------------------------------------------------------------------------
 def enhanced_checkout_view(request):
     """
-    Xử lý đặt hàng:
-    - Tự động điền thông tin nếu user đã đăng nhập (họ tên, email, sđt, địa chỉ từ UserProfile).
-    - Áp dụng mã coupon từ session nếu có, tính discount_amount, subtotal_amount, total_amount.
-    - Tạo Order và OrderItem.
-    - Logic trừ kho theo lô (FIFO Inventory Deduction): Lấy các lô healthy_submerged hoặc healthy_emerged,
-      loại trừ quarantined, trừ dần theo thứ tự received_date.
-    - Xóa sạch session giỏ hàng và coupon sau khi đặt hàng thành công.
-    - Chuyển hướng tới trang thông báo thành công.
+    Xử lý thanh toán đơn hàng toàn trình kết hợp quản lý kho sinh thái:
+    
+    Quy trình xử lý gồm 6 bước:
+    - Bước 1: Trích xuất giỏ hàng từ session; nếu giỏ trống thì điều hướng về trang chủ.
+    - Bước 2: Tự động điền trước thông tin giao hàng nếu khách hàng đã đăng nhập.
+    - Bước 3: Khi người dùng bấm 'Xác Nhận Đặt Hàng' (POST):
+      + Bọc toàn bộ thao tác ghi Database trong khối transaction.atomic() để đảm bảo tính toàn vẹn (ACID).
+      + Tạo bản ghi Order với mã đơn AQ-YYYYMMDD-XXXX và lưu ghi chú giao hàng (customer_note).
+      + Tạo các bản ghi OrderItem cho từng sản phẩm trong giỏ.
+    - Bước 4: THUẬT TOÁN KHẤU TRỪ KHO LÔ FIFO (First-In, First-Out):
+      + Lọc các lô hàng khỏe mạnh ('healthy_submerged', 'healthy_emerged').
+      + BẢO VỆ CÁCH LY SINH HỌC: Bỏ qua tuyệt đối các lô 'quarantined' (cách ly úng rễ, mầm bệnh).
+      + Sắp xếp theo ngày nhập kho 'received_date' tăng dần để trừ các lô nhập sớm nhất trước.
+    - Bước 5: Dọn sạch giỏ hàng và mã coupon trong session.
+    - Bước 6: Chuyển hướng tới trang thông báo đặt hàng thành công (order_success.html).
     """
     items, subtotal_amount, savings = get_cart_items(request)
 
@@ -359,10 +449,10 @@ def enhanced_checkout_view(request):
         return redirect('home')
 
     coupon, discount_amount = get_valid_coupon_from_session(request, subtotal_amount)
-    shipping_fee = Decimal('0')  # Miễn phí bảo hiểm bọc ẩm chuyên dụng
+    shipping_fee = Decimal('0')  # Miễn phí vận chuyển bảo hiểm bọc ẩm chuyên dụng
     total_amount = max(Decimal('0'), subtotal_amount - discount_amount + shipping_fee)
 
-    # Dữ liệu khách hàng mặc định / từ hồ sơ đã đăng nhập
+    # Dữ liệu khách hàng mặc định hoặc trích xuất từ UserProfile đã đăng nhập
     user_initial = {
         'name': 'Nguyễn Văn A',
         'email': 'khachhang@gmail.com',
@@ -388,10 +478,12 @@ def enhanced_checkout_view(request):
         address = request.POST.get('address', '').strip() or user_initial['address']
         customer_note = request.POST.get('customer_note', '').strip()[:500]
 
+        # Sinh mã đơn hàng chuẩn format: AQ-YYYYMMDD-XXXX
         order_code = f"AQ-{timezone.now().strftime('%Y%m%d')}-{random.randint(1000, 9999)}"
 
+        # Đảm bảo an toàn giao dịch cơ sở dữ liệu (Transaction Atomic)
         with transaction.atomic():
-            # 1. Tạo đơn hàng Order
+            # 1. Tạo bản ghi đơn hàng Order
             order = Order.objects.create(
                 order_code=order_code,
                 user=request.user if request.user.is_authenticated else None,
@@ -441,10 +533,12 @@ def enhanced_checkout_view(request):
                 prod.stock_quantity = max(0, prod.stock_quantity - qty_needed)
                 prod.save(update_fields=['stock_quantity'])
 
-                # FIFO INVENTORY DEDUCTION:
-                # Lấy các lô hàng khả dụng (healthy_submerged hoặc healthy_emerged),
-                # loại trừ nghiêm ngặt các lô 'quarantined' (cách ly úng lá),
-                # sắp xếp theo ngày nhập kho received_date tăng dần (FIFO).
+                # --------------------------------------------------------------
+                # THUẬT TOÁN KHẤU TRỪ KHO LÔ FIFO (First In First Out):
+                # - Lấy các lô khỏe mạnh (healthy_submerged hoặc healthy_emerged).
+                # - Bỏ qua lô cách ly (quarantined) để tránh xuất cây nhiễm bệnh cho khách.
+                # - Sắp xếp theo ngày nhập received_date tăng dần.
+                # --------------------------------------------------------------
                 eligible_lots = InventoryLot.objects.filter(
                     product=prod,
                     status__in=['healthy_submerged', 'healthy_emerged'],
@@ -492,10 +586,18 @@ def enhanced_checkout_view(request):
     }
     return render(request, 'aquashop/checkout.html', context)
 
+
+# ------------------------------------------------------------------------------
+# 9. BẢNG QUẢN TRỊ KHO VẬN DÀNH CHO NHÂN VIÊN (STAFF DASHBOARD)
+# ------------------------------------------------------------------------------
 def staff_dashboard_view(request):
     """
-    Bảng điều khiển quản trị thống kê cho Nhân viên kho & Quản trị:
-    Chỉ cho phép tài khoản Admin / Staff truy cập.
+    Bảng điều khiển quản trị thống kê dành riêng cho Nhân viên & Quản trị viên (RBAC):
+    - Kiểm tra quyền truy cập nghiêm ngặt (chỉ is_staff, is_superuser hoặc role in ['staff', 'admin']).
+    - Thống kê doanh thu thực tế và doanh thu chờ xử lý.
+    - Đếm số lượng đơn hàng theo từng trạng thái.
+    - Cảnh báo các lô hàng đang cách ly sinh học (quarantined).
+    - Top 5 cây thủy sinh bán chạy nhất.
     """
     if not request.user.is_authenticated:
         messages.warning(request, "Vui lòng đăng nhập với tài khoản Quản trị viên hoặc Nhân viên để truy cập.")
@@ -510,7 +612,7 @@ def staff_dashboard_view(request):
         messages.error(request, "Quyền truy cập bị từ chối: Khu vực này chỉ dành riêng cho Quản trị viên và Nhân viên kho vận.")
         return redirect('home')
 
-    # 1. Thống kê doanh thu thực nhận (đơn xác nhận, đang giao, hoàn tất)
+    # 1. Thống kê tổng doanh thu thực nhận
     revenue_statuses = ['confirmed', 'shipping', 'completed']
     revenue_data = Order.objects.filter(status__in=revenue_statuses).aggregate(total_rev=Sum('total_amount'))
     total_revenue = revenue_data['total_rev'] or Decimal('0')
@@ -519,7 +621,7 @@ def staff_dashboard_view(request):
     pending_revenue_data = Order.objects.filter(status='pending').aggregate(total_rev=Sum('total_amount'))
     pending_revenue = pending_revenue_data['total_rev'] or Decimal('0')
 
-    # 2. Thống kê số lượng đơn theo trạng thái
+    # 2. Thống kê số lượng đơn theo từng trạng thái
     orders_by_status = {
         'all': Order.objects.count(),
         'pending': Order.objects.filter(status='pending').count(),
@@ -529,7 +631,7 @@ def staff_dashboard_view(request):
         'cancelled': Order.objects.filter(status='cancelled').count(),
     }
 
-    # 3. Danh sách cảnh báo các lô cách ly (quarantined)
+    # 3. Danh sách cảnh báo các lô cách ly sinh học (quarantined)
     quarantined_lots = InventoryLot.objects.filter(
         status='quarantined'
     ).select_related('product').order_by('-received_date')
@@ -542,14 +644,11 @@ def staff_dashboard_view(request):
         total_orders_count=Count('orderitem')
     ).filter(total_sold__gt=0).order_by('-total_sold')[:5]
 
-    # Nếu chưa có đơn bán chạy, lấy danh sách sản phẩm mẫu
     if not top_plants.exists():
         top_plants = Product.objects.all()[:5]
 
     # 5. Danh sách 10 đơn hàng gần nhất
     recent_orders = Order.objects.all().order_by('-created_at')[:10].prefetch_related('items__product')
-
-    # Trạng thái đơn hàng cho dropdown update
     status_choices = Order.STATUS_CHOICES
 
     context = {
@@ -565,10 +664,14 @@ def staff_dashboard_view(request):
     }
     return render(request, 'aquashop/commerce/dashboard.html', context)
 
+
+# ------------------------------------------------------------------------------
+# 10. CẬP NHẬT TRẠNG THÁI ĐƠN HÀNG (UPDATE ORDER STATUS)
+# ------------------------------------------------------------------------------
 def update_order_status(request, order_id):
     """
-    Cập nhật trạng thái đơn hàng nhanh từ Dashboard.
-    Chỉ cho phép tài khoản Admin / Staff.
+    Cập nhật nhanh trạng thái đơn hàng từ giao diện Staff Dashboard.
+    Tự động ghi nhật ký thời gian và thay đổi trạng thái vào trường tracking_note.
     """
     if not request.user.is_authenticated or not (
         request.user.is_staff or 
@@ -598,10 +701,14 @@ def update_order_status(request, order_id):
     return redirect('staff_dashboard')
 
 
+# ------------------------------------------------------------------------------
+# 11. IN PHIẾU GIAO HÀNG & ĐÓNG GÓI BỌC ẨM CHUYÊN DỤNG (PRINT PACKING SLIP)
+# ------------------------------------------------------------------------------
 def print_packing_slip_view(request, order_id):
     """
     Trang in Phiếu giao hàng & Đóng gói bọc ẩm chuyên dụng thực vật thủy sinh (chuẩn A4/A5).
     Chỉ cho phép tài khoản Staff / Admin truy cập (kiểm soát phân quyền RBAC chặt chẽ).
+    Tích hợp checklist kiểm tra bọc rêu ẩm, đóng túi bóng khí chống dập và cam kết bảo hiểm 1 đổi 1.
     """
     if not request.user.is_authenticated or not (
         request.user.is_staff or 

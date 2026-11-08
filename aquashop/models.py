@@ -1,8 +1,50 @@
+# ==============================================================================
+# AQUASHOP - KIẾN TRÚC MÔ HÌNH DỮ LIỆU CỐT LÕI (DATABASE MODELS & ORM)
+# ==============================================================================
+# Tệp này định nghĩa toàn bộ cấu trúc bảng và thực thể của hệ thống AquaPlant:
+#
+# 1. PHÂN HỆ NGƯỜI DÙNG & PHÂN QUYỀN:
+#    - UserProfile: Mở rộng tài khoản User mặc định, phân quyền RBAC (Khách hàng, Nhân viên, Admin).
+#
+# 2. PHÂN HỆ SẢN PHẨM & THÔNG SỐ SINH HỌC:
+#    - Category: Phân loại danh mục cây (Tiền cảnh, Trung cảnh, Hậu cảnh, Ráy - Dương xỉ).
+#    - Product: Thực thể cây cảnh cốt lõi, lưu trữ các chỉ số sinh thái (CO2, Ánh sáng, pH, Nhiệt độ, Độ phủ tán cm²).
+#    - ProductVariant: Biến thể quy cách (Cốc cấy mô Invitro, Bụi thuần lá nước, Cây lá cạn ươm vỉ).
+#    - ProductReview: Hệ thống đánh giá sao (1-5★) và bình luận trải nghiệm của khách hàng.
+#
+# 3. PHÂN HỆ BỐ CỤC HỒ MẪU (COMBO LAYOUT):
+#    - LayoutPreset: Các phong cách bể phối sẵn (Iwagumi, Hà Lan, Rừng Lũa tự nhiên).
+#    - LayoutPresetItem: Bảng trung gian định nghĩa danh sách cây thành phần và số lượng trong từng combo.
+#
+# 4. PHÂN HỆ KHO VẬN & QUẢN LÝ LÔ FIFO:
+#    - InventoryLot: Quản lý nhập - xuất theo từng lô hàng, hỗ trợ khấu trừ FIFO và cách ly sinh học (quarantined).
+#
+# 5. PHÂN HỆ THƯƠNG MẠI & ĐƠN HÀNG:
+#    - Coupon: Quản lý mã ưu đãi giảm giá (theo % hoặc số tiền cố định, giá trị đơn tối thiểu).
+#    - Order: Đơn đặt hàng, thông tin giao hàng, ghi chú bọc ẩm (customer_note), tiến trình vận đơn.
+#    - OrderItem: Danh sách chi tiết các mặt hàng trong đơn kèm đơn giá và quy cách tại thời điểm mua.
+#
+# 6. PHÂN HỆ CƠ SỞ TRI THỨC:
+#    - Article: Cẩm nang hướng dẫn trồng, tỉa ngọn, hạ phèn và phòng trừ rêu hại.
+#    - FAQ: Hỏi đáp thường gặp của khách hàng khi mua và dưỡng cây thủy sinh mới.
+# ==============================================================================
+
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils.text import slugify
 
+
+# ------------------------------------------------------------------------------
+# 1. HỒ SƠ NGƯỜI DÙNG & PHÂN QUYỀN (USER PROFILE & RBAC)
+# ------------------------------------------------------------------------------
 class UserProfile(models.Model):
+    """
+    Mô hình mở rộng bảng User mặc định của Django qua quan hệ 1-1 (OneToOneField).
+    Hỗ trợ phân quyền truy cập (Role-Based Access Control):
+    - 'customer': Khách hàng mua sắm, tra cứu đơn hàng cá nhân.
+    - 'staff': Nhân viên kho, xử lý đơn hàng, cập nhật trạng thái và in phiếu đóng gói.
+    - 'admin': Quản trị viên toàn quyền hệ thống.
+    """
     ROLE_CHOICES = [
         ('customer', 'Khách hàng'),
         ('staff', 'Nhân viên xử lý đơn & Kho'),
@@ -22,7 +64,13 @@ class UserProfile(models.Model):
         return f"{self.user.username} ({self.get_role_display()})"
 
 
+# ------------------------------------------------------------------------------
+# 2. DANH MỤC CÂY CẢNH THỦY SINH (CATEGORY)
+# ------------------------------------------------------------------------------
 class Category(models.Model):
+    """
+    Phân loại các nhóm thực vật thủy sinh (ví dụ: Cây tiền cảnh, Trung cảnh, Ráy - Tiêu thảo...).
+    """
     name = models.CharField(max_length=100, verbose_name="Tên danh mục")
     slug = models.SlugField(unique=True, verbose_name="Chuỗi đường dẫn")
     description = models.TextField(blank=True, verbose_name="Mô tả danh mục")
@@ -35,7 +83,19 @@ class Category(models.Model):
         return self.name
 
 
+# ------------------------------------------------------------------------------
+# 3. THỰC THỂ CÂY THỦY SINH & HỒ SƠ SINH HỌC (PRODUCT)
+# ------------------------------------------------------------------------------
 class Product(models.Model):
+    """
+    Thực thể trung tâm: Đại diện cho từng dòng cây cảnh thủy sinh.
+    Tích hợp các chỉ số môi trường sống đặc thù:
+    - co2_requirement: Yêu cầu bình khí CO2 ('yes'/'no').
+    - light_requirement: Mức độ ánh sáng ('low', 'medium', 'high').
+    - placement_position: Vị trí cắm cây trong hồ (Tiền cảnh, Trung cảnh, Hậu cảnh, Gắn đá lũa).
+    - care_level: Độ khó chăm sóc ('easy', 'medium', 'hard').
+    - coverage_area_cm2: Diện tích phủ tán chuẩn của 1 cốc/bụi cây (dùng cho thuật toán tính số lượng cây).
+    """
     CO2_CHOICES = [
         ('no', 'Không cần bình CO2 (Dễ trồng)'),
         ('yes', 'Cần bình khí CO2 ổn định'),
@@ -73,7 +133,7 @@ class Product(models.Model):
     regular_price = models.DecimalField(max_digits=10, decimal_places=0, verbose_name="Giá niêm yết (VNĐ)")
     sale_price = models.DecimalField(max_digits=10, decimal_places=0, null=True, blank=True, verbose_name="Giá khuyến mãi (VNĐ)")
     
-    # Hồ sơ sinh học chi tiết
+    # Hồ sơ sinh học chi tiết (Dữ liệu nền cho Trợ lý chọn cây & Bộ lọc)
     co2_requirement = models.CharField(max_length=20, choices=CO2_CHOICES, default='no', verbose_name="Nhu cầu CO2")
     light_requirement = models.CharField(max_length=20, choices=LIGHT_CHOICES, default='low', verbose_name="Nhu cầu ánh sáng")
     placement_position = models.CharField(max_length=20, choices=POSITION_CHOICES, default='tien_canh', verbose_name="Vị trí trồng")
@@ -98,6 +158,7 @@ class Product(models.Model):
         verbose_name_plural = "Quản lý sản phẩm cây cảnh"
 
     def save(self, *args, **kwargs):
+        # Tự động tạo slug từ tên sản phẩm nếu để trống
         if not self.slug:
             self.slug = slugify(self.name)
         super().save(*args, **kwargs)
@@ -107,10 +168,17 @@ class Product(models.Model):
 
     @property
     def current_price(self):
+        """Trả về giá đang áp dụng (ưu tiên giá sale nếu có)."""
         return self.sale_price if self.sale_price else self.regular_price
 
 
+# ------------------------------------------------------------------------------
+# 4. ĐÁNH GIÁ SẢN PHẨM (PRODUCT REVIEW)
+# ------------------------------------------------------------------------------
 class ProductReview(models.Model):
+    """
+    Lưu trữ đánh giá chất lượng cây và số sao (1-5★) của khách hàng.
+    """
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="reviews", verbose_name="Sản phẩm")
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Người đánh giá")
     reviewer_name = models.CharField(max_length=100, verbose_name="Họ tên người đánh giá")
@@ -126,7 +194,15 @@ class ProductReview(models.Model):
         return f"{self.reviewer_name} - {self.product.name} ({self.rating}★)"
 
 
+# ------------------------------------------------------------------------------
+# 5. BIẾN THỂ QUY CÁCH ĐÓNG GÓI CÂY (PRODUCT VARIANT)
+# ------------------------------------------------------------------------------
 class ProductVariant(models.Model):
+    """
+    Đại diện cho các hình thức bán khác nhau của cùng 1 loài cây:
+    Ví dụ:
+    - Cây Ráy Nana: Bụi lá nước thuần dưỡng (65k), Cốc cấy mô invitro sạch ốc hại (85k), Giá thể buộc đá nham thạch (110k).
+    """
     product = models.ForeignKey(
         Product,
         on_delete=models.CASCADE,
@@ -170,7 +246,16 @@ class ProductVariant(models.Model):
         return f"{self.product.name} - {self.name} ({self.price:,.0f}₫)"
 
 
+# ------------------------------------------------------------------------------
+# 6. QUẢN LÝ TỒN KHO THEO LÔ FIFO & CÁCH LY SINH HỌC (INVENTORY LOT)
+# ------------------------------------------------------------------------------
 class InventoryLot(models.Model):
+    """
+    Quản lý kho sinh học theo từng lô nhập hàng:
+    - Hỗ trợ thuật toán khấu trừ kho FIFO (First In First Out): Lô nào nhập trước được xuất trước.
+    - Cơ chế cách ly sinh học: Các lô có trạng thái 'quarantined' (úng rữa, mầm bệnh)
+      bị loại trừ tuyệt đối, không được tính vào tồn kho bán ra cho khách.
+    """
     STATUS_CHOICES = [
         ('healthy_submerged', 'Lá nước khỏe mạnh (Sẵn sàng bán)'),
         ('healthy_emerged', 'Lá cạn thuần dưỡng (Sẵn sàng bán)'),
@@ -192,7 +277,15 @@ class InventoryLot(models.Model):
         return f"Lô {self.lot_code}: {self.product.name} ({self.quantity_available} đơn vị - {self.get_status_display()})"
 
 
+# ------------------------------------------------------------------------------
+# 7. MÃ ƯU ĐÃI GIẢM GIÁ (COUPON)
+# ------------------------------------------------------------------------------
 class Coupon(models.Model):
+    """
+    Quản lý các chương trình khuyến mãi và mã ưu đãi:
+    - Giảm theo phần trăm (percent) hoặc giảm trực tiếp tiền mặt (fixed).
+    - Ràng buộc giá trị đơn tối thiểu (min_order_value) và thời hạn sử dụng.
+    """
     DISCOUNT_TYPES = [
         ('fixed', 'Khấu trừ tiền mặt (VNĐ)'),
         ('percent', 'Khấu trừ phần trăm (%)'),
@@ -213,7 +306,14 @@ class Coupon(models.Model):
         return f"{self.code} ({self.discount_value} {'%' if self.discount_type == 'percent' else '₫'})"
 
 
+# ------------------------------------------------------------------------------
+# 8. BỐ CỤC HỒ MẪU (LAYOUT PRESET & COMBO ITEMS)
+# ------------------------------------------------------------------------------
 class LayoutPreset(models.Model):
+    """
+    Gói combo bố cục hồ mẫu đã được thiết kế sẵn (vd: Phong cách Iwagumi hồ 60cm, Rừng Lũa hồ 90cm).
+    Khách hàng có thể mua nguyên set trọn gói hoặc bỏ bớt những cây không cần thiết.
+    """
     name = models.CharField(max_length=150, verbose_name="Tên bố cục hồ mẫu")
     tank_size = models.CharField(max_length=50, verbose_name="Kích thước hồ đề xuất")
     style = models.CharField(max_length=100, verbose_name="Phong cách bố cục")
@@ -230,14 +330,13 @@ class LayoutPreset(models.Model):
 
     def get_combo_items(self):
         """
-        Trả về danh sách cây thành phần liên kết qua LayoutPresetItem.
-        Nếu chưa có dữ liệu LayoutPresetItem, tự động fallback từ danh sách cây Product.
+        Lấy danh sách các cây thành phần thuộc bố cục này qua bảng LayoutPresetItem.
+        Có cơ chế fallback an toàn nếu dữ liệu cũ chưa liên kết item.
         """
         items = list(self.preset_items.select_related('product').all())
         if items:
             return items
 
-        # Fallback cho trường hợp dữ liệu cũ chưa khởi tạo LayoutPresetItem
         fallback_products = list(Product.objects.all()[:3])
         dummy_items = []
         roles = ['Tiền cảnh', 'Trung cảnh', 'Hậu cảnh']
@@ -254,6 +353,10 @@ class LayoutPreset(models.Model):
 
 
 class LayoutPresetItem(models.Model):
+    """
+    Bảng trung gian: Định nghĩa một loài cây nằm ở tầng nào (Tiền/Trung/Hậu cảnh)
+    và số lượng cốc cần cắm trong một Bố Cục Hồ Mẫu.
+    """
     preset = models.ForeignKey(
         LayoutPreset,
         on_delete=models.CASCADE,
@@ -290,7 +393,17 @@ class LayoutPresetItem(models.Model):
         return price * self.quantity
 
 
+# ------------------------------------------------------------------------------
+# 9. ĐƠN ĐẶT HÀNG & CHI TIẾT ĐƠN HÀNG (ORDER & ORDER ITEM)
+# ------------------------------------------------------------------------------
 class Order(models.Model):
+    """
+    Lưu trữ thông tin đơn đặt hàng của khách hàng:
+    - Mã đơn hàng: AQ-YYYYMMDD-XXXX.
+    - customer_note: Ghi chú giao hàng (vd: bọc ẩm 3 lớp, giao giờ hành chính).
+    - tracking_note: Nhật ký thay đổi trạng thái và hành trình xe lạnh.
+    - Trạng thái đơn hàng: pending -> confirmed -> shipping -> completed / cancelled.
+    """
     STATUS_CHOICES = [
         ('pending', 'Chờ xác nhận & chuẩn bị cây'),
         ('confirmed', 'Đã xác nhận (Đang đóng gói bọc ẩm)'),
@@ -332,6 +445,10 @@ class Order(models.Model):
 
 
 class OrderItem(models.Model):
+    """
+    Chi tiết từng loài cây trong đơn hàng:
+    - Lưu lại đơn giá và tên quy cách tại thời điểm mua để không bị biến động nếu giá sản phẩm gốc thay đổi.
+    """
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items", verbose_name="Đơn hàng")
     product = models.ForeignKey(Product, on_delete=models.CASCADE, verbose_name="Sản phẩm cây cảnh")
     variant = models.ForeignKey(
@@ -351,7 +468,6 @@ class OrderItem(models.Model):
     quantity = models.PositiveIntegerField(default=1, verbose_name="Số lượng")
     unit_price = models.DecimalField(max_digits=10, decimal_places=0, default=0, verbose_name="Đơn giá tại thời điểm mua (VNĐ)")
     subtotal = models.DecimalField(max_digits=12, decimal_places=0, default=0, verbose_name="Thành tiền (VNĐ)")
-    subtotal = models.DecimalField(max_digits=12, decimal_places=0, default=0, verbose_name="Thành tiền (VNĐ)")
 
     class Meta:
         verbose_name = "Mặt hàng trong đơn"
@@ -361,7 +477,13 @@ class OrderItem(models.Model):
         return f"{self.product.name} x {self.quantity}"
 
 
+# ------------------------------------------------------------------------------
+# 10. CƠ SỞ TRI THỨC: CẨM NANG THỦY SINH & HỎI ĐÁP (ARTICLES & FAQ)
+# ------------------------------------------------------------------------------
 class Article(models.Model):
+    """
+    Cẩm nang hướng dẫn kỹ thuật thủy sinh, phương pháp diệt rêu hại và ươm cấy mô.
+    """
     title = models.CharField(max_length=250, verbose_name="Tiêu đề bài viết")
     slug = models.SlugField(max_length=250, unique=True, verbose_name="Slug URL")
     category = models.CharField(max_length=100, default='Kỹ thuật thủy sinh', verbose_name="Chuyên mục")
@@ -379,6 +501,9 @@ class Article(models.Model):
 
 
 class FAQ(models.Model):
+    """
+    Các câu hỏi thường gặp của khách hàng khi mua và chăm sóc cây cảnh thủy sinh.
+    """
     question = models.CharField(max_length=300, verbose_name="Câu hỏi thường gặp")
     answer = models.TextField(verbose_name="Câu trả lời giải đáp")
     order_num = models.PositiveIntegerField(default=1, verbose_name="Thứ tự hiển thị")

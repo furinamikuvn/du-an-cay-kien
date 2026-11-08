@@ -1,3 +1,14 @@
+# ==============================================================================
+# AQUASHOP - XỬ LÝ CHI TIẾT SẢN PHẨM, ĐÁNH GIÁ, CẨM NANG & CHÍNH SÁCH
+# ==============================================================================
+# Tệp này xử lý hiển thị nội dung và tương tác của danh mục sản phẩm:
+# 1. product_detail_view: Chi tiết cây cảnh, hồ sơ sinh học (pH, nhiệt độ), sản phẩm liên quan.
+# 2. submit_review_view: Tiếp nhận và lưu đánh giá sao (1-5★) từ khách hàng.
+# 3. article_list_view & article_detail_view: Cẩm nang hướng dẫn dưỡng cây, diệt rêu hại.
+# 4. faq_view: Hỏi đáp các thắc mắc thường gặp.
+# 5. policy_detail_view: Chi tiết các chính sách bán hàng & bảo hiểm dập nát 1 đổi 1.
+# ==============================================================================
+
 from django.shortcuts import render, redirect, get_object_or_404
 from django.db.models import Avg, Count
 from django.contrib import messages
