@@ -175,13 +175,16 @@ du-an-cay-kien/
 
 ---
 
-## 8. CÁC CHỨC NĂNG NGHIỆP VỤ TRỌNG YẾU
+## 8. CÁC CHỨC NĂNG NGHIỆP VỤ ĐÃ THIẾT KẾ VÀ CÀI ĐẶT
 
-1. **Hồ sơ sinh thái minh bạch (Biological Profile):** Cung cấp 8 chỉ số khoa học cho từng loại cây: độ pH, nhiệt độ, nhu cầu CO₂, quang độ, dạng lá (lá nước thuần), vị trí cắm và kỹ thuật dưỡng cây.
-2. **Khấu trừ kho tự động theo lô FIFO:** Ưu tiên xuất kho từ các lô cấy mô khỏe mạnh nhập sớm nhất; tự động phong tỏa các lô đang cách ly rữa lá để bảo vệ hồ của người mua.
-3. **Trợ lý thông minh & Dự toán diện tích:** Thuật toán tính toán số cốc cây theo diện tích đáy hồ ($cm^2$), chống mua thiếu hoặc lãng phí.
-4. **Chính sách bảo hiểm thực vật 1 đổi 1:** Đền bù 100% hoặc gửi bù cây hỏa tốc nếu dập nát do vận chuyển trong 24h.
-5. **Phân quyền bảo mật RBAC:** Ẩn hoàn toàn bảng điều khiển kho vận khỏi tài khoản khách hàng thông thường; bảo vệ dữ liệu nội bộ.
+Dựa trên bảng đặc tả yêu cầu ban đầu của đồ án và báo cáo tiến độ môn học, hệ thống đã hoàn thiện 6 chức năng cốt lõi:
+
+1. **Chức năng Hiển thị Danh mục & Danh sách Cây Cảnh (Mã F02):** Khách hàng khi truy cập có cái nhìn tổng quan về các nhóm cây theo bố cục hồ thủy sinh (cây tiền cảnh trải thảm, cây trung cảnh bụi gốc, cây hậu cảnh cắt cắm, phân nền). Thanh điều hướng danh mục kèm số lượng cây đang kinh doanh, lưới sản phẩm hiển thị ảnh chụp thực tế, tên khoa học, nhãn giảm giá và giá bán niêm yết.
+2. **Chức năng Xem Chi Tiết Cây Cảnh & Đánh Giá Phản Hồi (Mã F02 & F03):** Trang chi tiết hiển thị hình ảnh cận cảnh độ phân giải cao, giá gốc gạch ngang và giá khuyến mãi nổi bật, số lượng còn sẵn trong kho. Cho phép tùy chỉnh số lượng tăng giảm trước khi thêm vào giỏ hàng và gửi đánh giá sao kèm nhận xét thực tế.
+3. **Chức năng Quản Lý Giỏ Hàng Mua Sắm Theo Phiên (Mã F05):** Lưu trữ giỏ hàng qua cơ chế Django Session không bắt buộc đăng nhập ngay. Cập nhật huy hiệu giỏ hàng trên menu, bảng chi tiết giỏ hàng cho phép điều chỉnh số lượng, xóa món và tự động tính tổng tiền thanh toán kèm chính sách miễn phí giao hàng.
+4. **Chức năng Đặt Hàng & Thanh Toán Khi Nhận Hàng - COD (Mã F05 & F06):** Thu thập đầy đủ thông tin người nhận (họ tên, SĐT, email, địa chỉ cụ thể, ghi chú giờ nhận hàng), tự động sinh mã đơn hàng, lưu trữ an toàn vào cơ sở dữ liệu và tự động trừ tồn kho sản phẩm.
+5. **Chức năng Tra Cứu Tiến Độ Đơn Hàng (Mã F06):** Tra cứu công khai hành trình và tình trạng xử lý đơn hàng thông qua mã hóa đơn (ví dụ: HD-20261108-8888) hoặc số điện thoại người nhận mà không cần gọi điện thoại cho cửa hàng.
+6. **Chức năng Quản Trị Hệ Thống Dành Cho Người Quản Lý (Mã F01 & F02):** Phân hệ Django Admin tập trung và an toàn để quản lý danh mục, sản phẩm cây cảnh với ảnh đại diện thu nhỏ (thumbnail), quản lý đơn đặt hàng và phê duyệt đánh giá của khách hàng.
 
 ---
 
