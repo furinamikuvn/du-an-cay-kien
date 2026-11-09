@@ -1,3 +1,8 @@
+# Local artifacts & debug
+.tawa_eye_output/
+demo_pages/
+*.log
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

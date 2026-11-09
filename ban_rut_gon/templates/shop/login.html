@@ -17,7 +17,12 @@
             {{ form.username }}
         </div>
         <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">{{ form.password.label }}</label>
+            <div class="flex items-center justify-between mb-1">
+                <label class="block text-xs font-bold text-slate-700">{{ form.password.label }}</label>
+                <a href="{% url 'forgot_password' %}" class="text-[11px] text-[#2F5C3E] hover:underline font-semibold">
+                    Quên mật khẩu?
+                </a>
+            </div>
             {{ form.password }}
         </div>
 

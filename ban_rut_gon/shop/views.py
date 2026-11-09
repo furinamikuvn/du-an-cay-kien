@@ -21,7 +21,7 @@ from django.db.models import Q
 from django.db import transaction
 
 from .models import Category, Product, Order, OrderItem, ProductReview
-from .forms import CheckoutForm, RegisterForm, LoginForm, ReviewForm, OrderTrackingForm
+from .forms import CheckoutForm, RegisterForm, LoginForm, ReviewForm, OrderTrackingForm, ForgotPasswordForm
 
 
 # ------------------------------------------------------------------------------
@@ -296,20 +296,63 @@ def checkout_view(request):
 
 
 # ------------------------------------------------------------------------------
-# 5. TRA CỨU ĐƠN HÀNG (ORDER TRACKING VIEW)
+# 5. TRA CỨU ĐƠN HÀNG (ORDER TRACKING VIEW - BẢO MẬT & CHỐNG LỘ THÔNG TIN)
 # ------------------------------------------------------------------------------
 def order_tracking_view(request):
     """
-    Cho phép khách hàng tra cứu trạng thái đơn hàng công khai mà không cần đăng nhập:
-    - Nhập mã đơn hàng (ví dụ: HD-20261108-1234) hoặc số điện thoại.
+    Tra cứu trạng thái đơn hàng có cơ chế bảo vệ quyền riêng tư (Privacy-First):
+    - Người dùng đã đăng nhập: Chỉ được tra cứu đơn hàng của chính tài khoản mình.
+      Cấm dùng số điện thoại của người khác để dò quét lộ thông tin.
+    - Khách vãng lai: Yêu cầu cung cấp Mã đơn hàng cụ thể (bắt đầu bằng HD-...).
+      Thông tin nhạy cảm (Họ tên, SĐT, Địa chỉ nhà) được che giấu tự động (Data Masking).
     """
     found_orders = []
     keyword = request.GET.get('keyword', '').strip()
 
     if keyword:
-        found_orders = Order.objects.filter(
-            Q(order_code__iexact=keyword) | Q(phone__icontains=keyword)
-        ).prefetch_related('items__product')
+        is_order_code = keyword.upper().startswith('HD-') or '-' in keyword
+
+        if request.user.is_authenticated:
+            # Người dùng đã đăng nhập
+            if is_order_code:
+                orders = Order.objects.filter(order_code__iexact=keyword).prefetch_related('items__product')
+                for o in orders:
+                    o.is_owner = (o.user == request.user or (request.user.email and o.email == request.user.email))
+                    found_orders.append(o)
+                if not orders.exists():
+                    messages.info(request, f"Không tìm thấy đơn hàng nào có mã \"{keyword}\".")
+            else:
+                # Tìm kiếm theo số điện thoại khi đã đăng nhập: Chỉ cho phép tìm đơn thuộc về user hiện tại
+                orders = Order.objects.filter(user=request.user, phone__icontains=keyword).prefetch_related('items__product')
+                if orders.exists():
+                    for o in orders:
+                        o.is_owner = True
+                        found_orders.append(o)
+                else:
+                    # Kiểm tra xem SĐT này có phải của người khác hay không để cảnh báo bảo mật
+                    other_exists = Order.objects.filter(phone__icontains=keyword).exclude(user=request.user).exists()
+                    if other_exists:
+                        messages.warning(
+                            request,
+                            "Vì lý do bảo mật dữ liệu khách hàng, bạn không thể tra cứu đơn hàng của số điện thoại khác khi đang đăng nhập tài khoản."
+                        )
+                    else:
+                        messages.info(request, "Không tìm thấy đơn hàng nào khớp với thông tin bạn đã nhập.")
+        else:
+            # Khách vãng lai (Chưa đăng nhập)
+            if is_order_code:
+                orders = Order.objects.filter(order_code__iexact=keyword).prefetch_related('items__product')
+                for o in orders:
+                    o.is_owner = False  # Khách ngoài -> luôn mask thông tin cá nhân
+                    found_orders.append(o)
+                if not orders.exists():
+                    messages.info(request, f"Không tìm thấy đơn hàng nào có mã \"{keyword}\". Vui lòng kiểm tra lại mã trên hóa đơn.")
+            else:
+                # Khách vãng lai gõ mỗi SĐT -> Ngăn chặn hành vi quét/dò thông tin người khác
+                messages.warning(
+                    request,
+                    "Để bảo vệ quyền riêng tư và tránh lộ thông tin đơn hàng của người khác, tra cứu công khai yêu cầu nhập chính xác Mã đơn hàng (bắt đầu bằng HD-...). Hoặc vui lòng đăng nhập tài khoản để xem các đơn hàng của bạn."
+                )
 
     form = OrderTrackingForm(initial={'keyword': keyword})
     context = {
@@ -381,3 +424,28 @@ def profile_view(request):
     """Xem danh sách các đơn hàng đã đặt của tài khoản đang đăng nhập."""
     my_orders = Order.objects.filter(user=request.user).prefetch_related('items__product')
     return render(request, 'shop/profile.html', {'my_orders': my_orders})
+
+
+def forgot_password_view(request):
+    """
+    Xử lý khôi phục và đặt lại mật khẩu cho người dùng:
+    - Xác thực tên đăng nhập và địa chỉ email đã đăng ký.
+    - Cập nhật mật khẩu mới được băm an toàn qua set_password().
+    """
+    if request.user.is_authenticated:
+        return redirect('home')
+
+    if request.method == 'POST':
+        form = ForgotPasswordForm(request.POST)
+        if form.is_valid():
+            user = form.cleaned_data['user']
+            new_password = form.cleaned_data['new_password']
+            user.set_password(new_password)
+            user.save()
+            messages.success(request, "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới.")
+            return redirect('login')
+    else:
+        form = ForgotPasswordForm()
+
+    return render(request, 'shop/forgot_password.html', {'form': form})
+

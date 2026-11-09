@@ -27,4 +27,5 @@ urlpatterns = [
     path('dang-nhap/', views.login_view, name='login'),
     path('dang-xuat/', views.logout_view, name='logout'),
     path('tai-khoan/', views.profile_view, name='profile'),
+    path('quen-mat-khau/', views.forgot_password_view, name='forgot_password'),
 ]

@@ -161,6 +161,45 @@ class Order(models.Model):
     def __str__(self):
         return f"{self.order_code} - {self.customer_name} ({self.get_status_display()})"
 
+    def save(self, *args, **kwargs):
+        if not self.order_code:
+            import datetime, random
+            now_str = datetime.datetime.now().strftime("%Y%m%d")
+            self.order_code = f"HD-{now_str}-{random.randint(1000, 9999)}"
+        super().save(*args, **kwargs)
+
+    @property
+    def masked_customer_name(self):
+        """Che giấu tên người nhận để bảo vệ quyền riêng tư (ví dụ: Trần Văn Mua -> Tr** Mua)."""
+        if not self.customer_name:
+            return ""
+        parts = self.customer_name.strip().split()
+        if len(parts) == 1:
+            name = parts[0]
+            return (name[:2] + "***") if len(name) > 2 else name
+        first = parts[0][:2] + "**" if len(parts[0]) >= 2 else parts[0] + "*"
+        last = parts[-1]
+        return f"{first} {last}"
+
+    @property
+    def masked_phone(self):
+        """Che 4 số giữa của số điện thoại (ví dụ: 0988776655 -> 0988***655)."""
+        p = self.phone.strip()
+        if len(p) >= 9:
+            return f"{p[:4]}***{p[-3:]}"
+        elif len(p) >= 6:
+            return f"{p[:2]}***{p[-2:]}"
+        return p
+
+    @property
+    def masked_address(self):
+        """Che giấu số nhà và tên đường chi tiết, chỉ hiển thị cấp quận/huyện và tỉnh/thành."""
+        addr = self.shipping_address.strip()
+        parts = [p.strip() for p in addr.split(',') if p.strip()]
+        if len(parts) >= 2:
+            return "***, " + ", ".join(parts[1:])
+        return "*** (Đã ẩn địa chỉ chi tiết)"
+
 
 # ------------------------------------------------------------------------------
 # 4. BẢNG CHI TIẾT MÓN HÀNG TRONG ĐƠN (ORDER ITEM)
@@ -197,6 +236,8 @@ class OrderItem(models.Model):
     @property
     def subtotal(self):
         """Thành tiền của từng món hàng trong đơn."""
+        if self.unit_price is None or self.quantity is None:
+            return 0
         return self.unit_price * self.quantity
 
 

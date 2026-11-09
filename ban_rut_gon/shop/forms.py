@@ -7,6 +7,7 @@
 # 3. LoginForm: Form đăng nhập vào hệ thống.
 # 4. ReviewForm: Form gửi đánh giá và nhận xét sản phẩm.
 # 5. OrderTrackingForm: Form tra cứu đơn hàng bằng mã đơn hoặc số điện thoại.
+# 6. ForgotPasswordForm: Form đặt lại mật khẩu bằng xác minh tên đăng nhập & email.
 # ==============================================================================
 
 from django import forms
@@ -195,3 +196,71 @@ class OrderTrackingForm(forms.Form):
             'placeholder': 'Nhập mã đơn (vd: HD-...) hoặc số điện thoại đặt hàng'
         })
     )
+
+
+# ------------------------------------------------------------------------------
+# 6. BIỂU MẪU QUÊN MẬT KHẨU (FORGOT PASSWORD FORM)
+# ------------------------------------------------------------------------------
+class ForgotPasswordForm(forms.Form):
+    """
+    Biểu mẫu khôi phục mật khẩu thông qua xác minh danh tính 2 yếu tố cục bộ:
+    Tên đăng nhập (username) và Địa chỉ email đã đăng ký tài khoản.
+    """
+    username = forms.CharField(
+        max_length=150,
+        required=True,
+        label="Tên đăng nhập",
+        widget=forms.TextInput(attrs={
+            'class': 'w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:border-[#7AA88B]',
+            'placeholder': 'Nhập tên đăng nhập của bạn'
+        })
+    )
+    email = forms.EmailField(
+        required=True,
+        label="Email đã đăng ký",
+        widget=forms.EmailInput(attrs={
+            'class': 'w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:border-[#7AA88B]',
+            'placeholder': 'Nhập email đã dùng khi tạo tài khoản'
+        })
+    )
+    new_password = forms.CharField(
+        min_length=6,
+        required=True,
+        label="Mật khẩu mới",
+        widget=forms.PasswordInput(attrs={
+            'class': 'w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:border-[#7AA88B]',
+            'placeholder': 'Tối thiểu 6 ký tự'
+        })
+    )
+    confirm_new_password = forms.CharField(
+        min_length=6,
+        required=True,
+        label="Xác nhận mật khẩu mới",
+        widget=forms.PasswordInput(attrs={
+            'class': 'w-full px-3 py-2 border border-slate-300 rounded text-sm focus:outline-none focus:border-[#7AA88B]',
+            'placeholder': 'Nhập lại mật khẩu mới'
+        })
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+        username = cleaned_data.get('username')
+        email = cleaned_data.get('email')
+        new_pwd = cleaned_data.get('new_password')
+        confirm_pwd = cleaned_data.get('confirm_new_password')
+
+        # 1. Kiểm tra 2 mật khẩu mới có trùng khớp không
+        if new_pwd and confirm_pwd and new_pwd != confirm_pwd:
+            raise forms.ValidationError("Mật khẩu xác nhận không trùng khớp!")
+
+        # 2. Xác thực tài khoản và email tương ứng trong cơ sở dữ liệu
+        if username and email:
+            try:
+                user = User.objects.get(username=username)
+                if user.email.strip().lower() != email.strip().lower():
+                    raise forms.ValidationError("Địa chỉ email không khớp với tài khoản này. Vui lòng kiểm tra lại.")
+                cleaned_data['user'] = user
+            except User.DoesNotExist:
+                raise forms.ValidationError("Tên đăng nhập không tồn tại trong hệ thống.")
+
+        return cleaned_data

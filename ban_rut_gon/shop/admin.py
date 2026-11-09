@@ -63,7 +63,21 @@ class OrderItemInline(admin.TabularInline):
     """Bảng hiển thị chi tiết các sản phẩm được mua lồng bên trong trang chi tiết đơn hàng."""
     model = OrderItem
     extra = 0
-    readonly_fields = ('product', 'quantity', 'unit_price', 'subtotal')
+    can_delete = False
+    readonly_fields = ('product', 'quantity', 'unit_price_display', 'subtotal_display')
+    fields = ('product', 'quantity', 'unit_price_display', 'subtotal_display')
+
+    def unit_price_display(self, obj):
+        if not obj or obj.unit_price is None:
+            return "0 ₫"
+        return f"{obj.unit_price:,.0f} ₫".replace(',', '.')
+    unit_price_display.short_description = "Đơn giá khi mua"
+
+    def subtotal_display(self, obj):
+        if not obj or obj.subtotal is None:
+            return "0 ₫"
+        return f"{obj.subtotal:,.0f} ₫".replace(',', '.')
+    subtotal_display.short_description = "Thành tiền (VNĐ)"
 
 
 @admin.register(Order)
@@ -73,16 +87,71 @@ class OrderAdmin(admin.ModelAdmin):
         'order_code',
         'customer_name',
         'phone',
-        'total_amount',
+        'formatted_total',
         'status',
         'created_at'
     )
+    list_display_links = ('order_code',)
+
+    # Cho phép chỉnh sửa nhanh trạng thái đơn hàng ngay trên bảng danh sách
+    list_editable = ('status',)
+
     # Bộ lọc theo trạng thái đơn hàng và ngày tạo
     list_filter = ('status', 'created_at')
+
     # Tìm kiếm đơn hàng theo mã đơn, họ tên hoặc số điện thoại
     search_fields = ('order_code', 'customer_name', 'phone')
+
     # Nhúng danh sách món hàng vào bên dưới chi tiết đơn hàng
     inlines = [OrderItemInline]
+
+    # Các thao tác hàng loạt (Actions) đổi trạng thái nhiều đơn cùng lúc
+    actions = [
+        'mark_as_confirmed',
+        'mark_as_shipping',
+        'mark_as_completed',
+        'mark_as_cancelled',
+    ]
+
+    def formatted_total(self, obj):
+        """Hiển thị tổng tiền đẹp mắt với phân cách hàng nghìn."""
+        return f"{obj.total_amount:,.0f} ₫".replace(',', '.')
+    formatted_total.short_description = "Tổng tiền đơn hàng"
+    formatted_total.admin_order_field = 'total_amount'
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:  # Khi đang chỉnh sửa đơn hàng đã có
+            return ('order_code', 'total_amount', 'created_at', 'updated_at')
+        return ('created_at', 'updated_at')
+
+    fieldsets = (
+        ('Trạng thái & Mã đơn hàng', {
+            'fields': ('order_code', 'status', 'total_amount', 'created_at', 'updated_at')
+        }),
+        ('Thông tin người nhận & Địa chỉ giao hàng', {
+            'fields': ('customer_name', 'phone', 'email', 'shipping_address', 'customer_note', 'user')
+        }),
+    )
+
+    @admin.action(description="✓ Chuyển sang: Đã xác nhận & đang chuẩn bị cây")
+    def mark_as_confirmed(self, request, queryset):
+        count = queryset.update(status='confirmed')
+        self.message_user(request, f"Đã cập nhật {count} đơn hàng sang: Đã xác nhận & đang chuẩn bị cây.")
+
+    @admin.action(description="🚚 Chuyển sang: Đang giao hàng")
+    def mark_as_shipping(self, request, queryset):
+        count = queryset.update(status='shipping')
+        self.message_user(request, f"Đã cập nhật {count} đơn hàng sang: Đang giao hàng.")
+
+    @admin.action(description="🎉 Chuyển sang: Giao hàng thành công")
+    def mark_as_completed(self, request, queryset):
+        count = queryset.update(status='completed')
+        self.message_user(request, f"Đã cập nhật {count} đơn hàng sang: Giao hàng thành công.")
+
+    @admin.action(description="❌ Chuyển sang: Đã hủy đơn")
+    def mark_as_cancelled(self, request, queryset):
+        count = queryset.update(status='cancelled')
+        self.message_user(request, f"Đã cập nhật {count} đơn hàng sang: Đã hủy đơn.")
 
 
 # ------------------------------------------------------------------------------

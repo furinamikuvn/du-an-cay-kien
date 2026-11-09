@@ -1,0 +1,24 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+.venv/
+venv/
+env/
+
+# Local Database & Environment Secrets
+db.sqlite3
+db.sqlite3-journal
+.env
+.env.local
+
+# Collected Static Files (sẽ được tự động tạo trên Render qua build.sh)
+staticfiles/
+
+# IDE & OS files
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

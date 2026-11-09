@@ -142,8 +142,46 @@ class AquaPlantShopTest(TestCase):
             quantity=1
         )
 
-        # Tra cứu bằng mã đơn
+        # Tra cứu bằng mã đơn (Khách vãng lai -> masked thông tin cá nhân)
         track_resp = self.client.get('/tra-cuu-don-hang/?keyword=HD-TEST-1234')
         self.assertEqual(track_resp.status_code, 200)
         self.assertContains(track_resp, "HD-TEST-1234")
-        self.assertContains(track_resp, "Trần Thử Nghiệm")
+        self.assertContains(track_resp, order.masked_customer_name)
+
+    def test_07_forgot_password(self):
+        """TC07: Khôi phục và đặt lại mật khẩu bằng tên đăng nhập và email"""
+        # 1. Tạo tài khoản mẫu
+        user = User.objects.create_user(
+            username='user_reset_test',
+            email='reset@example.com',
+            password='OldPassword123!'
+        )
+
+        # 2. Truy cập trang quên mật khẩu (GET)
+        resp = self.client.get('/quen-mat-khau/')
+        self.assertEqual(resp.status_code, 200)
+        self.assertContains(resp, "Khôi Phục Mật Khẩu")
+
+        # 3. Gửi form đặt lại mật khẩu với email sai -> phải báo lỗi
+        fail_resp = self.client.post('/quen-mat-khau/', {
+            'username': 'user_reset_test',
+            'email': 'wrong_email@example.com',
+            'new_password': 'NewPassword123!',
+            'confirm_new_password': 'NewPassword123!'
+        })
+        self.assertEqual(fail_resp.status_code, 200)
+        self.assertContains(fail_resp, "Địa chỉ email không khớp")
+
+        # 4. Gửi form đặt lại mật khẩu đúng
+        success_resp = self.client.post('/quen-mat-khau/', {
+            'username': 'user_reset_test',
+            'email': 'reset@example.com',
+            'new_password': 'NewPassword123!',
+            'confirm_new_password': 'NewPassword123!'
+        }, follow=True)
+        self.assertEqual(success_resp.status_code, 200)
+
+        # 5. Xác minh đăng nhập được với mật khẩu mới
+        login_success = self.client.login(username='user_reset_test', password='NewPassword123!')
+        self.assertTrue(login_success)
+

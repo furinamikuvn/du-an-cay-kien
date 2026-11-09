@@ -10,7 +10,7 @@
             <i class="fa-solid fa-truck-fast text-[#7AA88B]"></i> Tra Cứu Đơn Hàng
         </h1>
         <p class="text-xs text-slate-500 mt-1">
-            Nhập mã đơn hàng (ví dụ: HD-...) hoặc số điện thoại bạn đã dùng để đặt cây.
+            Nhập mã đơn hàng (ví dụ: HD-...) để kiểm tra tiến độ giao cây. Thông tin người nhận được bảo vệ quyền riêng tư tự động.
         </p>
     </div>
 
@@ -29,9 +29,11 @@
     <!-- Kết Quả Tìm Kiếm -->
     {% if keyword %}
     <div class="space-y-4">
+        {% if found_orders %}
         <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wide">
-            Kết quả tìm kiếm cho: "<span class="text-[#2F5C3E]">{{ keyword }}</span>" ({{ found_orders.count }} đơn)
+            Kết quả tra cứu cho: "<span class="text-[#2F5C3E]">{{ keyword }}</span>" ({{ found_orders|length }} đơn)
         </h3>
+        {% endif %}
 
         {% for order in found_orders %}
         <div class="bg-white border border-slate-200 p-5 space-y-3">
@@ -67,9 +69,18 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-slate-600">
                 <div>
-                    <p><strong>Người nhận:</strong> {{ order.customer_name }}</p>
-                    <p class="mt-1"><strong>Số điện thoại:</strong> {{ order.phone }}</p>
-                    <p class="mt-1"><strong>Địa chỉ giao:</strong> {{ order.shipping_address }}</p>
+                    {% if order.is_owner %}
+                        <p><strong>Người nhận:</strong> {{ order.customer_name }}</p>
+                        <p class="mt-1"><strong>Số điện thoại:</strong> {{ order.phone }}</p>
+                        <p class="mt-1"><strong>Địa chỉ giao:</strong> {{ order.shipping_address }}</p>
+                    {% else %}
+                        <p><strong>Người nhận:</strong> {{ order.masked_customer_name }} <span class="text-[10px] text-slate-400 font-normal">(Đã bảo mật)</span></p>
+                        <p class="mt-1"><strong>Số điện thoại:</strong> {{ order.masked_phone }}</p>
+                        <p class="mt-1"><strong>Địa chỉ giao:</strong> {{ order.masked_address }}</p>
+                        <div class="mt-2 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1.5 inline-flex items-center gap-1.5">
+                            <i class="fa-solid fa-shield-halved text-amber-600"></i> Thông tin cá nhân đã được che tự động để bảo vệ quyền riêng tư.
+                        </div>
+                    {% endif %}
                 </div>
                 <div class="sm:text-right">
                     <p><strong>Tổng tiền:</strong> <span class="text-rose-700 font-mono font-bold text-sm">{{ order.total_amount|floatformat:0 }}₫</span></p>
