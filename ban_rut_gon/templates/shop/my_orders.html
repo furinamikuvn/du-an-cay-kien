@@ -1,0 +1,81 @@
+{% extends 'shop/base.html' %}
+
+{% block title %}Đơn Hàng Của Tôi - AquaPlant{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white border border-slate-200 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div>
+            <h1 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                <i class="fa-solid fa-box-archive text-[#7AA88B]"></i> Đơn Hàng Của Tôi
+            </h1>
+            <p class="text-xs text-slate-500 mt-0.5">Theo dõi toàn bộ đơn đặt hàng và trạng thái vận chuyển cây thủy sinh.</p>
+        </div>
+        <div class="flex items-center gap-2 text-xs">
+            <a href="{% url 'profile' %}" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 font-bold text-slate-700">Hồ sơ tài khoản</a>
+            <a href="{% url 'home' %}" class="px-3.5 py-2 bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold">Mua thêm cây</a>
+        </div>
+    </div>
+
+    <!-- Tab lọc trạng thái -->
+    <div class="bg-white border border-slate-200 p-1.5 overflow-x-auto">
+        <div class="flex items-center gap-1 text-xs font-bold whitespace-nowrap">
+            <a href="{% url 'my_orders' %}" class="px-3.5 py-2 {% if not status_filter %}bg-[#7AA88B] text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+                Tất cả ({{ total_orders }})
+            </a>
+            <a href="{% url 'my_orders' %}?status=pending" class="px-3.5 py-2 {% if status_filter == 'pending' %}bg-[#7AA88B] text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+                Chờ xác nhận ({{ pending_count }})
+            </a>
+            <a href="{% url 'my_orders' %}?status=confirmed" class="px-3.5 py-2 {% if status_filter == 'confirmed' %}bg-[#7AA88B] text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+                Đang bọc ẩm ({{ confirmed_count }})
+            </a>
+            <a href="{% url 'my_orders' %}?status=shipping" class="px-3.5 py-2 {% if status_filter == 'shipping' %}bg-[#7AA88B] text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+                Đang giao ({{ shipping_count }})
+            </a>
+            <a href="{% url 'my_orders' %}?status=completed" class="px-3.5 py-2 {% if status_filter == 'completed' %}bg-[#7AA88B] text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+                Hoàn tất ({{ completed_count }})
+            </a>
+            <a href="{% url 'my_orders' %}?status=cancelled" class="px-3.5 py-2 {% if status_filter == 'cancelled' %}bg-[#7AA88B] text-white{% else %}text-slate-600 hover:bg-slate-100{% endif %}">
+                Đã hủy ({{ cancelled_count }})
+            </a>
+        </div>
+    </div>
+
+    {% for ord in orders %}
+    <div class="bg-white border border-slate-200 p-5 space-y-3 text-xs">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
+            <div>
+                <span class="font-mono font-bold text-slate-900 text-sm">{{ ord.order_code }}</span>
+                <span class="text-slate-400 ml-2">{{ ord.created_at|date:"d/m/Y H:i" }}</span>
+            </div>
+            <span class="px-2.5 py-1 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] font-bold text-[11px]">
+                {{ ord.get_status_display }}
+            </span>
+        </div>
+
+        <ul class="space-y-1.5 text-slate-700">
+            {% for item in ord.items.all %}
+            <li class="flex justify-between">
+                <span>• {{ item.product.name }}{% if item.variant_name %} ({{ item.variant_name }}){% endif %} x{{ item.quantity }}</span>
+                <span class="font-mono font-semibold">{{ item.subtotal|floatformat:0 }}₫</span>
+            </li>
+            {% endfor %}
+        </ul>
+
+        <div class="pt-3 border-t border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <span class="text-slate-500">Giao tới: {{ ord.customer_name }} · {{ ord.shipping_address|truncatechars:60 }}</span>
+            <div class="flex items-center gap-4">
+                <span class="font-mono font-black text-base text-rose-700">{{ ord.total_amount|floatformat:0 }}₫</span>
+                <a href="{% url 'order_tracking' %}?keyword={{ ord.order_code }}" class="px-3 py-1.5 bg-[#EEF5F0] hover:bg-[#7AA88B] text-[#2F5C3E] hover:text-white border border-[#C5DEC9] font-bold transition">
+                    Tra cứu lộ trình →
+                </a>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="bg-white border border-slate-200 p-8 text-center text-xs text-slate-400">
+        Không có đơn hàng nào trong danh mục này.
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

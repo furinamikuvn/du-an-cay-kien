@@ -4,7 +4,7 @@
 
 {% block content %}
 <div class="max-w-2xl mx-auto bg-white border border-slate-200 p-8 sm:p-10 text-center space-y-6">
-    
+
     <!-- Icon Thành Công -->
     <div class="w-14 h-14 bg-[#EEF5F0] text-[#7AA88B] border border-[#C5DEC9] flex items-center justify-center mx-auto text-2xl">
         <i class="fa-solid fa-check"></i>
@@ -15,7 +15,7 @@
             Đặt Hàng Thành Công!
         </h1>
         <p class="text-xs text-slate-500 mt-1">
-            Cảm ơn bạn đã tin tưởng mua cây cảnh tại AquaPlant. Đơn hàng của bạn đã được ghi nhận vào hệ thống.
+            Cảm ơn bạn đã tin tưởng mua cây cảnh tại AquaPlant. Đơn hàng của bạn đã được ghi nhận và trừ kho FIFO tự động.
         </p>
     </div>
 
@@ -41,6 +41,12 @@
         <div class="flex justify-between items-start pt-1 text-amber-800">
             <span class="flex-shrink-0">Ghi chú:</span>
             <span class="italic text-right">{{ order.customer_note }}</span>
+        </div>
+        {% endif %}
+        {% if order.coupon and order.discount_amount > 0 %}
+        <div class="flex justify-between items-center text-[#2F5C3E]">
+            <span>Mã ưu đãi ({{ order.coupon.code }}):</span>
+            <span class="font-mono font-bold">-{{ order.discount_amount|floatformat:0 }}₫</span>
         </div>
         {% endif %}
         <div class="flex justify-between items-center pt-2 border-t border-[#C5DEC9] font-bold text-sm">

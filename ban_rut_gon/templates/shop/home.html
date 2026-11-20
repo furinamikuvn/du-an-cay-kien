@@ -6,7 +6,7 @@
 {% block content %}
 <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
 
-    <!-- CỘT TRÁI: BỘ LỌC DANH MỤC CÂY CẢNH -->
+    <!-- CỘT TRÁI: BỘ LỌC DANH MỤC, BỘ LỌC SINH THÁI & TIỆN ÍCH NHANH -->
     <aside class="space-y-4">
         <div class="bg-white p-4 border border-slate-200">
             <h3 class="font-bold text-xs uppercase tracking-wider text-slate-800 pb-2 border-b border-slate-100 mb-3 flex items-center gap-2">
@@ -14,14 +14,14 @@
             </h3>
             <ul class="space-y-1 text-xs">
                 <li>
-                    <a href="{% url 'home' %}" 
+                    <a href="{% url 'home' %}"
                        class="block px-2.5 py-1.5 transition {% if not selected_category %}bg-[#EEF5F0] text-[#2F5C3E] font-bold border-l-2 border-[#7AA88B]{% else %}text-slate-600 hover:bg-[#F5F8F5] hover:text-[#2F5C3E]{% endif %}">
                         Tất Cả Sản Phẩm
                     </a>
                 </li>
                 {% for cat in categories %}
                 <li>
-                    <a href="{% url 'home' %}?category={{ cat.slug }}" 
+                    <a href="{% url 'home' %}?category={{ cat.slug }}"
                        class="flex items-center justify-between px-2.5 py-1.5 transition {% if selected_category.slug == cat.slug %}bg-[#EEF5F0] text-[#2F5C3E] font-bold border-l-2 border-[#7AA88B]{% else %}text-slate-600 hover:bg-[#F5F8F5] hover:text-[#2F5C3E]{% endif %}">
                         <span>{{ cat.name }}</span>
                         <span class="text-[10px] text-slate-400 font-mono">({{ cat.products.count }})</span>
@@ -31,20 +31,87 @@
             </ul>
         </div>
 
-        <!-- Banner Giới Thiệu Cửa Hàng (Màu nhạt đồng bộ web chính) -->
+        <!-- Bộ Lọc Sinh Thái Đa Chiều -->
+        <div class="bg-white p-4 border border-slate-200">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-100 mb-3">
+                <h3 class="font-bold text-xs uppercase tracking-wider text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-filter text-[#7AA88B]"></i> Bộ Lọc Sinh Thái
+                </h3>
+                <a href="{% url 'home' %}" class="text-[11px] text-slate-400 hover:text-[#2F5C3E]">Đặt lại</a>
+            </div>
+            <form method="GET" action="{% url 'home' %}" class="space-y-3 text-xs">
+                {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category.slug }}">{% endif %}
+                {% if keyword %}<input type="hidden" name="q" value="{{ keyword }}">{% endif %}
+                {% if sort_option %}<input type="hidden" name="sort" value="{{ sort_option }}">{% endif %}
+
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1 text-[11px]">Vị trí trồng trong bể</label>
+                    <select name="position" class="w-full bg-slate-50 border border-slate-300 px-2.5 py-1.5 text-xs focus:outline-none focus:border-[#7AA88B]">
+                        <option value="">Tất cả vị trí</option>
+                        <option value="tien_canh" {% if selected_position == 'tien_canh' %}selected{% endif %}>Tiền cảnh (Trải thảm)</option>
+                        <option value="trung_canh" {% if selected_position == 'trung_canh' %}selected{% endif %}>Trung cảnh (Bụi giữa)</option>
+                        <option value="hau_canh" {% if selected_position == 'hau_canh' %}selected{% endif %}>Hậu cảnh (Cắt cắm)</option>
+                        <option value="gia_the" {% if selected_position == 'gia_the' %}selected{% endif %}>Giá thể đá lũa & Nền</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1 text-[11px]">Nhu cầu khí CO₂</label>
+                    <select name="co2" class="w-full bg-slate-50 border border-slate-300 px-2.5 py-1.5 text-xs focus:outline-none focus:border-[#7AA88B]">
+                        <option value="">Mọi nhu cầu CO₂</option>
+                        <option value="no" {% if selected_co2 == 'no' %}selected{% endif %}>Không cần CO₂ (Dễ trồng)</option>
+                        <option value="yes" {% if selected_co2 == 'yes' %}selected{% endif %}>Cần bình khí CO₂</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="w-full bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs py-2 transition">
+                    Áp Dụng Bộ Lọc
+                </button>
+            </form>
+        </div>
+
+        <!-- Tiện Ích Nhanh Thủy Sinh -->
+        <div class="bg-white p-4 border border-slate-200 space-y-2">
+            <h3 class="font-bold text-xs uppercase tracking-wider text-slate-800 pb-2 border-b border-slate-100 flex items-center gap-2">
+                <i class="fa-solid fa-wand-magic-sparkles text-[#7AA88B]"></i> Tiện Ích Chọn Cây
+            </h3>
+            <a href="{% url 'plant_assistant' %}" class="block p-2.5 bg-slate-50 hover:bg-[#EEF5F0] border border-slate-200 hover:border-[#7AA88B] transition text-xs">
+                <div class="font-bold text-slate-800 flex items-center justify-between">
+                    <span>Trợ Lý Chọn Cây</span>
+                    <span class="text-[#7AA88B]">→</span>
+                </div>
+                <p class="text-[10px] text-slate-500 mt-0.5">Gợi ý theo ánh sáng & CO₂ bể</p>
+            </a>
+            <a href="{% url 'plant_quantity' %}" class="block p-2.5 bg-slate-50 hover:bg-[#EEF5F0] border border-slate-200 hover:border-[#7AA88B] transition text-xs">
+                <div class="font-bold text-slate-800 flex items-center justify-between">
+                    <span>Tính Cây Theo Diện Tích</span>
+                    <span class="text-[#7AA88B]">→</span>
+                </div>
+                <p class="text-[10px] text-slate-500 mt-0.5">Dự toán số cốc theo cm² đáy hồ</p>
+            </a>
+            <a href="{% url 'layout_presets' %}" class="block p-2.5 bg-slate-50 hover:bg-[#EEF5F0] border border-slate-200 hover:border-[#7AA88B] transition text-xs">
+                <div class="font-bold text-slate-800 flex items-center justify-between">
+                    <span>Combo Bố Cục Hồ Mẫu</span>
+                    <span class="text-[#7AA88B]">→</span>
+                </div>
+                <p class="text-[10px] text-slate-500 mt-0.5">Set Iwagumi & Rừng Lũa tiết kiệm</p>
+            </a>
+        </div>
+
+        <!-- Banner Cam Kết Chất Lượng -->
         <div class="bg-[#EEF5F0] border border-[#C5DEC9] p-4 text-xs text-[#2F5C3E] leading-relaxed">
             <div class="font-bold mb-1.5 flex items-center gap-1.5 text-[#2F5C3E]">
                 <i class="fa-solid fa-circle-check text-[#7AA88B]"></i> Cam Kết Chất Lượng
             </div>
             <p class="text-slate-600 text-[11px] leading-relaxed">
-                100% cây cảnh tại AquaPlant được ươm dưỡng ổn định, sạch ốc hại, bọc ẩm cẩn thận khi giao hàng.
+                100% cây cảnh tại AquaPlant được ươm dưỡng ổn định, sạch ốc hại, bọc ẩm cẩn thận và bảo hiểm 1 đổi 1 khi giao hàng.
             </p>
         </div>
     </aside>
 
     <!-- CỘT PHẢI: LƯỚI SẢN PHẨM CÂY CẢNH -->
     <div class="lg:col-span-3 space-y-4">
-        
+
         <!-- Thanh Điều Khiển Sắp Xếp & Đếm Sản Phẩm -->
         <div class="bg-white p-3 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
             <div class="text-slate-600">
@@ -53,10 +120,11 @@
                 {% if keyword %}với từ khóa <strong>"{{ keyword }}"</strong>{% endif %}
             </div>
 
-            <!-- Form Sắp Xếp Giá -->
             <form method="GET" action="{% url 'home' %}" class="flex items-center gap-2">
                 {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category.slug }}">{% endif %}
                 {% if keyword %}<input type="hidden" name="q" value="{{ keyword }}">{% endif %}
+                {% if selected_position %}<input type="hidden" name="position" value="{{ selected_position }}">{% endif %}
+                {% if selected_co2 %}<input type="hidden" name="co2" value="{{ selected_co2 }}">{% endif %}
                 <span class="text-slate-500 text-xs">Sắp xếp:</span>
                 <select name="sort" onchange="this.form.submit()" class="bg-white border border-slate-300 px-2.5 py-1 text-xs text-slate-800 focus:outline-none focus:border-[#7AA88B]">
                     <option value="" {% if not sort_option %}selected{% endif %}>Mới nhất</option>
@@ -83,11 +151,16 @@
                         {% endif %}
                     </div>
 
-                    <!-- Thông Tin Tên & Giá Cây -->
+                    <!-- Thông Tin Tên, Badge Sinh Thái & Giá Cây -->
                     <div class="p-3.5 space-y-1.5">
-                        <span class="text-[10px] font-bold text-[#2F5C3E] bg-[#EEF5F0] border border-[#C5DEC9] px-1.5 py-0.5 uppercase">
-                            {{ p.category.name }}
-                        </span>
+                        <div class="flex flex-wrap gap-1">
+                            <span class="text-[10px] font-bold text-[#2F5C3E] bg-[#EEF5F0] border border-[#C5DEC9] px-1.5 py-0.5 uppercase">
+                                {{ p.category.name }}
+                            </span>
+                            <span class="text-[10px] font-semibold text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5">
+                                {% if p.co2_requirement == 'yes' %}Cần CO₂{% else %}Không CO₂{% endif %}
+                            </span>
+                        </div>
                         <h4 class="font-bold text-xs text-slate-900 group-hover:text-[#2F5C3E] transition line-clamp-2">
                             <a href="{% url 'product_detail' slug=p.slug %}">{{ p.name }}</a>
                         </h4>
@@ -107,7 +180,7 @@
                     </div>
                 </div>
 
-                <!-- Nút Thêm Nhanh Vào Giỏ Hàng (Màu nhạt thanh lịch) -->
+                <!-- Nút Thêm Nhanh Vào Giỏ Hàng -->
                 <div class="p-3.5 pt-0">
                     <form method="POST" action="{% url 'add_to_cart' p.id %}">
                         {% csrf_token %}

@@ -4,11 +4,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Cửa Hàng Cây Cảnh & Thủy Sinh{% endblock %}</title>
+    <title>{% block title %}Cửa Hàng Cây Cảnh & Thủy Sinh AquaPlant{% endblock %}</title>
+    <!-- Inline SVG Favicon (Tránh lỗi 404 /favicon.ico) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%237AA88B'/%3E%3Cpath d='M32 14c-8 8-12 16-12 24a12 12 0 0024 0c0-8-4-16-12-24z' fill='%23ffffff'/%3E%3C/svg%3E">
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Font Awesome Icons (Verified SRI Hash) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous" referrerpolicy="no-referrer">
     <!-- Google Fonts: Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -56,7 +58,7 @@
                 <span class="inline-flex items-center gap-1 font-bold text-[#447653] uppercase tracking-wide flex-shrink-0">
                     <i class="fa-solid fa-seedling text-[#7AA88B]"></i> AquaPlant:
                 </span>
-                <span class="hidden sm:inline truncate">Cây thủy sinh thuần dưỡng lá nước · Giao bọc ẩm bảo đảm sống sót 100%</span>
+                <span class="hidden sm:inline truncate">Cây thủy sinh thuần dưỡng lá nước · Mã giảm 10%: <strong class="text-[#2F5C3E]">AQUA2026</strong> · Bảo hiểm sống sót 100%</span>
                 <span class="sm:hidden truncate">Cây thuần dưỡng bảo đảm 100% sống khỏe</span>
             </div>
             <div class="flex items-center gap-3 text-slate-500 flex-shrink-0 ml-2">
@@ -69,7 +71,7 @@
     <header class="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div class="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8">
             <div class="flex items-center justify-between h-14 sm:h-16 gap-2 sm:gap-4">
-                
+
                 <!-- Logo & Tên Cửa Hàng -->
                 <a href="{% url 'home' %}" class="flex items-center gap-2 flex-shrink-0 group">
                     <div class="w-8 h-8 sm:w-9 sm:h-9 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] flex items-center justify-center font-bold text-sm sm:text-base group-hover:bg-[#7AA88B] group-hover:text-white transition">
@@ -86,8 +88,8 @@
                 <!-- Thanh Tìm Kiếm Cây Cảnh (Desktop) -->
                 <form action="{% url 'home' %}" method="GET" class="hidden md:flex flex-grow max-w-md mx-4">
                     <div class="relative w-full">
-                        <input type="text" name="q" value="{{ request.GET.q|default:'' }}" 
-                               placeholder="Tìm tên cây cảnh, trân châu, ráy nana..." 
+                        <input type="text" name="q" value="{{ request.GET.q|default:'' }}"
+                               placeholder="Tìm tên cây cảnh, trân châu, ráy nana..."
                                class="w-full pl-9 pr-16 py-2 text-xs bg-slate-50 border border-slate-300 focus:outline-none focus:border-[#7AA88B] focus:bg-white transition">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
                         <button type="submit" class="absolute right-0 top-0 bottom-0 bg-[#7AA88B] hover:bg-[#6B997C] text-white text-xs font-bold px-4 transition">
@@ -96,51 +98,114 @@
                     </div>
                 </form>
 
-                <!-- Menu Phải: Tra Cứu, Giỏ Hàng & Tài Khoản -->
+                <!-- Menu Phải: Tra Cứu, Giỏ Hàng & Dropdown Tài Khoản -->
                 <div class="flex items-center gap-1.5 sm:gap-3 text-xs font-medium">
-                    <!-- Nút Tra Cứu Đơn (Hiện cả mobile dạng icon hoặc text) -->
                     <a href="{% url 'order_tracking' %}" class="inline-flex items-center gap-1 text-slate-600 hover:text-[#2F5C3E] py-1 px-1.5 sm:py-1.5 sm:px-2 transition text-[11px] sm:text-xs" title="Tra cứu đơn hàng">
                         <i class="fa-solid fa-truck-fast text-[#7AA88B]"></i>
                         <span class="hidden md:inline">Tra cứu đơn</span>
                     </a>
 
-                    <!-- Nút Giỏ Hàng -->
                     <a href="{% url 'cart' %}" class="inline-flex items-center gap-1.5 bg-[#EEF5F0] hover:bg-[#E3EDE5] text-[#2F5C3E] border border-[#C5DEC9] px-2.5 py-1 sm:px-3 sm:py-1.5 transition font-bold text-[11px] sm:text-xs">
                         <i class="fa-solid fa-cart-shopping text-[#7AA88B]"></i>
                         <span class="hidden sm:inline">Giỏ hàng</span>
                         <span class="bg-[#7AA88B] text-white text-[10px] px-1.5 py-0.2 rounded-full font-mono">{{ cart_count }}</span>
                     </a>
 
-                    <!-- Tài Khoản -->
                     {% if user.is_authenticated %}
-                        <a href="{% url 'profile' %}" class="text-slate-700 hover:text-[#2F5C3E] font-bold inline-flex items-center gap-1 text-[11px] sm:text-xs px-1 sm:px-2 py-1 max-w-[100px] truncate" title="{{ user.first_name|default:user.username }}">
+                    <!-- Dropdown Tài Khoản (Mọi mục quản trị gộp gọn bên trong khi nhấp vào) -->
+                    <div class="relative" id="account-dropdown-wrapper">
+                        <button id="account-dropdown-btn"
+                                type="button"
+                                aria-expanded="false"
+                                aria-haspopup="true"
+                                class="inline-flex items-center gap-1.5 border border-slate-300 hover:border-[#7AA88B] bg-white px-2.5 py-1 sm:px-3 sm:py-1.5 text-[11px] sm:text-xs font-bold text-slate-700 hover:text-[#2F5C3E] transition cursor-pointer">
                             <i class="fa-regular fa-user text-[#7AA88B]"></i>
-                            <span class="truncate">{{ user.first_name|default:user.username }}</span>
-                        </a>
-                        {% if user.is_staff or user.is_superuser %}
-                        <a href="/admin/" target="_blank" class="bg-amber-50 text-amber-900 border border-amber-200 px-1.5 py-0.5 sm:px-2 sm:py-1 font-bold hover:bg-amber-100 text-[10px] sm:text-[11px] hidden sm:inline-block">
-                            Admin
-                        </a>
-                        {% endif %}
-                        <a href="{% url 'logout' %}" class="text-rose-600 hover:text-rose-800 p-1" title="Đăng xuất">
-                            <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
-                        </a>
+                            <span class="max-w-[90px] sm:max-w-[120px] truncate">{{ user.first_name|default:user.username }}</span>
+                            <i id="account-dropdown-chevron" class="fa-solid fa-chevron-down text-[9px] text-slate-400 transition-transform duration-150"></i>
+                        </button>
+
+                        <div id="account-dropdown-menu"
+                             class="hidden absolute right-0 top-full mt-1.5 w-60 bg-white border border-slate-200 shadow-lg z-50 text-left">
+                            <!-- Thông tin tóm tắt tài khoản -->
+                            <div class="px-3.5 py-2.5 bg-[#EEF5F0] border-b border-[#C5DEC9]">
+                                <div class="flex items-center justify-between gap-2">
+                                    <p class="text-xs font-bold text-[#2F5C3E] truncate">{{ user.get_full_name|default:user.username }}</p>
+                                    {% if is_django_admin %}
+                                    <span class="px-1.5 py-0.5 text-[9px] font-extrabold uppercase bg-amber-100 text-amber-900 border border-amber-300 flex-shrink-0">Admin</span>
+                                    {% elif is_admin_or_staff %}
+                                    <span class="px-1.5 py-0.5 text-[9px] font-extrabold uppercase bg-white text-[#2F5C3E] border border-[#C5DEC9] flex-shrink-0">Staff</span>
+                                    {% endif %}
+                                </div>
+                                {% if user.email %}
+                                <p class="text-[10px] text-slate-500 truncate mt-0.5">{{ user.email }}</p>
+                                {% endif %}
+                            </div>
+
+                            <!-- Các mục chung của tài khoản thường -->
+                            <div class="py-1">
+                                <a href="{% url 'profile' %}" class="flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-[#F5F8F5] hover:text-[#2F5C3E] transition">
+                                    <i class="fa-regular fa-id-card text-[#7AA88B] w-4 text-center"></i>
+                                    <span>Hồ sơ cá nhân</span>
+                                </a>
+                                <a href="{% url 'my_orders' %}" class="flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-[#F5F8F5] hover:text-[#2F5C3E] transition">
+                                    <i class="fa-solid fa-box-archive text-[#7AA88B] w-4 text-center"></i>
+                                    <span>Đơn hàng của tôi</span>
+                                </a>
+                                <a href="{% url 'order_tracking' %}" class="flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-[#F5F8F5] hover:text-[#2F5C3E] transition">
+                                    <i class="fa-solid fa-truck-fast text-[#7AA88B] w-4 text-center"></i>
+                                    <span>Tra cứu đơn hàng</span>
+                                </a>
+                                <a href="{% url 'change_password' %}" class="flex items-center gap-2.5 px-3.5 py-2 text-xs text-slate-700 hover:bg-[#F5F8F5] hover:text-[#2F5C3E] transition">
+                                    <i class="fa-solid fa-key text-[#7AA88B] w-4 text-center"></i>
+                                    <span>Đổi mật khẩu</span>
+                                </a>
+                            </div>
+
+                            <!-- Khu vực riêng cho Admin / Staff -->
+                            {% if is_admin_or_staff %}
+                            <div class="border-t border-slate-200 py-1 bg-slate-50/70">
+                                <div class="px-3.5 pt-1 pb-0.5 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">
+                                    Quản trị hệ thống
+                                </div>
+                                <a href="{% url 'staff_dashboard' %}" class="flex items-center gap-2.5 px-3.5 py-2 text-xs font-semibold text-[#2F5C3E] hover:bg-[#EEF5F0] transition">
+                                    <i class="fa-solid fa-boxes-stacked text-[#7AA88B] w-4 text-center"></i>
+                                    <span>Quản Trị Kho & Đơn</span>
+                                </a>
+                                {% if is_django_admin %}
+                                <a href="/admin/" target="_blank" class="flex items-center gap-2.5 px-3.5 py-2 text-xs font-bold text-amber-800 hover:bg-amber-50 transition">
+                                    <i class="fa-solid fa-shield-halved text-amber-600 w-4 text-center"></i>
+                                    <span>Quản Lý Admin</span>
+                                </a>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+
+                            <!-- Nút Đăng xuất bằng POST chống CSRF -->
+                            <form method="POST" action="{% url 'logout' %}" class="border-t border-slate-200">
+                                {% csrf_token %}
+                                <button type="submit" class="w-full text-left flex items-center gap-2.5 px-3.5 py-2.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer">
+                                    <i class="fa-solid fa-arrow-right-from-bracket w-4 text-center"></i>
+                                    <span>Đăng xuất</span>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                     {% else %}
-                        <a href="{% url 'login' %}" class="text-slate-700 hover:text-[#2F5C3E] font-semibold text-[11px] sm:text-xs py-1 px-1.5 sm:px-2">
-                            Đăng nhập
-                        </a>
-                        <a href="{% url 'register' %}" class="bg-[#7AA88B] hover:bg-[#6B997C] text-white px-2 py-1 sm:px-3 sm:py-1.5 font-bold transition text-[11px] sm:text-xs">
-                            Đăng ký
-                        </a>
+                    <a href="{% url 'login' %}" class="text-slate-700 hover:text-[#2F5C3E] font-semibold text-[11px] sm:text-xs py-1 px-1.5 sm:px-2">
+                        Đăng nhập
+                    </a>
+                    <a href="{% url 'register' %}" class="bg-[#7AA88B] hover:bg-[#6B997C] text-white px-2 py-1 sm:px-3 sm:py-1.5 font-bold transition text-[11px] sm:text-xs">
+                        Đăng ký
+                    </a>
                     {% endif %}
                 </div>
             </div>
 
-            <!-- Thanh Tìm Kiếm Cây Cảnh Trên Mobile (Hiển thị mượt mà dưới Header) -->
+            <!-- Thanh Tìm Kiếm Cây Cảnh Trên Mobile -->
             <div class="md:hidden pb-2.5 pt-1">
                 <form action="{% url 'home' %}" method="GET" class="relative w-full">
-                    <input type="text" name="q" value="{{ request.GET.q|default:'' }}" 
-                           placeholder="Tìm cây cảnh, ráy, trân châu..." 
+                    <input type="text" name="q" value="{{ request.GET.q|default:'' }}"
+                           placeholder="Tìm cây cảnh, ráy, trân châu..."
                            class="w-full pl-8 pr-14 py-1.5 text-xs bg-slate-50 border border-slate-300 focus:outline-none focus:border-[#7AA88B] focus:bg-white transition rounded-none">
                     <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-2 text-slate-400 text-xs"></i>
                     <button type="submit" class="absolute right-0 top-0 bottom-0 bg-[#7AA88B] hover:bg-[#6B997C] text-white text-[11px] font-bold px-3 transition">
@@ -149,15 +214,45 @@
                 </form>
             </div>
         </div>
+
+        <!-- Thanh Điều Hướng Tính Năng Thủy Sinh (Secondary Navigation) -->
+        <div class="bg-slate-50 border-t border-slate-200">
+            <div class="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 flex items-center justify-between overflow-x-auto">
+                <nav class="flex items-center text-[11px] sm:text-xs font-semibold whitespace-nowrap">
+                    <a href="{% url 'home' %}" class="px-3 sm:px-4 py-2 transition border-b-2 {% if request.resolver_match.url_name == 'home' %}text-[#2F5C3E] font-bold bg-white border-[#7AA88B]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-transparent{% endif %}">
+                        Cửa Hàng
+                    </a>
+                    <a href="{% url 'plant_assistant' %}" class="px-3 sm:px-4 py-2 transition border-b-2 {% if request.resolver_match.url_name == 'plant_assistant' %}text-[#2F5C3E] font-bold bg-white border-[#7AA88B]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-transparent{% endif %}">
+                        Trợ Lý Chọn Cây
+                    </a>
+                    <a href="{% url 'plant_quantity' %}" class="px-3 sm:px-4 py-2 transition border-b-2 {% if request.resolver_match.url_name == 'plant_quantity' %}text-[#2F5C3E] font-bold bg-white border-[#7AA88B]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-transparent{% endif %}">
+                        Tính Số Lượng Cây
+                    </a>
+                    <a href="{% url 'layout_presets' %}" class="px-3 sm:px-4 py-2 transition border-b-2 {% if request.resolver_match.url_name == 'layout_presets' %}text-[#2F5C3E] font-bold bg-white border-[#7AA88B]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-transparent{% endif %}">
+                        Combo Bố Cục Mẫu
+                    </a>
+                    <a href="{% url 'article_list' %}" class="px-3 sm:px-4 py-2 transition border-b-2 {% if request.resolver_match.url_name == 'article_list' or request.resolver_match.url_name == 'article_detail' %}text-[#2F5C3E] font-bold bg-white border-[#7AA88B]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-transparent{% endif %}">
+                        Cẩm Nang Thủy Sinh
+                    </a>
+                    <a href="{% url 'faq' %}" class="px-3 sm:px-4 py-2 transition border-b-2 {% if request.resolver_match.url_name == 'faq' %}text-[#2F5C3E] font-bold bg-white border-[#7AA88B]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-transparent{% endif %}">
+                        Hỏi Đáp FAQ
+                    </a>
+                </nav>
+                <span class="hidden lg:inline-flex items-center gap-1.5 text-[11px] text-slate-400 flex-shrink-0 pl-4">
+                    <i class="fa-solid fa-circle-check text-[#7AA88B]"></i>
+                    <span>100% Cây cấy mô thuần nước</span>
+                </span>
+            </div>
+        </div>
     </header>
 
     <!-- 2. THÔNG BÁO FLASH (MESSAGES) -->
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 w-full mt-4">
         {% if messages %}
             {% for message in messages %}
-            <div class="mb-3 p-3 text-xs font-semibold flex items-center justify-between {% if message.tags == 'error' %}bg-rose-50 border border-rose-200 text-rose-800{% else %}bg-[#EEF5F0] border border-[#C5DEC9] text-[#2F5C3E]{% endif %}">
+            <div class="mb-3 p-3 text-xs font-semibold flex items-center justify-between {% if message.tags == 'error' %}bg-rose-50 border border-rose-200 text-rose-800{% elif message.tags == 'warning' %}bg-amber-50 border border-amber-200 text-amber-800{% else %}bg-[#EEF5F0] border border-[#C5DEC9] text-[#2F5C3E]{% endif %}">
                 <div class="flex items-center gap-2">
-                    <i class="fa-solid {% if message.tags == 'error' %}fa-circle-exclamation text-rose-600{% else %}fa-circle-check text-[#7AA88B]{% endif %}"></i>
+                    <i class="fa-solid {% if message.tags == 'error' %}fa-circle-exclamation text-rose-600{% elif message.tags == 'warning' %}fa-triangle-exclamation text-amber-600{% else %}fa-circle-check text-[#7AA88B]{% endif %}"></i>
                     <span>{{ message }}</span>
                 </div>
                 <button type="button" onclick="this.parentElement.remove();" class="text-slate-400 hover:text-slate-700">✕</button>
@@ -173,7 +268,7 @@
 
     <!-- 4. CHÂN TRANG (FOOTER) -->
     <footer class="bg-white border-t border-slate-200 text-slate-500 text-xs mt-12 py-8">
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <div>
                 <h4 class="font-bold text-slate-800 text-sm mb-2 flex items-center gap-2">
                     <i class="fa-solid fa-leaf text-[#7AA88B]"></i> AquaPlant Shop
@@ -181,6 +276,15 @@
                 <p class="leading-relaxed text-[11px] text-slate-500">
                     Hệ thống bán cây cảnh & thực vật thủy sinh phục vụ trang trí bể cá cảnh, hồ thủy sinh tự nhiên.
                 </p>
+            </div>
+            <div>
+                <h4 class="font-bold text-slate-800 text-sm mb-2">Chính Sách & Hỗ Trợ</h4>
+                <ul class="space-y-1.5 text-[11px]">
+                    <li><a href="{% url 'policy_detail' 'huong-dan-dat-hang-va-thanh-toan' %}" class="hover:text-[#2F5C3E] transition">Hướng dẫn đặt hàng & thanh toán</a></li>
+                    <li><a href="{% url 'policy_detail' 'chinh-sach-bao-hiem-dap-nat-1-doi-1' %}" class="hover:text-[#2F5C3E] transition">Bảo hiểm dập nát 1 đổi 1 (24H)</a></li>
+                    <li><a href="{% url 'policy_detail' 'huong-dan-duong-cay-moi-cam-ho' %}" class="hover:text-[#2F5C3E] transition">Hướng dẫn dưỡng cây mới cắm hồ</a></li>
+                    <li><a href="{% url 'policy_detail' 'quy-dinh-giao-nhan-cod-toan-quoc' %}" class="hover:text-[#2F5C3E] transition">Quy định giao nhận COD toàn quốc</a></li>
+                </ul>
             </div>
             <div>
                 <h4 class="font-bold text-slate-800 text-sm mb-2">Đồ Án Môn Học</h4>
@@ -198,5 +302,41 @@
         </div>
     </footer>
 
+    <!-- Script Điều Khiển Dropdown Tài Khoản -->
+    <script>
+    (function () {
+        const btn = document.getElementById('account-dropdown-btn');
+        const menu = document.getElementById('account-dropdown-menu');
+        const chevron = document.getElementById('account-dropdown-chevron');
+        const wrapper = document.getElementById('account-dropdown-wrapper');
+        if (!btn || !menu || !wrapper) return;
+
+        function setOpen(open) {
+            menu.classList.toggle('hidden', !open);
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+            if (chevron) {
+                chevron.classList.toggle('rotate-180', open);
+            }
+        }
+
+        btn.addEventListener('click', function (e) {
+            e.stopPropagation();
+            const isCurrentlyHidden = menu.classList.contains('hidden');
+            setOpen(isCurrentlyHidden);
+        });
+
+        document.addEventListener('click', function (e) {
+            if (!wrapper.contains(e.target)) {
+                setOpen(false);
+            }
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape') {
+                setOpen(false);
+            }
+        });
+    })();
+    </script>
 </body>
 </html>

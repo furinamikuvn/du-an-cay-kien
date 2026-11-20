@@ -20,18 +20,28 @@ load_dotenv(BASE_DIR / '.env')
 # ------------------------------------------------------------------------------
 # 1. BẢO MẬT & MÔI TRƯỜNG THỰC THI (SECURITY & RUNTIME)
 # ------------------------------------------------------------------------------
-SECRET_KEY = os.environ.get(
-    'SECRET_KEY',
-    'django-insecure-aquaplant-basic-student-key-26ctt2-hcmus'
-)
+IS_RENDER = 'RENDER' in os.environ
+
+SECRET_KEY = os.environ.get('SECRET_KEY')
+if not SECRET_KEY:
+    if IS_RENDER:
+        raise RuntimeError(
+            "Biến môi trường SECRET_KEY bắt buộc phải được cấu hình khi chạy trên Render!"
+        )
+    SECRET_KEY = 'django-insecure-aquaplant-basic-student-key-26ctt2-hcmus'
 
 # Tự động chuyển DEBUG=False khi chạy trên Render (có biến môi trường RENDER), ở local mặc định True
 DEBUG = os.environ.get(
     'DEBUG',
-    'False' if 'RENDER' in os.environ else 'True'
+    'False' if IS_RENDER else 'True'
 ).lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = [
+    h.strip() for h in os.environ.get('ALLOWED_HOSTS', '').split(',') if h.strip()
+]
+for _default_host in ('localhost', '127.0.0.1', 'testserver', 'du-an-cay-kien.onrender.com'):
+    if _default_host not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(_default_host)
 
 # Cấu hình bảo mật chống giả mạo CSRF cho Render
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
@@ -39,13 +49,63 @@ CSRF_TRUSTED_ORIGINS = [
     'http://localhost:8000',
     'http://127.0.0.1:8000',
     'http://localhost:3000',
+    'https://du-an-cay-kien.onrender.com',
 ]
 if RENDER_EXTERNAL_HOSTNAME:
-    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
-    CSRF_TRUSTED_ORIGINS.append(f'https://{RENDER_EXTERNAL_HOSTNAME}')
+    if RENDER_EXTERNAL_HOSTNAME not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+    _render_origin = f'https://{RENDER_EXTERNAL_HOSTNAME}'
+    if _render_origin not in CSRF_TRUSTED_ORIGINS:
+        CSRF_TRUSTED_ORIGINS.append(_render_origin)
 
 # Nhận diện giao thức HTTPS từ Render Reverse Proxy
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Thiết lập Cache cục bộ phục vụ Rate Limiting
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+        'LOCATION': 'aquaplant-security-cache',
+    }
+}
+
+# Thiết lập Email gửi Token đặt lại mật khẩu (Console ở local/fallback, SMTP khi cấu hình biến môi trường)
+if os.environ.get('EMAIL_HOST'):
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = os.environ.get('EMAIL_HOST')
+    EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+    EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')
+    EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+    EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'AquaPlant Shop <no-reply@aquaplant.local>')
+
+# Thời hạn hiệu lực của liên kết/token đặt lại mật khẩu (30 phút)
+PASSWORD_RESET_TIMEOUT = 1800
+
+# Cấu hình bảo mật HTTP nền tảng (tương thích cả HTTP local và manage.py test)
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+CSRF_COOKIE_SAMESITE = 'Lax'
+X_FRAME_OPTIONS = 'DENY'
+SECURE_CONTENT_TYPE_NOSNIFF = True
+SECURE_REFERRER_POLICY = 'strict-origin-when-cross-origin'
+
+# Bật cờ bảo mật HTTPS nghiêm ngặt CHỈ khi chạy Production HTTPS trên Render (hoặc bật FORCE_HTTPS_SECURITY)
+IS_PRODUCTION_HTTPS = (
+    not DEBUG and (
+        IS_RENDER
+        or os.environ.get('FORCE_HTTPS_SECURITY', '').lower() in ('true', '1', 'yes')
+    )
+)
+if IS_PRODUCTION_HTTPS:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_SSL_REDIRECT = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
 
 # ------------------------------------------------------------------------------
 # 2. CÁC ỨNG DỤNG ĐÃ CÀI ĐẶT (INSTALLED APPS)
@@ -68,6 +128,7 @@ INSTALLED_APPS = [
 # ------------------------------------------------------------------------------
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'shop.security.SecurityHeadersMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',  # Phục vụ file tĩnh nén tốc độ cao trên Cloud
     'django.contrib.sessions.middleware.SessionMiddleware', # Quản lý phiên làm việc & giỏ hàng
     'django.middleware.common.CommonMiddleware',

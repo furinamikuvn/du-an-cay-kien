@@ -1,58 +1,223 @@
 # ==============================================================================
-# TẦNG XỬ LÝ NGHIỆP VỤ (SHOP/VIEWS.PY - BẢN CƠ BẢN)
+# TẦNG XỬ LÝ NGHIỆP VỤ CỐT LÕI (SHOP/VIEWS.PY)
 # ==============================================================================
-# Tệp này chứa toàn bộ các hàm xử lý logic (Views) của một website bán hàng:
-# 1. home_view: Trang chủ hiển thị danh sách cây cảnh, tìm kiếm và lọc danh mục.
-# 2. product_detail_view: Xem chi tiết cây cảnh và gửi đánh giá sản phẩm.
-# 3. cart_view, add_to_cart_view, update_cart_view, remove_from_cart_view: Quản lý giỏ hàng.
-# 4. checkout_view: Đặt hàng, lưu thông tin người nhận và trừ tồn kho cơ bản.
-# 5. order_tracking_view: Khách hàng tra cứu tiến độ đơn hàng bằng mã đơn hoặc SĐT.
-# 6. register_view, login_view, logout_view, profile_view: Phân hệ tài khoản người dùng.
+# 1. home_view: Trang chủ hiển thị danh mục, bộ lọc sinh thái, tìm kiếm, sắp xếp.
+# 2. product_detail_view & submit_review_view: Chi tiết cây, biến thể, gallery & đánh giá.
+# 3. get_cart_items, cart_view, add_to_cart_view, update_cart_view, remove_from_cart_view: Giỏ hàng dual-mode.
+# 4. apply_coupon_view & remove_coupon_view: Áp dụng/hủy mã giảm giá.
+# 5. checkout_view: Thanh toán COD/VietQR, Transaction Atomic + trừ kho FIFO cách ly sinh học.
+# 6. order_tracking_view: Tra cứu vận đơn bảo mật (Data Masking + Progress Bar).
+# 7. register_view, login_view, logout_view, profile_view, forgot_password_view: Tài khoản.
 # ==============================================================================
 
-import random
+import secrets
 from datetime import datetime
 from decimal import Decimal
+from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
-from django.db.models import Q
+from django.contrib.auth.models import User
+from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
 from django.db import transaction
+from django.db.models import Avg, Q, Sum
+from django.http import HttpResponse, JsonResponse
+from django.urls import reverse
+from django.utils import timezone
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import url_has_allowed_host_and_scheme, urlsafe_base64_decode, urlsafe_base64_encode
+from django.views.decorators.http import require_POST
 
-from .models import Category, Product, Order, OrderItem, ProductReview
-from .forms import CheckoutForm, RegisterForm, LoginForm, ReviewForm, OrderTrackingForm, ForgotPasswordForm
+from .security import (
+    check_rate_limit,
+    clear_rate_limit,
+    get_client_ip,
+    record_rate_limit_hit,
+)
+
+from .models import (
+    Category,
+    Coupon,
+    InventoryLot,
+    Order,
+    OrderItem,
+    Product,
+    ProductReview,
+    ProductVariant,
+    UserProfile,
+)
+from .forms import (
+    CheckoutForm,
+    CouponApplyForm,
+    CustomPasswordChangeForm,
+    ForgotPasswordRequestForm,
+    LoginForm,
+    OrderTrackingForm,
+    ProfileUpdateForm,
+    RegisterForm,
+    ReviewForm,
+    SetNewPasswordForm,
+)
 
 
 # ------------------------------------------------------------------------------
-# 1. TRANG CHỦ & DANH SÁCH CÂY CẢNH (HOME VIEW)
+# HELPER: GIỎ HÀNG & MÃ GIẢM GIÁ (DUAL-MODE CART & COUPON HELPERS)
+# ------------------------------------------------------------------------------
+def get_cart_items(request):
+    """
+    Trích xuất danh sách sản phẩm trong giỏ hàng Session.
+    Hỗ trợ cả key dạng 'product_id' (mặc định) và 'product_id:variant_id' (biến thể).
+    """
+    cart = request.session.get('cart', {})
+    if not isinstance(cart, dict):
+        cart = {}
+
+    items = []
+    subtotal = Decimal('0')
+    savings = Decimal('0')
+
+    for cart_key, raw_qty in list(cart.items()):
+        cart_key_str = str(cart_key)
+        prod_id = None
+        var_id = None
+
+        try:
+            qty = int(raw_qty)
+        except (ValueError, TypeError):
+            continue
+        if qty < 1:
+            continue
+
+        if ':' in cart_key_str:
+            parts = cart_key_str.split(':', 1)
+            try:
+                prod_id = int(parts[0])
+                var_id = int(parts[1])
+            except ValueError:
+                continue
+        else:
+            try:
+                prod_id = int(cart_key_str)
+            except ValueError:
+                continue
+
+        try:
+            prod = Product.objects.get(id=prod_id, is_active=True)
+        except Product.DoesNotExist:
+            continue
+
+        variant = None
+        if var_id:
+            try:
+                variant = ProductVariant.objects.get(id=var_id, product=prod, is_active=True)
+            except ProductVariant.DoesNotExist:
+                variant = None
+
+        if variant:
+            unit_price = variant.price
+            regular_price = variant.price
+            variant_name = variant.name
+        else:
+            unit_price = prod.current_price
+            regular_price = prod.regular_price
+            variant_name = ""
+
+        item_subtotal = unit_price * qty
+        if not variant and prod.sale_price and prod.sale_price < prod.regular_price:
+            savings += (prod.regular_price - prod.sale_price) * qty
+        subtotal += item_subtotal
+
+        items.append({
+            'key': cart_key_str,
+            'product': prod,
+            'variant': variant,
+            'variant_name': variant_name,
+            'quantity': qty,
+            'unit_price': unit_price,
+            'regular_price': regular_price,
+            'subtotal': item_subtotal,
+        })
+
+    return items, subtotal, savings
+
+
+def calculate_coupon_discount(coupon, subtotal):
+    """Tính số tiền chiết khấu thực tế của mã giảm giá, không vượt quá subtotal."""
+    if not coupon or not coupon.is_active:
+        return Decimal('0')
+    if subtotal < coupon.min_order_value:
+        return Decimal('0')
+
+    if coupon.discount_type == 'percent':
+        discount = (subtotal * coupon.discount_value) / Decimal('100')
+    else:
+        discount = coupon.discount_value
+
+    return min(discount, subtotal)
+
+
+def get_valid_coupon_from_session(request, subtotal):
+    """Kiểm tra hiệu lực Coupon đang lưu trong Session."""
+    coupon_id = request.session.get('applied_coupon_id')
+    if not coupon_id:
+        return None, Decimal('0')
+
+    try:
+        coupon = Coupon.objects.get(id=coupon_id, is_active=True)
+        today = timezone.now().date()
+        if coupon.valid_from and coupon.valid_from > today:
+            return None, Decimal('0')
+        if coupon.valid_to and coupon.valid_to < today:
+            return None, Decimal('0')
+        if subtotal < coupon.min_order_value:
+            return None, Decimal('0')
+
+        discount = calculate_coupon_discount(coupon, subtotal)
+        return coupon, discount
+    except Coupon.DoesNotExist:
+        return None, Decimal('0')
+
+
+# ------------------------------------------------------------------------------
+# 1. TRANG CHỦ & BỘ LỌC DANH MỤC / SINH THÁI (HOME VIEW)
 # ------------------------------------------------------------------------------
 def home_view(request):
     """
     Hiển thị trang chủ website:
-    - Lấy danh sách danh mục cây cảnh để hiển thị thanh menu phân loại.
-    - Tìm kiếm sản phẩm theo tên từ ô tìm kiếm (tham số 'q').
-    - Lọc sản phẩm theo danh mục được chọn (tham số 'category').
-    - Sắp xếp theo giá tăng dần, giảm dần hoặc mới nhất (tham số 'sort').
+    - Danh mục cây cảnh bên cột trái.
+    - Tìm kiếm theo tên / tên khoa học ('q').
+    - Lọc theo danh mục ('category') và thông số sinh thái ('position', 'co2', 'care').
+    - Sắp xếp theo giá tăng dần, giảm dần hoặc mới nhất ('sort').
     """
     categories = Category.objects.all()
     products = Product.objects.filter(is_active=True)
 
-    # 1. Xử lý tìm kiếm theo từ khóa
     keyword = request.GET.get('q', '').strip()
     if keyword:
         products = products.filter(
             Q(name__icontains=keyword) | Q(scientific_name__icontains=keyword)
         )
 
-    # 2. Xử lý lọc theo danh mục
     category_slug = request.GET.get('category', '').strip()
     selected_category = None
     if category_slug:
         selected_category = get_object_or_404(Category, slug=category_slug)
         products = products.filter(category=selected_category)
 
-    # 3. Xử lý sắp xếp giá bán
+    position_filter = request.GET.get('position', '').strip()
+    if position_filter:
+        products = products.filter(placement_position=position_filter)
+
+    co2_filter = request.GET.get('co2', '').strip()
+    if co2_filter:
+        products = products.filter(co2_requirement=co2_filter)
+
+    care_filter = request.GET.get('care', '').strip()
+    if care_filter:
+        products = products.filter(care_level=care_filter)
+
     sort_option = request.GET.get('sort', '')
     if sort_option == 'price_asc':
         products = products.order_by('regular_price')
@@ -67,27 +232,30 @@ def home_view(request):
         'selected_category': selected_category,
         'keyword': keyword,
         'sort_option': sort_option,
+        'selected_position': position_filter,
+        'selected_co2': co2_filter,
+        'selected_care': care_filter,
     }
     return render(request, 'shop/home.html', context)
 
 
 # ------------------------------------------------------------------------------
-# 2. CHI TIẾT SẢN PHẨM & ĐÁNH GIÁ (PRODUCT DETAIL VIEW)
+# 2. CHI TIẾT SẢN PHẨM, BIẾN THỂ, GALLERY & ĐÁNH GIÁ
 # ------------------------------------------------------------------------------
 def product_detail_view(request, slug):
     """
-    Hiển thị trang chi tiết của một loài cây cảnh theo slug URL:
-    - Lấy thông tin cây cảnh, giá bán, mô tả và tồn kho.
-    - Hiển thị danh sách nhận xét, đánh giá từ khách hàng.
-    - Xử lý Form gửi đánh giá mới khi người dùng gửi nhận xét.
-    - Gợi ý các sản phẩm liên quan cùng danh mục.
+    Trang chi tiết cây cảnh:
+    - Thông số sinh học (pH, nhiệt độ, ánh sáng, CO2, độ phủ tán).
+    - Album ảnh chi tiết (ProductImage) và biến thể quy cách (ProductVariant).
+    - Thống kê phân bố sao đánh giá (5 -> 1 sao) và xử lý POST đánh giá trực tiếp.
     """
     product = get_object_or_404(Product, slug=slug, is_active=True)
-    reviews = product.reviews.all()
-    related_products = Product.objects.filter(category=product.category, is_active=True).exclude(id=product.id)[:4]
 
-    # Xử lý gửi đánh giá nhận xét mới
     if request.method == 'POST':
+        ip = get_client_ip(request)
+        if check_rate_limit('review', ip, limit=5):
+            return HttpResponse("Bạn gửi đánh giá quá nhanh. Vui lòng thử lại sau 10 phút.", status=429)
+        record_rate_limit_hit('review', ip, 600)
         review_form = ReviewForm(request.POST)
         if review_form.is_valid():
             new_review = review_form.save(commit=False)
@@ -101,103 +269,201 @@ def product_detail_view(request, slug):
         initial_name = request.user.get_full_name() or request.user.username if request.user.is_authenticated else ""
         review_form = ReviewForm(initial={'reviewer_name': initial_name})
 
+    reviews = product.reviews.all().order_by('-created_at')
+    reviews_count = reviews.count()
+    avg_rating_agg = reviews.aggregate(Avg('rating'))['rating__avg']
+    avg_rating = round(avg_rating_agg, 1) if avg_rating_agg is not None else 5.0
+
+    rating_distribution = {}
+    for star in range(5, 0, -1):
+        count_star = reviews.filter(rating=star).count()
+        percent = round((count_star / reviews_count * 100), 0) if reviews_count > 0 else 0
+        rating_distribution[star] = {
+            'count': count_star,
+            'percent': percent,
+        }
+
+    variants = product.variants.filter(is_active=True)
+    gallery_images = product.images.all()
+    related_products = Product.objects.filter(category=product.category, is_active=True).exclude(id=product.id)[:4]
+
     context = {
         'product': product,
         'reviews': reviews,
+        'reviews_count': reviews_count,
+        'avg_rating': avg_rating,
+        'rating_distribution': rating_distribution,
+        'variants': variants,
+        'gallery_images': gallery_images,
         'related_products': related_products,
         'review_form': review_form,
     }
     return render(request, 'shop/product_detail.html', context)
 
 
+@require_POST
+def submit_review_view(request, slug):
+    """Endpoint POST riêng xử lý gửi đánh giá cho sản phẩm (có Rate Limit)."""
+    ip = get_client_ip(request)
+    if check_rate_limit('review', ip, limit=5):
+        return HttpResponse("Bạn gửi đánh giá quá nhanh. Vui lòng thử lại sau 10 phút.", status=429)
+    record_rate_limit_hit('review', ip, 600)
+
+    product = get_object_or_404(Product, slug=slug, is_active=True)
+    form = ReviewForm(request.POST)
+    if form.is_valid():
+        review = form.save(commit=False)
+        review.product = product
+        if request.user.is_authenticated:
+            review.user = request.user
+            if not review.reviewer_name:
+                review.reviewer_name = request.user.get_full_name() or request.user.username
+        review.save()
+        messages.success(request, "Cảm ơn bạn đã gửi đánh giá trải nghiệm cho dòng cây này!")
+    else:
+        messages.error(request, "Vui lòng kiểm tra lại thông tin đánh giá.")
+    return redirect('product_detail', slug=product.slug)
+
+
 # ------------------------------------------------------------------------------
-# 3. QUẢN LÝ GIỎ HÀNG (SHOPPING CART VIEWS)
+# 3. QUẢN LÝ GIỎ HÀNG DUAL-MODE (SHOPPING CART VIEWS)
 # ------------------------------------------------------------------------------
+@require_POST
 def add_to_cart_view(request, product_id):
     """
-    Thêm sản phẩm cây cảnh vào giỏ hàng lưu trong phiên Session:
-    - Cấu trúc Session: request.session['cart'] = {'product_id': quantity}
-    - Nếu sản phẩm đã có trong giỏ thì tăng số lượng.
-    - Nếu chưa có thì khởi tạo số lượng mới.
+    Thêm cây cảnh hoặc biến thể quy cách vào giỏ hàng Session (chỉ POST).
+    Bảo vệ đầu vào: ép quantity >= 1 và không vượt quá tồn kho khả dụng.
     """
     product = get_object_or_404(Product, id=product_id, is_active=True)
     cart = request.session.get('cart', {})
+    if not isinstance(cart, dict):
+        cart = {}
 
-    # Lấy số lượng người dùng muốn mua từ form (mặc định là 1)
-    quantity = int(request.POST.get('quantity', 1))
-    prod_key = str(product.id)
-
-    if prod_key in cart:
-        cart[prod_key] += quantity
+    variant_id = request.POST.get('variant_id')
+    variant = None
+    if variant_id:
+        try:
+            variant = ProductVariant.objects.get(id=int(variant_id), product=product, is_active=True)
+            prod_key = f"{product.id}:{variant.id}"
+        except (ValueError, TypeError, ProductVariant.DoesNotExist):
+            prod_key = str(product.id)
     else:
-        cart[prod_key] = quantity
+        prod_key = str(product.id)
 
+    try:
+        quantity = int(request.POST.get('quantity', 1))
+    except (ValueError, TypeError):
+        quantity = 1
+    if quantity < 1:
+        quantity = 1
+
+    max_stock = variant.stock if variant else product.stock_quantity
+    current_qty = int(cart.get(prod_key, 0)) if str(cart.get(prod_key, 0)).isdigit() else 0
+
+    if max_stock <= 0 or current_qty >= max_stock:
+        label = f"{product.name} ({variant.name})" if variant else product.name
+        messages.warning(request, f"Sản phẩm '{label}' hiện chỉ còn tối đa {max_stock} phần sẵn kho.")
+        return redirect('cart')
+
+    allowed_add = min(quantity, max_stock - current_qty)
+    if allowed_add < quantity:
+        messages.warning(request, f"Đã điều chỉnh số lượng thêm thành {allowed_add} theo tồn kho khả dụng ({max_stock}).")
+
+    cart[prod_key] = current_qty + allowed_add
     request.session['cart'] = cart
     request.session.modified = True
-    messages.success(request, f"Đã thêm {quantity} phần '{product.name}' vào giỏ hàng.")
+
+    display_title = f"{product.name} ({variant.name})" if variant else product.name
+    messages.success(request, f"Đã thêm {allowed_add} phần '{display_title}' vào giỏ hàng.")
     return redirect('cart')
 
 
 def cart_view(request):
-    """
-    Hiển thị giao diện giỏ hàng của khách:
-    - Đọc danh sách ID sản phẩm từ session và truy vấn thông tin chi tiết từ CSDL.
-    - Tính thành tiền của từng món (đơn giá x số lượng) và tổng tiền cả giỏ.
-    """
-    cart = request.session.get('cart', {})
-    cart_items = []
-    total_amount = Decimal('0')
-
-    for prod_id, qty in cart.items():
-        try:
-            prod = Product.objects.get(id=int(prod_id), is_active=True)
-            subtotal = prod.current_price * int(qty)
-            total_amount += subtotal
-            cart_items.append({
-                'product': prod,
-                'quantity': int(qty),
-                'subtotal': subtotal,
-            })
-        except (Product.DoesNotExist, ValueError):
-            continue
+    """Hiển thị giao diện giỏ hàng, giảm giá sản phẩm và mã ưu đãi Coupon."""
+    cart_items, subtotal, savings = get_cart_items(request)
+    coupon, discount = get_valid_coupon_from_session(request, subtotal)
+    total = max(Decimal('0'), subtotal - discount)
 
     context = {
         'cart_items': cart_items,
-        'total_amount': total_amount,
+        'subtotal': subtotal,
+        'savings': savings,
+        'coupon': coupon,
+        'discount': discount,
+        'total': total,
+        'total_amount': total,
+        'coupon_form': CouponApplyForm(),
     }
     return render(request, 'shop/cart.html', context)
 
 
-def update_cart_view(request, product_id, action):
+@require_POST
+def update_cart_view(request, item_key, action):
     """
-    Tăng hoặc giảm số lượng một sản phẩm trong giỏ hàng:
-    - action == 'increase': Tăng thêm 1.
-    - action == 'decrease': Giảm đi 1 (nếu về 0 thì tự động xóa khỏi giỏ).
+    Tăng hoặc giảm số lượng một sản phẩm trong giỏ hàng (chỉ POST, hỗ trợ cả '1' và '1:3').
     """
     cart = request.session.get('cart', {})
-    prod_key = str(product_id)
+    if not isinstance(cart, dict):
+        return redirect('cart')
 
-    if prod_key in cart:
+    key = str(item_key)
+    target_key = None
+    if key in cart:
+        target_key = key
+    else:
+        for k in cart.keys():
+            if k == key or k.startswith(f"{key}:"):
+                target_key = k
+                break
+
+    if target_key:
         if action == 'increase':
-            cart[prod_key] += 1
+            # Kiểm tra tồn kho trước khi tăng
+            max_stock = None
+            try:
+                if ':' in target_key:
+                    pid, vid = target_key.split(':', 1)
+                    var = ProductVariant.objects.get(id=int(vid), product_id=int(pid))
+                    max_stock = var.stock
+                else:
+                    prod = Product.objects.get(id=int(target_key))
+                    max_stock = prod.stock_quantity
+            except (ValueError, Product.DoesNotExist, ProductVariant.DoesNotExist):
+                max_stock = None
+
+            if max_stock is not None and cart[target_key] >= max_stock:
+                messages.warning(request, f"Đã đạt giới hạn tồn kho ({max_stock} phần).")
+            else:
+                cart[target_key] += 1
         elif action == 'decrease':
-            cart[prod_key] -= 1
-            if cart[prod_key] <= 0:
-                del cart[prod_key]
+            cart[target_key] -= 1
+            if cart[target_key] <= 0:
+                del cart[target_key]
         request.session['cart'] = cart
         request.session.modified = True
 
     return redirect('cart')
 
 
-def remove_from_cart_view(request, product_id):
-    """
-    Xóa hoàn toàn một món hàng ra khỏi giỏ hàng session.
-    """
+@require_POST
+def remove_from_cart_view(request, item_key):
+    """Xóa hoàn toàn một món hàng (hoặc biến thể) khỏi giỏ hàng Session (chỉ POST)."""
     cart = request.session.get('cart', {})
-    prod_key = str(product_id)
-    if prod_key in cart:
-        del cart[prod_key]
+    if not isinstance(cart, dict):
+        return redirect('cart')
+
+    key = str(item_key)
+    deleted = False
+    if key in cart:
+        del cart[key]
+        deleted = True
+    else:
+        keys_to_del = [k for k in list(cart.keys()) if k == key or k.startswith(f"{key}:")]
+        for k in keys_to_del:
+            del cart[k]
+            deleted = True
+
+    if deleted:
         request.session['cart'] = cart
         request.session.modified = True
         messages.info(request, "Đã xóa sản phẩm khỏi giỏ hàng.")
@@ -206,44 +472,187 @@ def remove_from_cart_view(request, product_id):
 
 
 # ------------------------------------------------------------------------------
-# 4. THANH TOÁN & TẠO ĐƠN HÀNG (CHECKOUT VIEW)
+# 4. ÁP DỤNG & HỦY MÃ GIẢM GIÁ (COUPON MANAGEMENT)
+# ------------------------------------------------------------------------------
+@require_POST
+def apply_coupon_view(request):
+    """Kiểm tra và áp dụng mã ưu đãi (AQUA2026, FREESHIP...) vào Session (có Rate Limit)."""
+    is_ajax = (
+        request.headers.get('x-requested-with') == 'XMLHttpRequest'
+        or 'application/json' in request.headers.get('Accept', '')
+    )
+
+    ip = get_client_ip(request)
+    if check_rate_limit('coupon', ip, limit=15):
+        err_msg = "Bạn thử quá nhiều mã ưu đãi. Vui lòng thử lại sau 5 phút."
+        if is_ajax:
+            return JsonResponse({'success': False, 'message': err_msg}, status=429)
+        return HttpResponse(err_msg, status=429)
+    record_rate_limit_hit('coupon', ip, 300)
+
+    form = CouponApplyForm(request.POST)
+
+    referer = request.META.get('HTTP_REFERER', '')
+    redirect_target = referer if url_has_allowed_host_and_scheme(
+        referer, allowed_hosts={request.get_host()}, require_https=request.is_secure()
+    ) else 'cart'
+
+    if not form.is_valid():
+        err_msg = "Vui lòng nhập mã ưu đãi hợp lệ."
+        messages.error(request, err_msg)
+        if is_ajax:
+            return JsonResponse({'success': False, 'message': err_msg}, status=400)
+        return redirect(redirect_target)
+
+    code = form.cleaned_data['coupon_code'].strip().upper()
+    _, subtotal, _ = get_cart_items(request)
+
+    try:
+        coupon = Coupon.objects.get(code__iexact=code)
+    except Coupon.DoesNotExist:
+        err_msg = f"Mã ưu đãi '{code}' không tồn tại trong hệ thống."
+        messages.error(request, err_msg)
+        if is_ajax:
+            return JsonResponse({'success': False, 'message': err_msg}, status=400)
+        return redirect(redirect_target)
+
+    if not coupon.is_active:
+        err_msg = f"Mã ưu đãi '{coupon.code}' hiện đang bị tạm khóa."
+        messages.error(request, err_msg)
+        if is_ajax:
+            return JsonResponse({'success': False, 'message': err_msg}, status=400)
+        return redirect(redirect_target)
+
+    today = timezone.now().date()
+    if coupon.valid_from and coupon.valid_from > today:
+        err_msg = f"Mã ưu đãi '{coupon.code}' chưa đến ngày có hiệu lực sử dụng."
+        messages.error(request, err_msg)
+        if is_ajax:
+            return JsonResponse({'success': False, 'message': err_msg}, status=400)
+        return redirect(redirect_target)
+
+    if coupon.valid_to and coupon.valid_to < today:
+        err_msg = f"Mã ưu đãi '{coupon.code}' đã hết hạn sử dụng."
+        messages.error(request, err_msg)
+        if is_ajax:
+            return JsonResponse({'success': False, 'message': err_msg}, status=400)
+        return redirect(redirect_target)
+
+    if subtotal < coupon.min_order_value:
+        err_msg = (
+            f"Đơn hàng của bạn chưa đạt giá trị tối thiểu "
+            f"({coupon.min_order_value:,.0f}₫) để áp dụng mã '{coupon.code}'."
+        )
+        messages.error(request, err_msg)
+        if is_ajax:
+            return JsonResponse({'success': False, 'message': err_msg}, status=400)
+        return redirect(redirect_target)
+
+    discount = calculate_coupon_discount(coupon, subtotal)
+    request.session['applied_coupon_id'] = coupon.id
+    request.session['applied_coupon_code'] = coupon.code
+    request.session['coupon_discount'] = float(discount)
+    request.session.modified = True
+
+    succ_msg = f"Áp dụng thành công mã '{coupon.code}'! Bạn được giảm {discount:,.0f}₫."
+    messages.success(request, succ_msg)
+    if is_ajax:
+        return JsonResponse({
+            'success': True,
+            'message': succ_msg,
+            'coupon_code': coupon.code,
+            'discount': float(discount),
+            'new_total': float(max(Decimal('0'), subtotal - discount)),
+        })
+    return redirect(redirect_target)
+
+
+@require_POST
+def remove_coupon_view(request):
+    """Hủy mã ưu đãi đang áp dụng khỏi Session (chỉ POST)."""
+    removed = False
+    for key in ('applied_coupon_id', 'applied_coupon_code', 'coupon_discount'):
+        if key in request.session:
+            del request.session[key]
+            removed = True
+
+    if removed:
+        request.session.modified = True
+        messages.info(request, "Đã hủy áp dụng mã ưu đãi.")
+
+    if (
+        request.headers.get('x-requested-with') == 'XMLHttpRequest'
+        or 'application/json' in request.headers.get('Accept', '')
+    ):
+        return JsonResponse({'success': True, 'message': "Đã hủy áp dụng mã ưu đãi."})
+
+    referer = request.META.get('HTTP_REFERER', '')
+    if url_has_allowed_host_and_scheme(referer, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        return redirect(referer)
+    return redirect('cart')
+
+
+# ------------------------------------------------------------------------------
+# 5. THANH TOÁN, COUPON & KHẤU TRỪ KHO FIFO (CHECKOUT VIEW)
 # ------------------------------------------------------------------------------
 def checkout_view(request):
     """
-    Xử lý đặt hàng:
-    - Kiểm tra giỏ hàng có rỗng không.
-    - Thu thập thông tin giao hàng từ CheckoutForm.
-    - Dùng transaction.atomic() để tạo Order và các OrderItem an toàn.
-    - Trừ số lượng tồn kho của từng sản phẩm.
-    - Xóa sạch giỏ hàng trong session và hiển thị trang cảm ơn.
+    Xử lý đặt hàng toàn trình:
+    - Tự động điền thông tin từ User + UserProfile nếu đã đăng nhập.
+    - Áp dụng Coupon hợp lệ từ Session.
+    - Khóa dòng sản phẩm bằng select_for_update() trong transaction.atomic().
+    - Lưu Order & OrderItem (kèm biến thể), trừ tồn kho tổng, trừ biến thể
+      và khấu trừ kho lô FIFO (bỏ qua tuyệt đối lô quarantined).
     """
-    cart = request.session.get('cart', {})
-    if not cart:
+    cart_items, subtotal_amount, savings = get_cart_items(request)
+    if not cart_items:
         messages.warning(request, "Giỏ hàng của bạn đang trống. Vui lòng chọn cây trước khi thanh toán.")
         return redirect('home')
 
-    # Trích xuất danh sách sản phẩm và tính tổng tiền
-    cart_items = []
-    total_amount = Decimal('0')
-    for prod_id, qty in cart.items():
-        try:
-            prod = Product.objects.get(id=int(prod_id), is_active=True)
-            subtotal = prod.current_price * int(qty)
-            total_amount += subtotal
-            cart_items.append({'product': prod, 'quantity': int(qty), 'unit_price': prod.current_price})
-        except Product.DoesNotExist:
-            continue
+    coupon, discount_amount = get_valid_coupon_from_session(request, subtotal_amount)
+    shipping_fee = Decimal('0')
+    total_amount = max(Decimal('0'), subtotal_amount - discount_amount + shipping_fee)
 
     if request.method == 'POST':
         form = CheckoutForm(request.POST)
         if form.is_valid():
             with transaction.atomic():
-                # Tạo mã đơn hàng duy nhất: HD-YYYYMMDD-XXXX
+                # Khóa sản phẩm & biến thể theo thứ tự id cố định để chống Race Condition và Deadlock
+                sorted_items = sorted(cart_items, key=lambda x: x['product'].id)
+                locked_entries = []
+                stock_error = None
+
+                for item in sorted_items:
+                    prod = Product.objects.select_for_update().get(id=item['product'].id)
+                    variant = item.get('variant')
+                    if variant:
+                        variant = ProductVariant.objects.select_for_update().get(id=variant.id)
+
+                    qty_needed = item['quantity']
+                    available_stock = variant.stock if variant else prod.stock_quantity
+                    if (
+                        not prod.is_active
+                        or (variant and not variant.is_active)
+                        or qty_needed <= 0
+                        or qty_needed > available_stock
+                    ):
+                        label = f"{prod.name} ({variant.name})" if variant else prod.name
+                        stock_error = (
+                            f"Sản phẩm '{label}' hiện chỉ còn {max(0, available_stock)} phần sẵn kho. "
+                            f"Vui lòng cập nhật lại giỏ hàng trước khi đặt."
+                        )
+                        break
+
+                    locked_entries.append((prod, variant, qty_needed, item))
+
+                if stock_error:
+                    messages.error(request, stock_error)
+                    return redirect('cart')
+
                 now_str = datetime.now().strftime('%Y%m%d')
-                rand_suffix = str(random.randint(1000, 9999))
+                rand_suffix = secrets.token_hex(4).upper()
                 order_code = f"HD-{now_str}-{rand_suffix}"
 
-                # 1. Tạo đơn hàng chính (Order)
                 order = Order.objects.create(
                     order_code=order_code,
                     user=request.user if request.user.is_authenticated else None,
@@ -252,28 +661,58 @@ def checkout_view(request):
                     phone=form.cleaned_data['phone'],
                     shipping_address=form.cleaned_data['shipping_address'],
                     customer_note=form.cleaned_data['customer_note'],
+                    subtotal_amount=subtotal_amount,
+                    coupon=coupon,
+                    discount_amount=discount_amount,
+                    shipping_fee=shipping_fee,
                     total_amount=total_amount,
-                    status='pending'
+                    status='pending',
+                    tracking_note=(
+                        f"Đơn hàng khởi tạo lúc {timezone.now().strftime('%H:%M %d/%m/%Y')}. "
+                        f"Mã ưu đãi: {coupon.code if coupon else 'Không áp dụng'}. "
+                        f"Đang chuyển kho kiểm kê sinh học đóng gói bọc ẩm."
+                    ),
                 )
 
-                # 2. Tạo chi tiết từng món hàng (OrderItem) và trừ tồn kho
-                for item in cart_items:
+                for prod, variant, qty_needed, item in locked_entries:
                     OrderItem.objects.create(
                         order=order,
-                        product=item['product'],
-                        quantity=item['quantity'],
-                        unit_price=item['unit_price']
+                        product=prod,
+                        variant=variant,
+                        variant_name=item.get('variant_name', ''),
+                        quantity=qty_needed,
+                        unit_price=item['unit_price'],
                     )
-                    # Cập nhật số lượng tồn kho trong CSDL
-                    prod = item['product']
-                    if prod.stock_quantity >= item['quantity']:
-                        prod.stock_quantity -= item['quantity']
-                    else:
-                        prod.stock_quantity = 0
-                    prod.save()
 
-                # 3. Dọn sạch giỏ hàng trong session
-                del request.session['cart']
+                    if variant:
+                        variant.stock = max(0, variant.stock - qty_needed)
+                        variant.save(update_fields=['stock'])
+
+                    prod.stock_quantity = max(0, prod.stock_quantity - qty_needed)
+                    prod.save(update_fields=['stock_quantity'])
+
+                    # Khấu trừ kho lô FIFO, tuyệt đối bỏ qua lô 'quarantined'
+                    eligible_lots = InventoryLot.objects.select_for_update().filter(
+                        product=prod,
+                        status__in=['healthy_submerged', 'healthy_emerged'],
+                        quantity_available__gt=0,
+                    ).order_by('received_date', 'id')
+
+                    remaining = qty_needed
+                    for lot in eligible_lots:
+                        if remaining <= 0:
+                            break
+                        if lot.quantity_available >= remaining:
+                            lot.quantity_available -= remaining
+                            remaining = 0
+                        else:
+                            remaining -= lot.quantity_available
+                            lot.quantity_available = 0
+                        lot.save(update_fields=['quantity_available'])
+
+                for key in ('cart', 'applied_coupon_id', 'applied_coupon_code', 'coupon_discount'):
+                    if key in request.session:
+                        del request.session[key]
                 request.session.modified = True
 
                 messages.success(request, f"Chúc mừng bạn! Đơn hàng {order.order_code} đã được đặt thành công.")
@@ -281,74 +720,101 @@ def checkout_view(request):
     else:
         initial_data = {}
         if request.user.is_authenticated:
+            profile = getattr(request.user, 'profile', None)
             initial_data = {
                 'customer_name': request.user.get_full_name() or request.user.username,
                 'email': request.user.email,
+                'phone': profile.phone if profile else '',
+                'shipping_address': profile.address if profile else '',
             }
         form = CheckoutForm(initial=initial_data)
 
     context = {
         'form': form,
         'cart_items': cart_items,
+        'subtotal_amount': subtotal_amount,
+        'discount_amount': discount_amount,
+        'shipping_fee': shipping_fee,
+        'coupon': coupon,
+        'savings': savings,
         'total_amount': total_amount,
+        'coupon_form': CouponApplyForm(),
     }
     return render(request, 'shop/checkout.html', context)
 
 
 # ------------------------------------------------------------------------------
-# 5. TRA CỨU ĐƠN HÀNG (ORDER TRACKING VIEW - BẢO MẬT & CHỐNG LỘ THÔNG TIN)
+# 6. TRA CỨU ĐƠN HÀNG (ORDER TRACKING VIEW - PRIVACY-FIRST & PROGRESS BAR)
 # ------------------------------------------------------------------------------
+def _get_status_step(status):
+    return {
+        'pending': 1,
+        'confirmed': 2,
+        'shipping': 3,
+        'completed': 4,
+        'cancelled': -1,
+    }.get(status, 1)
+
+
 def order_tracking_view(request):
     """
-    Tra cứu trạng thái đơn hàng có cơ chế bảo vệ quyền riêng tư (Privacy-First):
-    - Người dùng đã đăng nhập: Chỉ được tra cứu đơn hàng của chính tài khoản mình.
-      Cấm dùng số điện thoại của người khác để dò quét lộ thông tin.
-    - Khách vãng lai: Yêu cầu cung cấp Mã đơn hàng cụ thể (bắt đầu bằng HD-...).
-      Thông tin nhạy cảm (Họ tên, SĐT, Địa chỉ nhà) được che giấu tự động (Data Masking).
+    Tra cứu trạng thái đơn hàng bảo vệ quyền riêng tư (Privacy-First):
+    - Khách vãng lai: chỉ tra cứu theo mã đơn (HD-... / AQ-...) và che thông tin cá nhân.
+    - Người dùng đã đăng nhập: xem đầy đủ đơn của chính mình; chặn dò SĐT người khác.
     """
     found_orders = []
-    keyword = request.GET.get('keyword', '').strip()
+    keyword = (request.GET.get('keyword') or request.GET.get('q') or '').strip()
 
     if keyword:
-        is_order_code = keyword.upper().startswith('HD-') or '-' in keyword
+        ip = get_client_ip(request)
+        if check_rate_limit('order_tracking', ip, limit=20):
+            messages.error(request, "Bạn đã tra cứu quá nhiều lần. Vui lòng thử lại sau 5 phút.")
+            form = OrderTrackingForm(initial={'keyword': keyword})
+            return render(
+                request,
+                'shop/order_tracking.html',
+                {'form': form, 'found_orders': [], 'keyword': keyword},
+                status=429,
+            )
+        record_rate_limit_hit('order_tracking', ip, 300)
+
+        is_order_code = (
+            keyword.upper().startswith('HD-')
+            or keyword.upper().startswith('AQ-')
+            or '-' in keyword
+        )
 
         if request.user.is_authenticated:
-            # Người dùng đã đăng nhập
             if is_order_code:
                 orders = Order.objects.filter(order_code__iexact=keyword).prefetch_related('items__product')
                 for o in orders:
                     o.is_owner = (o.user == request.user or (request.user.email and o.email == request.user.email))
+                    o.status_step = _get_status_step(o.status)
                     found_orders.append(o)
                 if not orders.exists():
                     messages.info(request, f"Không tìm thấy đơn hàng nào có mã \"{keyword}\".")
             else:
-                # Tìm kiếm theo số điện thoại khi đã đăng nhập: Chỉ cho phép tìm đơn thuộc về user hiện tại
                 orders = Order.objects.filter(user=request.user, phone__icontains=keyword).prefetch_related('items__product')
                 if orders.exists():
                     for o in orders:
                         o.is_owner = True
+                        o.status_step = _get_status_step(o.status)
                         found_orders.append(o)
                 else:
-                    # Kiểm tra xem SĐT này có phải của người khác hay không để cảnh báo bảo mật
-                    other_exists = Order.objects.filter(phone__icontains=keyword).exclude(user=request.user).exists()
-                    if other_exists:
-                        messages.warning(
-                            request,
-                            "Vì lý do bảo mật dữ liệu khách hàng, bạn không thể tra cứu đơn hàng của số điện thoại khác khi đang đăng nhập tài khoản."
-                        )
-                    else:
-                        messages.info(request, "Không tìm thấy đơn hàng nào khớp với thông tin bạn đã nhập.")
+                    messages.info(
+                        request,
+                        "Không tìm thấy đơn hàng thuộc tài khoản của bạn khớp với thông tin đã nhập."
+                    )
         else:
-            # Khách vãng lai (Chưa đăng nhập)
             if is_order_code:
                 orders = Order.objects.filter(order_code__iexact=keyword).prefetch_related('items__product')
                 for o in orders:
-                    o.is_owner = False  # Khách ngoài -> luôn mask thông tin cá nhân
+                    o.is_owner = False
+                    o.status_step = _get_status_step(o.status)
                     found_orders.append(o)
                 if not orders.exists():
                     messages.info(request, f"Không tìm thấy đơn hàng nào có mã \"{keyword}\". Vui lòng kiểm tra lại mã trên hóa đơn.")
             else:
-                # Khách vãng lai gõ mỗi SĐT -> Ngăn chặn hành vi quét/dò thông tin người khác
                 messages.warning(
                     request,
                     "Để bảo vệ quyền riêng tư và tránh lộ thông tin đơn hàng của người khác, tra cứu công khai yêu cầu nhập chính xác Mã đơn hàng (bắt đầu bằng HD-...). Hoặc vui lòng đăng nhập tài khoản để xem các đơn hàng của bạn."
@@ -364,7 +830,7 @@ def order_tracking_view(request):
 
 
 # ------------------------------------------------------------------------------
-# 6. PHÂN HỆ TÀI KHOẢN (AUTH VIEWS)
+# 7. PHÂN HỆ TÀI KHOẢN (AUTH & PROFILE VIEWS)
 # ------------------------------------------------------------------------------
 def register_view(request):
     """Đăng ký tài khoản khách hàng mới."""
@@ -385,67 +851,190 @@ def register_view(request):
 
 
 def login_view(request):
-    """Đăng nhập vào hệ thống."""
+    """Đăng nhập vào hệ thống (kèm Rate Limiting và chống Open Redirect cho tham số next)."""
     if request.user.is_authenticated:
         return redirect('home')
 
+    next_url = request.GET.get('next') or request.POST.get('next')
+
     if request.method == 'POST':
+        ip = get_client_ip(request)
+        if check_rate_limit('login', ip, limit=5):
+            messages.error(request, "Bạn đã đăng nhập sai quá nhiều lần. Vui lòng thử lại sau 5 phút.")
+            form = LoginForm(request.POST)
+            return render(request, 'shop/login.html', {'form': form, 'next': next_url}, status=429)
+
         form = LoginForm(request.POST)
         if form.is_valid():
             username = form.cleaned_data['username']
             password = form.cleaned_data['password']
             user = authenticate(request, username=username, password=password)
             if user is not None:
+                clear_rate_limit('login', ip)
                 login(request, user)
                 messages.success(request, f"Đăng nhập thành công! Chào bạn {user.username}.")
-                next_url = request.GET.get('next')
-                if next_url:
+                if next_url and url_has_allowed_host_and_scheme(
+                    next_url,
+                    allowed_hosts={request.get_host()},
+                    require_https=request.is_secure(),
+                ):
                     return redirect(next_url)
-                if user.is_staff or user.is_superuser:
-                    return redirect('/admin/')
                 return redirect('home')
             else:
+                record_rate_limit_hit('login', ip, 300)
                 messages.error(request, "Tên đăng nhập hoặc mật khẩu không chính xác.")
     else:
         form = LoginForm()
 
-    return render(request, 'shop/login.html', {'form': form})
+    return render(request, 'shop/login.html', {'form': form, 'next': next_url})
 
 
 def logout_view(request):
-    """Đăng xuất tài khoản và hủy phiên làm việc."""
-    logout(request)
-    messages.info(request, "Bạn đã đăng xuất thành công.")
+    """Đăng xuất tài khoản an toàn (chỉ thực thi trên HTTP POST để chống CSRF GET Logout)."""
+    if request.method == 'POST':
+        logout(request)
+        messages.info(request, "Bạn đã đăng xuất thành công.")
     return redirect('home')
 
 
 @login_required
 def profile_view(request):
-    """Xem danh sách các đơn hàng đã đặt của tài khoản đang đăng nhập."""
-    my_orders = Order.objects.filter(user=request.user).prefetch_related('items__product')
-    return render(request, 'shop/profile.html', {'my_orders': my_orders})
+    """Xem và cập nhật hồ sơ cá nhân, đổi mật khẩu và thống kê đơn hàng."""
+    user = request.user
+    profile, _ = UserProfile.objects.get_or_create(user=user, defaults={'role': 'customer'})
+
+    if request.method == 'POST':
+        form = ProfileUpdateForm(request.POST, user=user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Cập nhật hồ sơ thông tin cá nhân thành công!")
+            return redirect('profile')
+    else:
+        initial_data = {
+            'full_name': user.get_full_name() or user.username,
+            'email': user.email,
+            'phone': profile.phone,
+            'address': profile.address,
+        }
+        form = ProfileUpdateForm(initial=initial_data, user=user)
+
+    my_orders = Order.objects.filter(user=user).prefetch_related('items__product').order_by('-created_at')
+    recent_orders = my_orders[:5]
+    total_orders_count = my_orders.count()
+    completed_orders = my_orders.filter(status='completed')
+    total_spent = completed_orders.aggregate(total=Sum('total_amount'))['total'] or 0
+    password_form = CustomPasswordChangeForm(user=user)
+
+    context = {
+        'form': form,
+        'password_form': password_form,
+        'profile': profile,
+        'my_orders': my_orders,
+        'recent_orders': recent_orders,
+        'total_orders_count': total_orders_count,
+        'completed_orders_count': completed_orders.count(),
+        'total_spent': total_spent,
+    }
+    return render(request, 'shop/profile.html', context)
 
 
 def forgot_password_view(request):
     """
-    Xử lý khôi phục và đặt lại mật khẩu cho người dùng:
-    - Xác thực tên đăng nhập và địa chỉ email đã đăng ký.
-    - Cập nhật mật khẩu mới được băm an toàn qua set_password().
+    Bước 1 khôi phục mật khẩu an toàn:
+    - Chống vét cạn với Rate Limiting (5 lần / 10 phút).
+    - Không tự động đổi mật khẩu trực tiếp; gửi token xác nhận có thời hạn qua email.
+    - Chặn khôi phục tự động đối với tài khoản Staff/Admin.
+    - Trả về thông báo đồng nhất, không tiết lộ tài khoản hay email có tồn tại hay không.
     """
     if request.user.is_authenticated:
         return redirect('home')
 
+    request_submitted = False
     if request.method == 'POST':
-        form = ForgotPasswordForm(request.POST)
+        ip = get_client_ip(request)
+        if check_rate_limit('forgot_pwd', ip, limit=5):
+            messages.error(request, "Bạn đã gửi quá nhiều yêu cầu khôi phục mật khẩu. Vui lòng thử lại sau 10 phút.")
+            form = ForgotPasswordRequestForm(request.POST)
+            return render(request, 'shop/forgot_password.html', {'form': form}, status=429)
+        record_rate_limit_hit('forgot_pwd', ip, 600)
+
+        form = ForgotPasswordRequestForm(request.POST)
         if form.is_valid():
-            user = form.cleaned_data['user']
-            new_password = form.cleaned_data['new_password']
-            user.set_password(new_password)
+            username = form.cleaned_data['username'].strip()
+            email = form.cleaned_data['email'].strip().lower()
+            user = User.objects.filter(username=username, email__iexact=email, is_active=True).first()
+            if user is not None and not user.is_staff and not user.is_superuser:
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                token = default_token_generator.make_token(user)
+                reset_path = reverse('password_reset_confirm', kwargs={'uidb64': uid, 'token': token})
+                reset_url = request.build_absolute_uri(reset_path)
+                send_mail(
+                    subject='[AquaPlant Shop] Xác nhận đặt lại mật khẩu tài khoản',
+                    message=(
+                        f"Xin chào {user.get_full_name() or user.username},\n\n"
+                        f"Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản '{user.username}'.\n"
+                        f"Vui lòng nhấn vào liên kết bên dưới để tạo mật khẩu mới (hiệu lực trong 30 phút):\n"
+                        f"{reset_url}\n\n"
+                        f"Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email."
+                    ),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    recipient_list=[user.email],
+                    fail_silently=True,
+                )
+
+            messages.success(
+                request,
+                "Nếu thông tin tài khoản và email trùng khớp trong hệ thống, liên kết đặt lại mật khẩu đã được gửi qua email (hiệu lực 30 phút). Lưu ý: Tài khoản quản trị viên không hỗ trợ đặt lại mật khẩu tự động."
+            )
+            form = ForgotPasswordRequestForm()
+            request_submitted = True
+    else:
+        form = ForgotPasswordRequestForm()
+
+    return render(
+        request,
+        'shop/forgot_password.html',
+        {'form': form, 'request_submitted': request_submitted},
+    )
+
+
+def reset_password_confirm_view(request, uidb64, token):
+    """Bước 2 khôi phục mật khẩu: xác thực token dùng 1 lần và đặt mật khẩu mới."""
+    if request.user.is_authenticated:
+        return redirect('home')
+
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid, is_active=True)
+    except (TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+
+    validlink = (
+        user is not None
+        and not user.is_staff
+        and not user.is_superuser
+        and default_token_generator.check_token(user, token)
+    )
+
+    if not validlink:
+        return render(
+            request,
+            'shop/password_reset_confirm.html',
+            {'validlink': False, 'form': None},
+        )
+
+    if request.method == 'POST':
+        form = SetNewPasswordForm(request.POST, user=user)
+        if form.is_valid():
+            user.set_password(form.cleaned_data['new_password'])
             user.save()
-            messages.success(request, "Đặt lại mật khẩu thành công! Bạn có thể đăng nhập bằng mật khẩu mới.")
+            messages.success(request, "Đặt lại mật khẩu mới thành công! Vui lòng đăng nhập bằng mật khẩu mới.")
             return redirect('login')
     else:
-        form = ForgotPasswordForm()
+        form = SetNewPasswordForm(user=user)
 
-    return render(request, 'shop/forgot_password.html', {'form': form})
-
+    return render(
+        request,
+        'shop/password_reset_confirm.html',
+        {'validlink': True, 'form': form},
+    )

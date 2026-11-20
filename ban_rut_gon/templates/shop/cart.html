@@ -16,66 +16,112 @@
 
     {% if cart_items %}
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        
-        <!-- Bảng Sản Phẩm Trong Giỏ (2 Cột) -->
-        <div class="lg:col-span-2 bg-white border border-slate-200 overflow-hidden">
-            <table class="w-full text-left text-xs">
-                <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
-                    <tr>
-                        <th class="p-3.5">Cây Cảnh</th>
-                        <th class="p-3.5 text-right">Đơn Giá</th>
-                        <th class="p-3.5 text-center">Số Lượng</th>
-                        <th class="p-3.5 text-right">Thành Tiền</th>
-                        <th class="p-3.5 text-center">Xóa</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    {% for item in cart_items %}
-                    <tr class="hover:bg-slate-50/80 transition">
-                        <!-- Tên & Ảnh -->
-                        <td class="p-3.5 flex items-center gap-3">
-                            <img src="{{ item.product.display_image_url }}" alt="{{ item.product.name }}" class="w-12 h-12 object-cover border border-slate-200">
-                            <div>
-                                <a href="{% url 'product_detail' slug=item.product.slug %}" class="font-bold text-slate-900 hover:text-[#2F5C3E] block">
-                                    {{ item.product.name }}
-                                </a>
-                                <span class="text-[10px] text-slate-400">{{ item.product.category.name }}</span>
-                            </div>
-                        </td>
 
-                        <!-- Đơn Giá -->
-                        <td class="p-3.5 text-right font-mono text-slate-700 font-semibold">
-                            {{ item.product.current_price|floatformat:0 }}₫
-                        </td>
+        <!-- Bảng Sản Phẩm & Coupon (2 Cột) -->
+        <div class="lg:col-span-2 space-y-4">
+            <div class="bg-white border border-slate-200 overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
+                        <tr>
+                            <th class="p-3.5">Cây Cảnh</th>
+                            <th class="p-3.5 text-right">Đơn Giá</th>
+                            <th class="p-3.5 text-center">Số Lượng</th>
+                            <th class="p-3.5 text-right">Thành Tiền</th>
+                            <th class="p-3.5 text-center">Xóa</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for item in cart_items %}
+                        <tr class="hover:bg-slate-50/80 transition">
+                            <td class="p-3.5 flex items-center gap-3">
+                                <img src="{{ item.product.display_image_url }}" alt="{{ item.product.name }}" class="w-12 h-12 object-cover border border-slate-200 flex-shrink-0">
+                                <div>
+                                    <a href="{% url 'product_detail' slug=item.product.slug %}" class="font-bold text-slate-900 hover:text-[#2F5C3E] block">
+                                        {{ item.product.name }}
+                                    </a>
+                                    {% if item.variant_name %}
+                                    <span class="inline-block mt-0.5 px-1.5 py-0.5 text-[10px] font-semibold bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9]">
+                                        {{ item.variant_name }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-[10px] text-slate-400">{{ item.product.category.name }}</span>
+                                    {% endif %}
+                                </div>
+                            </td>
 
-                        <!-- Bộ Đếm Số Lượng (+/-) -->
-                        <td class="p-3.5 text-center">
-                            <div class="inline-flex items-center border border-slate-300 overflow-hidden bg-white">
-                                <a href="{% url 'update_cart' product_id=item.product.id action='decrease' %}" class="w-6 h-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center transition">
-                                    -
-                                </a>
-                                <span class="w-8 text-center font-bold text-slate-800 text-xs font-mono">{{ item.quantity }}</span>
-                                <a href="{% url 'update_cart' product_id=item.product.id action='increase' %}" class="w-6 h-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center transition">
-                                    +
-                                </a>
-                            </div>
-                        </td>
+                            <td class="p-3.5 text-right font-mono text-slate-700 font-semibold">
+                                {{ item.unit_price|floatformat:0 }}₫
+                            </td>
 
-                        <!-- Thành Tiền -->
-                        <td class="p-3.5 text-right font-mono font-bold text-rose-700">
-                            {{ item.subtotal|floatformat:0 }}₫
-                        </td>
+                            <td class="p-3.5 text-center">
+                                <div class="inline-flex items-center border border-slate-300 overflow-hidden bg-white">
+                                    <form method="POST" action="{% url 'update_cart' item_key=item.key action='decrease' %}" class="m-0">
+                                        {% csrf_token %}
+                                        <button type="submit" class="w-6 h-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center transition" aria-label="Giảm số lượng">-</button>
+                                    </form>
+                                    <span class="w-8 text-center font-bold text-slate-800 text-xs font-mono">{{ item.quantity }}</span>
+                                    <form method="POST" action="{% url 'update_cart' item_key=item.key action='increase' %}" class="m-0">
+                                        {% csrf_token %}
+                                        <button type="submit" class="w-6 h-6 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold flex items-center justify-center transition" aria-label="Tăng số lượng">+</button>
+                                    </form>
+                                </div>
+                            </td>
 
-                        <!-- Nút Xóa -->
-                        <td class="p-3.5 text-center">
-                            <a href="{% url 'remove_from_cart' product_id=item.product.id %}" onclick="return confirm('Bạn có chắc muốn xóa cây này khỏi giỏ hàng?');" class="text-slate-400 hover:text-rose-600 transition" title="Xóa món này">
-                                <i class="fa-solid fa-trash-can"></i>
-                            </a>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                            <td class="p-3.5 text-right font-mono font-bold text-rose-700">
+                                {{ item.subtotal|floatformat:0 }}₫
+                            </td>
+
+                            <td class="p-3.5 text-center">
+                                <form method="POST" action="{% url 'remove_from_cart' item_key=item.key %}" onsubmit="return confirm('Bạn có chắc muốn xóa cây này khỏi giỏ hàng?');" class="inline m-0">
+                                    {% csrf_token %}
+                                    <button type="submit" class="text-slate-400 hover:text-rose-600 transition" title="Xóa món này" aria-label="Xóa sản phẩm khỏi giỏ hàng">
+                                        <i class="fa-solid fa-trash-can"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Khối Nhập Mã Giảm Giá Voucher -->
+            <div class="bg-white border border-slate-200 p-4 space-y-3">
+                <h3 class="font-bold text-xs text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-ticket text-[#7AA88B]"></i> Mã Khuyến Mãi / Voucher Ưu Đãi
+                </h3>
+                {% if coupon %}
+                <div class="bg-[#EEF5F0] border border-[#C5DEC9] p-3 flex items-center justify-between gap-3 text-xs">
+                    <div>
+                        <span class="font-bold text-[#2F5C3E]">Đã áp dụng mã <span class="font-mono bg-white px-2 py-0.5 border border-[#C5DEC9]">{{ coupon.code }}</span></span>
+                        <p class="text-[11px] text-slate-600 mt-0.5">Chiết khấu: <strong class="text-rose-700">-{{ discount|floatformat:0 }}₫</strong></p>
+                    </div>
+                    <form method="POST" action="{% url 'remove_coupon' %}">
+                        {% csrf_token %}
+                        <button type="submit" class="px-3 py-1 bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-700 border border-slate-300 text-xs font-bold transition">
+                            Xóa mã
+                        </button>
+                    </form>
+                </div>
+                {% else %}
+                <form method="POST" action="{% url 'apply_coupon' %}" class="flex flex-col sm:flex-row gap-2">
+                    {% csrf_token %}
+                    <div class="flex-grow">{{ coupon_form.coupon_code }}</div>
+                    <button type="submit" class="bg-[#7AA88B] hover:bg-[#6B997C] text-white px-4 py-2 font-bold text-xs uppercase transition flex-shrink-0">
+                        Áp Dụng Mã
+                    </button>
+                </form>
+                <div class="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                    <span>Gợi ý:</span>
+                    <button type="button" onclick="let el=document.getElementById('id_coupon_code'); if(el) el.value='AQUA2026';" class="px-2 py-0.5 bg-slate-50 hover:bg-[#EEF5F0] border border-dashed border-slate-300 font-mono text-[10px]">
+                        <strong>AQUA2026</strong> (Giảm 10% từ 100k)
+                    </button>
+                    <button type="button" onclick="let el=document.getElementById('id_coupon_code'); if(el) el.value='FREESHIP';" class="px-2 py-0.5 bg-slate-50 hover:bg-[#EEF5F0] border border-dashed border-slate-300 font-mono text-[10px]">
+                        <strong>FREESHIP</strong> (Giảm 30k từ 200k)
+                    </button>
+                </div>
+                {% endif %}
+            </div>
         </div>
 
         <!-- Khối Tóm Tắt Thanh Toán (1 Cột) -->
@@ -83,28 +129,40 @@
             <h3 class="font-bold text-xs uppercase tracking-wider text-slate-900 pb-2 border-b border-slate-100">
                 Tóm Tắt Đơn Hàng
             </h3>
-            
+
             <div class="space-y-2 text-xs">
                 <div class="flex justify-between text-slate-600">
                     <span>Tạm tính tiền cây:</span>
-                    <span class="font-bold font-mono text-slate-800">{{ total_amount|floatformat:0 }}₫</span>
+                    <span class="font-bold font-mono text-slate-800">{{ subtotal|floatformat:0 }}₫</span>
                 </div>
+                {% if coupon %}
+                <div class="flex justify-between text-[#2F5C3E] font-bold">
+                    <span>Voucher ({{ coupon.code }}):</span>
+                    <span class="font-mono text-rose-700">-{{ discount|floatformat:0 }}₫</span>
+                </div>
+                {% endif %}
+                {% if savings > 0 %}
+                <div class="flex justify-between text-slate-500">
+                    <span>Tiết kiệm khuyến mãi:</span>
+                    <span class="font-mono text-[#2F5C3E] font-semibold">-{{ savings|floatformat:0 }}₫</span>
+                </div>
+                {% endif %}
                 <div class="flex justify-between text-slate-600">
                     <span>Phí vận chuyển:</span>
                     <span class="text-[#2F5C3E] font-bold">Miễn phí giao hàng</span>
                 </div>
                 <div class="pt-2 border-t border-slate-100 flex justify-between text-sm font-bold text-slate-900">
                     <span>Tổng thanh toán:</span>
-                    <span class="text-rose-700 font-black font-mono text-lg">{{ total_amount|floatformat:0 }}₫</span>
+                    <span class="text-rose-700 font-black font-mono text-lg">{{ total|floatformat:0 }}₫</span>
                 </div>
             </div>
 
-            <a href="{% url 'checkout' %}" class="w-full bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs py-3 transition flex items-center justify-center gap-2 uppercase tracking-wider block text-center">
+            <a href="{% url 'checkout' %}" class="w-full bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs py-3 transition flex items-center justify-center gap-2 uppercase tracking-wider text-center">
                 Tiến Hành Đặt Hàng <i class="fa-solid fa-arrow-right"></i>
             </a>
 
             <p class="text-[11px] text-slate-400 text-center">
-                <i class="fa-solid fa-shield-halved text-[#7AA88B] mr-1"></i> Thanh toán an toàn khi nhận hàng (COD)
+                <i class="fa-solid fa-shield-halved text-[#7AA88B] mr-1"></i> Tự động trừ kho FIFO & bảo hiểm 24H
             </p>
         </div>
 

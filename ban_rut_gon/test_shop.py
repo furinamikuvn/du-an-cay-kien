@@ -10,7 +10,10 @@ Bao gồm 6 TestCase chuẩn của Django:
 6. TestOrderTracking: Tra cứu hành trình đơn hàng theo mã hóa đơn.
 """
 
+import re
 from decimal import Decimal
+from django.core import mail
+from django.core.cache import cache
 from django.test import TestCase, Client
 from django.contrib.auth.models import User
 from shop.models import Category, Product, Order, OrderItem, ProductReview
@@ -19,6 +22,7 @@ from shop.models import Category, Product, Order, OrderItem, ProductReview
 class AquaPlantShopTest(TestCase):
     def setUp(self):
         """Khởi tạo dữ liệu mẫu trước mỗi kịch bản kiểm thử"""
+        cache.clear()
         self.client = Client()
         self.category = Category.objects.create(
             name="Cây Tiền Cảnh",
@@ -94,8 +98,9 @@ class AquaPlantShopTest(TestCase):
         cart = self.client.session.get('cart', {})
         self.assertEqual(cart.get(str(self.product.id)), 2)
 
-        # Cập nhật số lượng (+1 bằng action increase)
-        up_resp = self.client.get(f'/update-cart/{self.product.id}/increase/', follow=True)
+        # Chặn GET và cập nhật số lượng (+1 bằng action increase qua POST)
+        self.assertEqual(self.client.get(f'/update-cart/{self.product.id}/increase/').status_code, 405)
+        up_resp = self.client.post(f'/update-cart/{self.product.id}/increase/', follow=True)
         self.assertEqual(up_resp.status_code, 200)
         cart = self.client.session.get('cart', {})
         self.assertEqual(cart.get(str(self.product.id)), 3)
@@ -163,17 +168,18 @@ class AquaPlantShopTest(TestCase):
         self.assertContains(owner_resp, "Trần Thử Nghiệm")
         self.assertContains(owner_resp, "0911222333")
 
-        # 4. Người dùng khác đăng nhập cố tình tra cứu số điện thoại của người khác -> Bị từ chối
+        # 4. Người dùng khác đăng nhập cố tình tra cứu số điện thoại của người khác -> Trả thông báo trung lập, không lộ trạng thái SĐT
         other_user = User.objects.create_user(username='other_user', password='Password123!')
         self.client.force_login(other_user)
         spy_resp = self.client.get('/tra-cuu-don-hang/?keyword=0911222333')
         self.assertEqual(spy_resp.status_code, 200)
-        self.assertContains(spy_resp, "bạn không thể tra cứu đơn hàng của số điện thoại khác")
+        self.assertNotContains(spy_resp, "số điện thoại khác")
+        self.assertContains(spy_resp, "Không tìm thấy đơn hàng thuộc tài khoản của bạn")
 
     def test_07_forgot_password(self):
-        """TC07: Khôi phục và đặt lại mật khẩu bằng tên đăng nhập và email"""
+        """TC07: Khôi phục và đặt lại mật khẩu 2 bước qua token email an toàn"""
         # 1. Tạo tài khoản mẫu
-        user = User.objects.create_user(
+        User.objects.create_user(
             username='user_reset_test',
             email='reset@example.com',
             password='OldPassword123!'
@@ -184,24 +190,30 @@ class AquaPlantShopTest(TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertContains(resp, "Khôi Phục Mật Khẩu")
 
-        # 3. Gửi form đặt lại mật khẩu với email sai -> phải báo lỗi
+        # 3. Gửi form với email sai -> trả thông báo trung lập và không gửi email
+        mail.outbox.clear()
         fail_resp = self.client.post('/quen-mat-khau/', {
             'username': 'user_reset_test',
             'email': 'wrong_email@example.com',
-            'new_password': 'NewPassword123!',
-            'confirm_new_password': 'NewPassword123!'
         })
         self.assertEqual(fail_resp.status_code, 200)
-        self.assertContains(fail_resp, "Địa chỉ email không khớp")
+        self.assertContains(fail_resp, "Nếu thông tin tài khoản và email trùng khớp")
+        self.assertEqual(len(mail.outbox), 0)
 
-        # 4. Gửi form đặt lại mật khẩu đúng
+        # 4. Gửi form đúng -> gửi token reset qua email -> xác nhận đặt lại mật khẩu
         success_resp = self.client.post('/quen-mat-khau/', {
             'username': 'user_reset_test',
             'email': 'reset@example.com',
-            'new_password': 'NewPassword123!',
-            'confirm_new_password': 'NewPassword123!'
-        }, follow=True)
+        })
         self.assertEqual(success_resp.status_code, 200)
+        self.assertEqual(len(mail.outbox), 1)
+        match = re.search(r'(/quen-mat-khau/xac-nhan/[^\s]+)', mail.outbox[0].body)
+        self.assertIsNotNone(match)
+        confirm_resp = self.client.post(match.group(1), {
+            'new_password': 'NewPassword123!',
+            'confirm_new_password': 'NewPassword123!',
+        }, follow=True)
+        self.assertEqual(confirm_resp.status_code, 200)
 
         # 5. Xác minh đăng nhập được với mật khẩu mới
         login_success = self.client.login(username='user_reset_test', password='NewPassword123!')

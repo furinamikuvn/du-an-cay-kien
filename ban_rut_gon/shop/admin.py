@@ -1,71 +1,165 @@
 # ==============================================================================
 # CẤU HÌNH TRANG QUẢN TRỊ DJANGO ADMIN (SHOP/ADMIN.PY)
 # ==============================================================================
-# Tệp này đăng ký các bảng CSDL vào giao diện quản trị có sẵn của Django:
-# 1. CategoryAdmin: Quản lý thêm/sửa/xóa danh mục sản phẩm.
-# 2. ProductAdmin: Quản lý danh sách cây cảnh, giá bán, tồn kho.
-# 3. OrderAdmin & OrderItemInline: Quản lý danh sách đơn hàng và xem chi tiết món mua.
-# 4. ProductReviewAdmin: Xem nhận xét và phản hồi của khách hàng.
-# ==============================================================================
 
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Category, Product, Order, OrderItem, ProductReview
+from .models import (
+    Article,
+    Category,
+    Coupon,
+    FAQ,
+    InventoryLot,
+    LayoutPreset,
+    LayoutPresetItem,
+    Order,
+    OrderItem,
+    Product,
+    ProductImage,
+    ProductReview,
+    ProductVariant,
+    UserProfile,
+)
+
 
 # ------------------------------------------------------------------------------
-# 1. QUẢN TRỊ DANH MỤC SẢN PHẨM (CATEGORY)
+# 1. QUẢN TRỊ HỒ SƠ NGƯỜI DÙNG (USER PROFILE)
+# ------------------------------------------------------------------------------
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ('user', 'role', 'phone', 'created_at')
+    list_filter = ('role',)
+    search_fields = ('user__username', 'user__email', 'phone')
+
+
+# ------------------------------------------------------------------------------
+# 2. QUẢN TRỊ DANH MỤC SẢN PHẨM (CATEGORY)
 # ------------------------------------------------------------------------------
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    # Các cột hiển thị trên bảng danh sách danh mục
     list_display = ('name', 'slug', 'description')
-    # Tự động điền đường dẫn slug khi người quản trị gõ tên danh mục
     prepopulated_fields = {'slug': ('name',)}
     search_fields = ('name',)
 
 
 # ------------------------------------------------------------------------------
-# 2. QUẢN TRỊ SẢN PHẨM CÂY CẢNH (PRODUCT)
+# 3. QUẢN TRỊ SẢN PHẨM CÂY CẢNH, GALLERY, BIẾN THỂ & LÔ KHO
 # ------------------------------------------------------------------------------
+class ProductImageInline(admin.TabularInline):
+    model = ProductImage
+    extra = 1
+    fields = ('image', 'caption', 'order', 'preview')
+    readonly_fields = ('preview',)
+
+    def preview(self, obj):
+        if obj and obj.image:
+            return format_html(
+                '<img src="{}" style="height: 44px; border-radius: 4px; border: 1px solid #cbd5e1;" />',
+                obj.image.url,
+            )
+        return "Chưa có ảnh"
+    preview.short_description = "Xem trước"
+
+
+class ProductVariantInline(admin.TabularInline):
+    model = ProductVariant
+    extra = 1
+    fields = ('name', 'sku_code', 'price', 'stock', 'is_default', 'is_active')
+
+
+class InventoryLotInline(admin.TabularInline):
+    model = InventoryLot
+    extra = 1
+    fields = ('lot_code', 'quantity_received', 'quantity_available', 'status', 'note')
+
+
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    # Các cột hiển thị trên danh sách sản phẩm
     list_display = (
         'thumbnail_preview',
         'name',
         'category',
         'regular_price',
         'sale_price',
+        'placement_position',
+        'co2_requirement',
+        'care_level',
         'stock_quantity',
         'is_active',
-        'created_at'
+        'created_at',
     )
-    # Bộ lọc nhanh ở thanh bên phải (theo danh mục và trạng thái kinh doanh)
-    list_filter = ('category', 'is_active')
-    # Thanh tìm kiếm theo tên cây hoặc tên khoa học
+    list_filter = ('category', 'is_active', 'placement_position', 'co2_requirement', 'care_level')
     search_fields = ('name', 'scientific_name', 'description')
-    # Cho phép chỉnh sửa nhanh giá bán và số lượng tồn kho trực tiếp trên bảng
     list_editable = ('regular_price', 'sale_price', 'stock_quantity')
+    inlines = [ProductImageInline, ProductVariantInline, InventoryLotInline]
 
     def thumbnail_preview(self, obj):
-        """Hiển thị ảnh thu nhỏ xem trước của sản phẩm trên trang quản trị."""
         return format_html(
             '<img src="{}" style="width: 40px; height: 40px; object-fit: cover; border-radius: 4px; border: 1px solid #cbd5e1;" />',
-            obj.display_image_url
+            obj.display_image_url,
         )
     thumbnail_preview.short_description = "Ảnh"
 
 
+@admin.register(ProductImage)
+class ProductImageAdmin(admin.ModelAdmin):
+    list_display = ('product', 'caption', 'order', 'created_at', 'preview')
+    list_filter = ('product',)
+    search_fields = ('product__name', 'caption')
+
+    def preview(self, obj):
+        if obj and obj.image:
+            return format_html('<img src="{}" style="height: 44px; border-radius: 4px;" />', obj.image.url)
+        return "Chưa có ảnh"
+    preview.short_description = "Xem trước"
+
+
+@admin.register(ProductVariant)
+class ProductVariantAdmin(admin.ModelAdmin):
+    list_display = ('product', 'name', 'price', 'stock', 'is_default', 'is_active')
+    list_filter = ('is_default', 'is_active')
+    search_fields = ('product__name', 'name', 'sku_code')
+
+
+@admin.register(InventoryLot)
+class InventoryLotAdmin(admin.ModelAdmin):
+    list_display = ('lot_code', 'product', 'quantity_received', 'quantity_available', 'status', 'received_date')
+    list_filter = ('status', 'received_date')
+    search_fields = ('lot_code', 'product__name')
+
+
+@admin.register(Coupon)
+class CouponAdmin(admin.ModelAdmin):
+    list_display = ('code', 'discount_type', 'discount_value', 'min_order_value', 'is_active', 'valid_to')
+    list_filter = ('discount_type', 'is_active')
+    search_fields = ('code',)
+
+
 # ------------------------------------------------------------------------------
-# 3. QUẢN TRỊ ĐƠN HÀNG & CHI TIẾT ĐƠN HÀNG (ORDER & ORDERITEM)
+# 4. QUẢN TRỊ BỐ CỤC HỒ MẪU (LAYOUT PRESET)
+# ------------------------------------------------------------------------------
+class LayoutPresetItemInline(admin.TabularInline):
+    model = LayoutPresetItem
+    extra = 1
+    fields = ('product', 'quantity', 'layer_role')
+
+
+@admin.register(LayoutPreset)
+class LayoutPresetAdmin(admin.ModelAdmin):
+    list_display = ('name', 'tank_size', 'style', 'total_price')
+    search_fields = ('name', 'style')
+    inlines = [LayoutPresetItemInline]
+
+
+# ------------------------------------------------------------------------------
+# 5. QUẢN TRỊ ĐƠN HÀNG & CHI TIẾT ĐƠN HÀNG (ORDER & ORDERITEM)
 # ------------------------------------------------------------------------------
 class OrderItemInline(admin.TabularInline):
-    """Bảng hiển thị chi tiết các sản phẩm được mua lồng bên trong trang chi tiết đơn hàng."""
     model = OrderItem
     extra = 0
     can_delete = False
-    readonly_fields = ('product', 'quantity', 'unit_price_display', 'subtotal_display')
-    fields = ('product', 'quantity', 'unit_price_display', 'subtotal_display')
+    readonly_fields = ('product', 'variant_name', 'quantity', 'unit_price_display', 'subtotal_display')
+    fields = ('product', 'variant_name', 'quantity', 'unit_price_display', 'subtotal_display')
 
     def unit_price_display(self, obj):
         if not obj or obj.unit_price is None:
@@ -82,30 +176,20 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
-    # Các cột hiển thị trên danh sách đơn đặt hàng
     list_display = (
         'order_code',
         'customer_name',
         'phone',
         'formatted_total',
         'status',
-        'created_at'
+        'created_at',
     )
     list_display_links = ('order_code',)
-
-    # Cho phép chỉnh sửa nhanh trạng thái đơn hàng ngay trên bảng danh sách
     list_editable = ('status',)
-
-    # Bộ lọc theo trạng thái đơn hàng và ngày tạo
     list_filter = ('status', 'created_at')
-
-    # Tìm kiếm đơn hàng theo mã đơn, họ tên hoặc số điện thoại
-    search_fields = ('order_code', 'customer_name', 'phone')
-
-    # Nhúng danh sách món hàng vào bên dưới chi tiết đơn hàng
+    search_fields = ('order_code', 'customer_name', 'phone', 'customer_note')
     inlines = [OrderItemInline]
 
-    # Các thao tác hàng loạt (Actions) đổi trạng thái nhiều đơn cùng lúc
     actions = [
         'mark_as_confirmed',
         'mark_as_shipping',
@@ -114,19 +198,18 @@ class OrderAdmin(admin.ModelAdmin):
     ]
 
     def formatted_total(self, obj):
-        """Hiển thị tổng tiền đẹp mắt với phân cách hàng nghìn."""
         return f"{obj.total_amount:,.0f} ₫".replace(',', '.')
     formatted_total.short_description = "Tổng tiền đơn hàng"
     formatted_total.admin_order_field = 'total_amount'
 
     def get_readonly_fields(self, request, obj=None):
-        if obj:  # Khi đang chỉnh sửa đơn hàng đã có
+        if obj:
             return ('order_code', 'total_amount', 'created_at', 'updated_at')
         return ('created_at', 'updated_at')
 
     fieldsets = (
         ('Trạng thái & Mã đơn hàng', {
-            'fields': ('order_code', 'status', 'total_amount', 'created_at', 'updated_at')
+            'fields': ('order_code', 'status', 'subtotal_amount', 'coupon', 'discount_amount', 'total_amount', 'tracking_note', 'created_at', 'updated_at')
         }),
         ('Thông tin người nhận & Địa chỉ giao hàng', {
             'fields': ('customer_name', 'phone', 'email', 'shipping_address', 'customer_note', 'user')
@@ -155,7 +238,7 @@ class OrderAdmin(admin.ModelAdmin):
 
 
 # ------------------------------------------------------------------------------
-# 4. QUẢN TRỊ ĐÁNH GIÁ SẢN PHẨM (PRODUCT REVIEW)
+# 6. QUẢN TRỊ ĐÁNH GIÁ & TRI THỨC (REVIEW, ARTICLE, FAQ)
 # ------------------------------------------------------------------------------
 @admin.register(ProductReview)
 class ProductReviewAdmin(admin.ModelAdmin):
@@ -164,7 +247,19 @@ class ProductReviewAdmin(admin.ModelAdmin):
     search_fields = ('reviewer_name', 'comment', 'product__name')
 
 
-# Tiêu đề giao diện quản trị Admin Việt hóa
-admin.site.site_header = "Hệ Thống Quản Trị Website Bán Cây Cảnh (AquaPlant Basic)"
+@admin.register(Article)
+class ArticleAdmin(admin.ModelAdmin):
+    list_display = ('title', 'category', 'published_at')
+    prepopulated_fields = {'slug': ('title',)}
+    search_fields = ('title', 'content')
+
+
+@admin.register(FAQ)
+class FAQAdmin(admin.ModelAdmin):
+    list_display = ('order_num', 'question')
+    ordering = ('order_num',)
+
+
+admin.site.site_header = "Hệ Thống Quản Trị Website Bán Cây Cảnh (AquaPlant)"
 admin.site.site_title = "Quản trị AquaPlant"
-admin.site.index_title = "Bảng điều khiển quản lý sản phẩm và đơn hàng"
+admin.site.index_title = "Bảng điều khiển quản lý sản phẩm, kho FIFO và đơn hàng"

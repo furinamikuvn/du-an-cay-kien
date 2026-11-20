@@ -15,86 +15,223 @@
         <span class="text-slate-800 font-bold truncate">{{ product.name }}</span>
     </nav>
 
-    <!-- Khối Chi Tiết Sản Phẩm -->
+    <!-- 1. KHỐI CHI TIẾT SẢN PHẨM, GALLERY & BIẾN THỂ -->
     <div class="bg-white border border-slate-200 p-6 sm:p-8 grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
-        
-        <!-- Ảnh Sản Phẩm -->
-        <div class="aspect-square bg-slate-50 overflow-hidden border border-slate-200">
-            <img src="{{ product.display_image_url }}" alt="{{ product.name }}" class="w-full h-full object-cover">
+
+        <!-- Ảnh Sản Phẩm & Album Gallery -->
+        <div class="space-y-3">
+            <div class="relative aspect-square bg-slate-50 overflow-hidden border border-slate-200">
+                <img id="main-product-image" src="{{ product.display_image_url }}" alt="{{ product.name }}" class="w-full h-full object-cover transition-opacity duration-150">
+                <div class="absolute top-3 left-3 flex flex-col gap-1">
+                    <span class="bg-[#2F5C3E] text-white text-[10px] font-bold px-2.5 py-1 uppercase">
+                        {% if product.leaf_state == 'submerged' %}100% Thuần Lá Nước{% else %}Cây Ươm Lá Cạn{% endif %}
+                    </span>
+                    {% if product.sale_price %}
+                    <span class="bg-rose-700 text-white text-[10px] font-bold px-2.5 py-1 uppercase">Khuyến Mãi</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            {% if gallery_images %}
+            <div class="space-y-1.5">
+                <span class="text-[11px] font-bold text-slate-600 uppercase flex items-center gap-1.5">
+                    <i class="fa-solid fa-images text-[#7AA88B]"></i> Góc chụp thực tế ({{ gallery_images.count }} ảnh)
+                </span>
+                <div class="flex items-center gap-2 overflow-x-auto pb-1">
+                    <button type="button" onclick="changeMainImage('{{ product.display_image_url }}', this)" class="gallery-thumb w-14 h-14 border-2 border-[#7AA88B] overflow-hidden flex-shrink-0">
+                        <img src="{{ product.display_image_url }}" alt="{{ product.name }}" class="w-full h-full object-cover">
+                    </button>
+                    {% for img_item in gallery_images %}
+                    <button type="button" onclick="changeMainImage('{{ img_item.image.url }}', this)" title="{{ img_item.caption|default:product.name }}" class="gallery-thumb w-14 h-14 border border-slate-200 hover:border-[#7AA88B] overflow-hidden flex-shrink-0 transition">
+                        <img src="{{ img_item.image.url }}" alt="{{ img_item.caption|default:product.name }}" class="w-full h-full object-cover">
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
         </div>
 
         <!-- Thông Tin Đặt Mua Cây Cảnh -->
         <div class="space-y-4">
             <div>
-                <span class="text-xs font-bold text-[#2F5C3E] bg-[#EEF5F0] border border-[#C5DEC9] px-2 py-0.5 uppercase">
-                    {{ product.category.name }}
-                </span>
+                <div class="flex items-center justify-between text-xs mb-1">
+                    <span class="font-bold text-[#2F5C3E] bg-[#EEF5F0] border border-[#C5DEC9] px-2 py-0.5 uppercase">
+                        {{ product.category.name }}
+                    </span>
+                    <span class="text-slate-400 font-mono text-[11px]">AQ-{{ product.id|stringformat:"04d" }}</span>
+                </div>
                 <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-2">
                     {{ product.name }}
                 </h1>
                 {% if product.scientific_name %}
                 <p class="text-xs text-slate-400 italic mt-0.5">{{ product.scientific_name }}</p>
                 {% endif %}
+                <div class="flex items-center gap-2 text-xs text-slate-500 mt-2">
+                    <span class="text-amber-500 font-bold"><i class="fa-solid fa-star"></i> {{ avg_rating }}/5</span>
+                    <span>·</span>
+                    <a href="#reviews-section" class="hover:text-[#2F5C3E] underline">{{ reviews_count }} đánh giá</a>
+                </div>
             </div>
 
             <!-- Giá Bán -->
             <div class="p-4 bg-[#F8FAFC] border border-slate-200 flex items-baseline gap-3">
-                <span class="text-2xl sm:text-3xl font-black text-rose-700 font-mono">
+                <span id="main-product-price" class="text-2xl sm:text-3xl font-black text-rose-700 font-mono">
                     {{ product.current_price|floatformat:0 }}₫
                 </span>
                 {% if product.sale_price %}
                 <span class="text-sm text-slate-400 line-through font-mono">
                     {{ product.regular_price|floatformat:0 }}₫
                 </span>
-                <span class="text-[11px] font-bold text-[#2F5C3E] bg-[#EEF5F0] px-2 py-0.5 border border-[#C5DEC9] uppercase">
-                    Khuyến mãi
-                </span>
                 {% endif %}
             </div>
+
+            <!-- Lựa chọn biến thể quy cách -->
+            {% if variants %}
+            <div class="space-y-2">
+                <label class="block text-[11px] font-bold text-slate-700 uppercase tracking-wider">
+                    <i class="fa-solid fa-layer-group text-[#7AA88B] mr-1"></i> Quy cách đóng gói:
+                </label>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {% for var in variants %}
+                    <button type="button"
+                            onclick="selectVariant(this, '{{ var.id }}', '{{ var.price|floatformat:0 }}', '{{ var.stock }}')"
+                            class="variant-card text-left border p-2.5 transition {% if forloop.first %}border-[#7AA88B] bg-[#EEF5F0] ring-1 ring-[#7AA88B]{% else %}border-slate-200 bg-white hover:border-slate-400{% endif %}">
+                        <span class="block text-[11px] font-bold text-slate-900 leading-snug">{{ var.name }}</span>
+                        <div class="flex items-center justify-between mt-1">
+                            <span class="text-xs font-black text-rose-700 font-mono">{{ var.price|floatformat:0 }}₫</span>
+                            <span class="text-[10px] text-slate-400">Còn {{ var.stock }}</span>
+                        </div>
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
 
             <!-- Tình trạng kho hàng -->
             <div class="text-xs text-slate-600 flex items-center gap-2">
                 <i class="fa-solid fa-box text-[#7AA88B]"></i>
-                <span>Tình trạng: <strong class="text-slate-800">Còn {{ product.stock_quantity }} phần</strong> sẵn kho</span>
+                <span>Tình trạng: <strong id="stock-display" class="text-slate-800">Còn {{ product.stock_quantity }} phần</strong> sẵn kho</span>
             </div>
 
             <!-- Form Chọn Số Lượng & Thêm Giỏ Hàng -->
-            <form method="POST" action="{% url 'add_to_cart' product.id %}" class="space-y-4 pt-2">
+            <form method="POST" action="{% url 'add_to_cart' product.id %}" class="space-y-4 pt-1">
                 {% csrf_token %}
+                <input type="hidden" name="variant_id" id="selected-variant-id" value="{% if variants %}{{ variants.first.id }}{% endif %}">
                 <div class="flex items-center gap-3">
                     <label for="qty" class="text-xs font-bold text-slate-700">Số lượng:</label>
                     <div class="flex items-center border border-slate-300 overflow-hidden w-28">
-                        <button type="button" onclick="let q=document.getElementById('qty'); if(q.value>1) q.value--;" class="w-8 h-9 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm flex items-center justify-center transition">
+                        <button type="button" onclick="let q=document.getElementById('qty'); if(parseInt(q.value)>1) q.value=parseInt(q.value)-1;" class="w-8 h-9 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm flex items-center justify-center transition">
                             -
                         </button>
                         <input type="number" id="qty" name="quantity" value="1" min="1" max="{{ product.stock_quantity }}" class="w-12 h-9 text-center font-bold text-slate-800 text-xs border-0 focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none">
-                        <button type="button" onclick="let q=document.getElementById('qty'); if(q.value<{{ product.stock_quantity }}) q.value++;" class="w-8 h-9 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm flex items-center justify-center transition">
+                        <button type="button" onclick="let q=document.getElementById('qty'); if(parseInt(q.value)<{{ product.stock_quantity }}) q.value=parseInt(q.value)+1;" class="w-8 h-9 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm flex items-center justify-center transition">
                             +
                         </button>
                     </div>
                 </div>
 
-                <button type="submit" class="w-full sm:w-auto px-8 py-3 bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs uppercase tracking-wide transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-cart-shopping"></i> Thêm Vào Giỏ Hàng
-                </button>
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <button type="submit" class="px-6 py-3 bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs uppercase tracking-wide transition flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-cart-shopping"></i> Thêm Vào Giỏ Hàng
+                    </button>
+                    <a href="{% url 'plant_quantity' %}" class="px-4 py-3 bg-[#EEF5F0] hover:bg-[#C5DEC9] text-[#2F5C3E] border border-[#C5DEC9] font-bold text-xs transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-calculator"></i> Tính Số Lượng Theo Bể
+                    </a>
+                </div>
             </form>
-
-            <!-- Mô Tả Cây Cảnh -->
-            <div class="pt-4 border-t border-slate-100 space-y-2">
-                <h3 class="font-bold text-xs text-slate-800 uppercase tracking-wide">Mô Tả & Hướng Dẫn Trồng:</h3>
-                <p class="text-xs text-slate-600 leading-relaxed whitespace-pre-line">
-                    {{ product.description|default:"Cây cảnh thủy sinh tươi khỏe, thích hợp trang trí bể cá cảnh." }}
-                </p>
-            </div>
         </div>
-
     </div>
 
-    <!-- Đánh Giá & Nhận Xét Của Khách Hàng -->
-    <div class="bg-white border border-slate-200 p-6 sm:p-8 space-y-6">
+    <!-- 2. HỒ SƠ SINH HỌC & ĐIỀU KIỆN MÔI TRƯỜNG (8 THẺ) -->
+    <div class="bg-white border border-slate-200 p-6 space-y-4">
+        <h2 class="font-bold text-sm text-slate-900 pb-3 border-b border-slate-100 flex items-center gap-2">
+            <i class="fa-solid fa-dna text-[#7AA88B]"></i> Hồ Sơ Sinh Học & Thông Số Nước
+        </h2>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+            <div class="p-3 bg-slate-50 border border-slate-200">
+                <span class="text-[10px] text-slate-400 uppercase block font-bold">Độ pH tối ưu</span>
+                <strong class="text-sm text-slate-900">{{ product.ph_min }} - {{ product.ph_max }}</strong>
+            </div>
+            <div class="p-3 bg-slate-50 border border-slate-200">
+                <span class="text-[10px] text-slate-400 uppercase block font-bold">Nhiệt độ nước</span>
+                <strong class="text-sm text-slate-900">{{ product.temp_min }}°C - {{ product.temp_max }}°C</strong>
+            </div>
+            <div class="p-3 bg-slate-50 border border-slate-200">
+                <span class="text-[10px] text-slate-400 uppercase block font-bold">Ánh sáng</span>
+                <strong class="text-sm text-slate-900">{{ product.get_light_requirement_display }}</strong>
+            </div>
+            <div class="p-3 bg-slate-50 border border-slate-200">
+                <span class="text-[10px] text-slate-400 uppercase block font-bold">Nhu cầu CO₂</span>
+                <strong class="text-sm text-slate-900">{{ product.get_co2_requirement_display }}</strong>
+            </div>
+            <div class="p-3 bg-slate-50 border border-slate-200">
+                <span class="text-[10px] text-slate-400 uppercase block font-bold">Vị trí trồng</span>
+                <strong class="text-sm text-slate-900">{{ product.get_placement_position_display }}</strong>
+            </div>
+            <div class="p-3 bg-slate-50 border border-slate-200">
+                <span class="text-[10px] text-slate-400 uppercase block font-bold">Độ khó chăm sóc</span>
+                <strong class="text-sm text-slate-900">{{ product.get_care_level_display }}</strong>
+            </div>
+            <div class="p-3 bg-slate-50 border border-slate-200">
+                <span class="text-[10px] text-slate-400 uppercase block font-bold">Tốc độ mọc</span>
+                <strong class="text-sm text-slate-900">{{ product.get_growth_rate_display }}</strong>
+            </div>
+            <div class="p-3 bg-slate-50 border border-slate-200">
+                <span class="text-[10px] text-slate-400 uppercase block font-bold">Độ phủ tán</span>
+                <strong class="text-sm text-slate-900">{{ product.coverage_area_cm2 }} cm² / phần</strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. TAB KIẾN THỨC CHĂM SÓC & NHÂN GIỐNG -->
+    <div class="bg-white border border-slate-200 p-6">
+        <div class="flex border-b border-slate-200 mb-4 gap-2 overflow-x-auto">
+            <button type="button" onclick="switchTab('tab-desc')" id="btn-tab-desc" class="px-4 py-2.5 text-xs font-bold border-b-2 border-[#7AA88B] text-[#2F5C3E] bg-[#EEF5F0] whitespace-nowrap">
+                Mô Tả Kỹ Thuật
+            </button>
+            <button type="button" onclick="switchTab('tab-planting')" id="btn-tab-planting" class="px-4 py-2.5 text-xs font-bold border-b-2 border-transparent text-slate-600 hover:text-[#2F5C3E] whitespace-nowrap">
+                Hướng Dẫn Cắm Cây
+            </button>
+            <button type="button" onclick="switchTab('tab-prop')" id="btn-tab-prop" class="px-4 py-2.5 text-xs font-bold border-b-2 border-transparent text-slate-600 hover:text-[#2F5C3E] whitespace-nowrap">
+                Nhân Giống & Cắt Tỉa
+            </button>
+        </div>
+
+        <div id="tab-desc" class="text-xs text-slate-600 leading-relaxed whitespace-pre-line">
+            {{ product.description|default:"Cây cảnh thủy sinh tươi khỏe, thích hợp trang trí bể cá cảnh." }}
+        </div>
+        <div id="tab-planting" class="hidden text-xs text-slate-600 leading-relaxed whitespace-pre-line">
+            {{ product.planting_guide|default:"Rửa sạch giá thể, dùng nhíp thủy sinh cắm nhẹ gốc xuống nền phân nghiêng góc 45 độ." }}
+        </div>
+        <div id="tab-prop" class="hidden text-xs text-slate-600 leading-relaxed whitespace-pre-line">
+            {{ product.propagation_guide|default:"Khi cây phát triển ổn định có thể cắt tách nhánh hoặc ngọn khỏe cắm sang vị trí mới." }}
+        </div>
+    </div>
+
+    <!-- 4. ĐÁNH GIÁ & NHẬN XÉT CỦA KHÁCH HÀNG -->
+    <div id="reviews-section" class="bg-white border border-slate-200 p-6 sm:p-8 space-y-6">
         <h3 class="font-bold text-sm text-slate-900 pb-3 border-b border-slate-100 flex items-center gap-2">
-            <i class="fa-solid fa-star text-amber-500"></i> Đánh Giá Sản Phẩm ({{ reviews.count }})
+            <i class="fa-solid fa-star text-amber-500"></i> Đánh Giá Sản Phẩm ({{ reviews_count }})
         </h3>
+
+        <!-- Bảng tổng quan phân bố sao -->
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6 p-4 bg-slate-50 border border-slate-200 items-center">
+            <div class="md:col-span-4 text-center md:border-r md:border-slate-200">
+                <div class="text-4xl font-black text-slate-900">{{ avg_rating }}<span class="text-base text-slate-400">/5</span></div>
+                <p class="text-[11px] text-slate-500 mt-1">{{ reviews_count }} nhận xét thực tế</p>
+            </div>
+            <div class="md:col-span-8 space-y-1.5">
+                {% for star, data in rating_distribution.items %}
+                <div class="flex items-center gap-2 text-xs">
+                    <span class="w-11 text-right text-slate-600 font-medium">{{ star }} sao</span>
+                    <div class="flex-grow bg-slate-200 h-2 overflow-hidden">
+                        <div class="bg-[#7AA88B] h-full" style="width: {{ data.percent }}%;"></div>
+                    </div>
+                    <span class="w-6 text-right text-[11px] text-slate-400">{{ data.count }}</span>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
 
         <!-- Danh Sách Đánh Giá Đã Có -->
         <div class="space-y-4">
@@ -119,7 +256,7 @@
         <!-- Form Gửi Đánh Giá Mới -->
         <div class="pt-4 border-t border-slate-100 space-y-3">
             <h4 class="font-bold text-xs text-slate-800">Gửi Đánh Giá Của Bạn</h4>
-            <form method="POST" class="space-y-3 max-w-lg">
+            <form method="POST" action="{% url 'submit_review' slug=product.slug %}" class="space-y-3 max-w-lg">
                 {% csrf_token %}
                 <div>
                     <label class="block text-xs text-slate-600 mb-1">{{ review_form.reviewer_name.label }}</label>
@@ -140,5 +277,76 @@
         </div>
     </div>
 
+    <!-- 5. SẢN PHẨM LIÊN QUAN -->
+    {% if related_products %}
+    <div class="bg-white border border-slate-200 p-6 space-y-4">
+        <h3 class="font-bold text-sm text-slate-900 pb-2 border-b border-slate-100">Cây Cảnh Liên Quan</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {% for rp in related_products %}
+            <a href="{% url 'product_detail' slug=rp.slug %}" class="border border-slate-200 hover:border-[#7AA88B] transition overflow-hidden block">
+                <img src="{{ rp.display_image_url }}" alt="{{ rp.name }}" class="w-full h-36 object-cover border-b border-slate-100">
+                <div class="p-3 text-xs">
+                    <div class="font-bold text-slate-900 truncate">{{ rp.name }}</div>
+                    <div class="text-rose-700 font-mono font-bold mt-1">{{ rp.current_price|floatformat:0 }}₫</div>
+                </div>
+            </a>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
 </div>
+
+<script>
+function selectVariant(el, varId, price, stock) {
+    document.querySelectorAll('.variant-card').forEach(card => {
+        card.classList.remove('border-[#7AA88B]', 'bg-[#EEF5F0]', 'ring-1', 'ring-[#7AA88B]');
+        card.classList.add('border-slate-200', 'bg-white');
+    });
+    el.classList.add('border-[#7AA88B]', 'bg-[#EEF5F0]', 'ring-1', 'ring-[#7AA88B]');
+    el.classList.remove('border-slate-200', 'bg-white');
+
+    const hiddenInput = document.getElementById('selected-variant-id');
+    if (hiddenInput) hiddenInput.value = varId;
+
+    const priceDisplay = document.getElementById('main-product-price');
+    if (priceDisplay) {
+        priceDisplay.textContent = price + '₫';
+    }
+    const stockDisplay = document.getElementById('stock-display');
+    if (stockDisplay) {
+        stockDisplay.textContent = 'Còn ' + stock + ' phần';
+    }
+}
+
+function changeMainImage(url, el) {
+    const mainImg = document.getElementById('main-product-image');
+    if (mainImg) {
+        mainImg.src = url;
+    }
+    document.querySelectorAll('.gallery-thumb').forEach(t => {
+        t.classList.remove('border-[#7AA88B]', 'border-2');
+        t.classList.add('border-slate-200', 'border');
+    });
+    if (el) {
+        el.classList.remove('border-slate-200', 'border');
+        el.classList.add('border-[#7AA88B]', 'border-2');
+    }
+}
+
+function switchTab(tabId) {
+    ['tab-desc', 'tab-planting', 'tab-prop'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+    });
+    ['btn-tab-desc', 'btn-tab-planting', 'btn-tab-prop'].forEach(id => {
+        const b = document.getElementById(id);
+        b.classList.remove('border-[#7AA88B]', 'text-[#2F5C3E]', 'bg-[#EEF5F0]');
+        b.classList.add('border-transparent', 'text-slate-600');
+    });
+    document.getElementById(tabId).classList.remove('hidden');
+    const active = document.getElementById('btn-' + tabId);
+    active.classList.remove('border-transparent', 'text-slate-600');
+    active.classList.add('border-[#7AA88B]', 'text-[#2F5C3E]', 'bg-[#EEF5F0]');
+}
+</script>
 {% endblock %}

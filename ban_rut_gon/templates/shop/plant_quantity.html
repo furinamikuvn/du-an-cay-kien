@@ -1,0 +1,92 @@
+{% extends 'shop/base.html' %}
+
+{% block title %}Tính Số Lượng Cây Theo Diện Tích - AquaPlant{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white border border-slate-200 p-6">
+        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] text-[11px] font-bold mb-2 uppercase">
+            <i class="fa-solid fa-calculator text-[#7AA88B]"></i> Tiện Ích Dự Toán Mua Sắm
+        </span>
+        <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">Tính Số Lượng Cây & Chi Phí Theo Diện Tích Hồ</h1>
+        <p class="text-xs text-slate-500 mt-1">Nhập chiều dài x chiều rộng vùng cần trồng (cm) để tính chuẩn số cốc cây cần mua dựa trên độ phủ tán thực tế.</p>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        <div class="bg-white border border-slate-200 p-6 space-y-4">
+            <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
+                <i class="fa-solid fa-ruler-combined text-[#7AA88B]"></i> Kích Thước Vùng Trồng
+            </h2>
+            <form method="POST" action="{% url 'plant_quantity' %}" class="space-y-4 text-xs">
+                {% csrf_token %}
+                <div>
+                    <label class="block font-bold text-slate-800 mb-1">Chọn loài cây muốn trồng</label>
+                    <select name="product_id" class="w-full bg-slate-50 border border-slate-300 p-2.5 text-xs font-semibold focus:outline-none focus:border-[#7AA88B]">
+                        {% for p in products %}
+                        <option value="{{ p.id }}" {% if result and result.product.id == p.id %}selected{% endif %}>
+                            {{ p.name }} ({{ p.current_price|floatformat:0 }}₫ · Phủ {{ p.coverage_area_cm2 }} cm²)
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block font-bold text-slate-800 mb-1">Chiều dài (cm)</label>
+                        <input type="number" step="1" min="1" name="length" value="{{ result.length|default:40 }}" required class="w-full bg-slate-50 border border-slate-300 p-2.5 text-xs font-bold focus:outline-none focus:border-[#7AA88B]">
+                    </div>
+                    <div>
+                        <label class="block font-bold text-slate-800 mb-1">Chiều rộng (cm)</label>
+                        <input type="number" step="1" min="1" name="width" value="{{ result.width|default:20 }}" required class="w-full bg-slate-50 border border-slate-300 p-2.5 text-xs font-bold focus:outline-none focus:border-[#7AA88B]">
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold py-3 transition">
+                    <i class="fa-solid fa-calculator mr-1"></i> Tính Số Cốc Cây Cần Mua
+                </button>
+            </form>
+        </div>
+
+        <div class="bg-white border border-slate-200 p-6 space-y-4">
+            <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
+                <i class="fa-solid fa-receipt text-[#7AA88B]"></i> Kết Quả Dự Toán
+            </h2>
+            {% if result %}
+            <div class="space-y-4 text-xs">
+                <div class="p-3 bg-slate-50 border border-slate-200">
+                    <span class="text-slate-500 block">Loài cây đã chọn:</span>
+                    <strong class="text-sm text-slate-900">{{ result.product.name }}</strong>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div class="p-3.5 bg-slate-50 border border-slate-200">
+                        <span class="text-slate-500 block">Diện tích mặt đáy:</span>
+                        <strong class="text-xl font-black font-mono text-slate-900">{{ result.area_cm2 }} cm²</strong>
+                    </div>
+                    <div class="p-3.5 bg-[#EEF5F0] border border-[#C5DEC9]">
+                        <span class="text-[#2F5C3E] font-bold block">Số lượng khuyên dùng:</span>
+                        <strong class="text-xl font-black font-mono text-[#2F5C3E]">{{ result.estimated_cups }} cốc</strong>
+                    </div>
+                </div>
+                <div class="p-4 bg-[#EEF5F0] border border-[#C5DEC9] flex items-center justify-between gap-3">
+                    <div>
+                        <span class="text-[#2F5C3E] font-bold block">Tổng chi phí dự kiến:</span>
+                        <strong class="text-2xl font-black font-mono text-rose-700">{{ result.total_cost|floatformat:0 }}₫</strong>
+                    </div>
+                    <form method="POST" action="{% url 'add_to_cart' result.product.id %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="quantity" value="{{ result.estimated_cups }}">
+                        <button type="submit" class="bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold px-4 py-2.5 transition">
+                            <i class="fa-solid fa-cart-plus mr-1"></i> Thêm {{ result.estimated_cups }} Cốc Vào Giỏ
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <div class="py-10 text-center text-xs text-slate-400">
+                Nhập kích thước chiều dài và chiều rộng ở cột bên trái để tính số lượng cốc cây cần thiết.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

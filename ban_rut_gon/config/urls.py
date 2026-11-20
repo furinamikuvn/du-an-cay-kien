@@ -8,10 +8,13 @@
 # ==============================================================================
 
 from django.contrib import admin
+import os
 from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import Http404
 from django.views.static import serve
+from shop.security import ALLOWED_IMAGE_EXTENSIONS
 
 urlpatterns = [
     # Phân hệ quản trị Django Admin
@@ -21,9 +24,20 @@ urlpatterns = [
     path('', include('shop.urls')),
 ]
 
-# Phục vụ tệp media hình ảnh sản phẩm demo
+def secure_media_serve(request, path):
+    """Chỉ phục vụ các tệp ảnh an toàn trong MEDIA_ROOT kèm nosniff."""
+    ext = os.path.splitext(path)[1].lower()
+    if ext not in ALLOWED_IMAGE_EXTENSIONS:
+        raise Http404("Tệp không hợp lệ hoặc không được phép truy cập.")
+    response = serve(request, path, document_root=settings.MEDIA_ROOT)
+    response['X-Content-Type-Options'] = 'nosniff'
+    response.setdefault('Cache-Control', 'public, max-age=86400')
+    return response
+
+
+# Phục vụ tệp media hình ảnh sản phẩm an toàn
 urlpatterns += [
-    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    re_path(r'^media/(?P<path>.*)$', secure_media_serve),
 ]
 
 if settings.DEBUG:

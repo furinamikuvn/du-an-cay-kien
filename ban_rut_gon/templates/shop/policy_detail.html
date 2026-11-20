@@ -1,0 +1,43 @@
+{% extends 'shop/base.html' %}
+
+{% block title %}{{ policy.title }} - AquaPlant{% endblock %}
+
+{% block content %}
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <article class="lg:col-span-8 bg-white border border-slate-200 p-6 sm:p-8 space-y-6">
+        <header class="space-y-3 pb-4 border-b border-slate-200">
+            <span class="inline-block bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] text-[10px] font-bold px-2.5 py-1 uppercase">
+                {{ policy.category }} · Cập nhật {{ policy.updated_at }}
+            </span>
+            <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">{{ policy.title }}</h1>
+            <p class="text-xs text-slate-600">{{ policy.subtitle }}</p>
+            <div class="p-3.5 bg-[#F5F8F5] border-l-4 border-[#7AA88B] text-xs text-slate-700">
+                <strong class="text-[#2F5C3E] block mb-1">Cam kết AquaPlant:</strong>
+                {{ policy.summary }}
+            </div>
+        </header>
+
+        <div class="space-y-5 text-xs text-slate-700 leading-relaxed">
+            {% for section in policy.sections %}
+            <section class="space-y-2 {% if not forloop.last %}pb-4 border-b border-slate-100{% endif %}">
+                <h2 class="text-sm font-bold text-slate-900">{{ section.heading }}</h2>
+                <div class="text-slate-600">{{ section.content|safe }}</div>
+            </section>
+            {% endfor %}
+        </div>
+    </article>
+
+    <aside class="lg:col-span-4 space-y-4">
+        <div class="bg-white border border-slate-200 p-4 space-y-2">
+            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-900 pb-2 border-b border-slate-100">Chính Sách & Hướng Dẫn</h3>
+            <nav class="space-y-1 text-xs">
+                {% for item in all_policies %}
+                <a href="{% url 'policy_detail' item.slug %}" class="block p-2.5 transition {% if item.is_active %}bg-[#EEF5F0] text-[#2F5C3E] font-bold border-l-2 border-[#7AA88B]{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                    <i class="{{ item.icon }} mr-1.5 text-[#7AA88B]"></i> {{ item.title }}
+                </a>
+                {% endfor %}
+            </nav>
+        </div>
+    </aside>
+</div>
+{% endblock %}
