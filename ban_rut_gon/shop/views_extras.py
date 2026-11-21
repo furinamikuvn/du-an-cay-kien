@@ -9,17 +9,34 @@
 # 6. staff_dashboard_view, update_order_status, print_packing_slip_view: Kho vận FIFO & In phiếu.
 # ==============================================================================
 
+import json
+import secrets
 from decimal import Decimal
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from django.db.models import Count, Q, Sum
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from .ai_assistant import (
+    analyze_desk_with_gemini,
+    can_run_ai_action,
+    get_ai_quota_status,
+    hash_ip,
+    log_ai_usage,
+    prepare_desk_image_bytes,
+    render_tank_preview_with_nano_banana,
+)
 from .forms import CustomPasswordChangeForm
 from .models import Article, FAQ, InventoryLot, LayoutPreset, Order, Product
+from .security import check_rate_limit, get_client_ip, record_rate_limit_hit
 
 
 def _is_staff_or_admin(user):
@@ -76,6 +93,9 @@ def plant_assistant_view(request):
 
             results.append({'product': p, 'reasons': reasons})
 
+    ip_h = hash_ip(get_client_ip(request))
+    ai_quota = get_ai_quota_status(user=request.user, ip_hash=ip_h)
+
     context = {
         'results': results,
         'has_searched': has_searched,
@@ -83,8 +103,275 @@ def plant_assistant_view(request):
         'light': light,
         'care': care,
         'position': position,
+        'ai_configured': bool(settings.GEMINI_API_KEY),
+        'ai_render_enabled': settings.AI_RENDER_ENABLED,
+        'ai_vision_model': settings.GEMINI_VISION_MODEL,
+        'ai_image_model': settings.GEMINI_IMAGE_MODEL,
+        'ai_quota': ai_quota,
     }
     return render(request, 'shop/plant_assistant.html', context)
+
+
+@require_POST
+def ai_desk_scan_view(request):
+    """
+    Endpoint POST tiếp nhận ảnh góc bàn/kệ -> Gemini Vision (gemini-4-hydrogen / 3.8-flash)
+    phân tích không gian & ánh sáng, đồng thời đối chiếu cây thật từ Database của shop.
+    """
+    ip = get_client_ip(request)
+    ip_h = hash_ip(ip)
+
+    if check_rate_limit('ai_scan', ip, limit=5):
+        return JsonResponse({
+            'success': False,
+            'message': 'Bạn đã gửi quá nhiều lượt quét AI liên tiếp (tối đa 5 lần / 10 phút). Vui lòng đợi ít phút rồi thử lại.',
+        }, status=429)
+
+    if not settings.GEMINI_API_KEY:
+        return JsonResponse({
+            'success': False,
+            'code': 'NOT_CONFIGURED',
+            'message': 'Tính năng AI Quét Góc Bàn chưa được kích hoạt (chưa cấu hình GEMINI_API_KEY trên máy chủ).',
+        }, status=503)
+
+    allowed, quota_err, quota = can_run_ai_action('scan', user=request.user, ip_hash=ip_h)
+    if not allowed:
+        return JsonResponse({'success': False, 'message': quota_err, 'quota': quota}, status=429)
+
+    uploaded_img = request.FILES.get('desk_image')
+    if not uploaded_img:
+        return JsonResponse({
+            'success': False,
+            'message': 'Vui lòng chọn hoặc chụp một bức ảnh góc bàn trước khi quét.',
+        }, status=400)
+
+    try:
+        image_bytes = prepare_desk_image_bytes(uploaded_img, max_dim=1024)
+    except ValidationError as exc:
+        return JsonResponse({
+            'success': False,
+            'message': ' '.join(exc.messages),
+        }, status=400)
+    except Exception:
+        return JsonResponse({
+            'success': False,
+            'message': 'Không thể xử lý tệp ảnh tải lên. Vui lòng thử lại với ảnh JPG, PNG hoặc WEBP hợp lệ.',
+        }, status=400)
+
+    desk_width_cm = (request.POST.get('desk_width_cm') or '').strip()[:20]
+    user_note = (request.POST.get('user_note') or '').strip()[:300]
+
+    record_rate_limit_hit('ai_scan', ip, 600)
+
+    active_products = list(
+        Product.objects.select_related('category').filter(is_active=True, stock_quantity__gt=0).order_by('id')
+    )
+    if not active_products:
+        active_products = list(Product.objects.select_related('category').filter(is_active=True).order_by('id'))
+
+    product_obj_map = {p.id: p for p in active_products}
+    catalog_products = [
+        {
+            'id': p.id,
+            'name': p.name,
+            'category': p.category.name if p.category else '',
+            'position_code': p.placement_position,
+            'position_label': p.get_placement_position_display(),
+            'light_code': p.light_requirement,
+            'light_label': p.get_light_requirement_display(),
+            'co2_code': p.co2_requirement,
+            'co2_label': p.get_co2_requirement_display(),
+            'care': p.get_care_level_display(),
+            'price': int(p.current_price),
+        }
+        for p in active_products
+    ]
+
+    presets_qs = list(LayoutPreset.objects.all().order_by('id'))
+    preset_obj_map = {pr.id: pr for pr in presets_qs}
+    catalog_presets = [
+        {
+            'id': pr.id,
+            'name': pr.name,
+            'tank_size': pr.tank_size,
+            'style': pr.style,
+        }
+        for pr in presets_qs
+    ]
+
+    try:
+        analysis, model_used = analyze_desk_with_gemini(
+            image_bytes=image_bytes,
+            catalog_products=catalog_products,
+            catalog_presets=catalog_presets,
+            desk_width_cm=desk_width_cm,
+            user_note=user_note,
+        )
+    except Exception:
+        log_ai_usage('scan', user=request.user, ip_hash=ip_h, model_used=settings.GEMINI_VISION_MODEL, status='failed')
+        return JsonResponse({
+            'success': False,
+            'message': 'Trợ lý AI hiện đang bận hoặc kết nối tới Gemini gặp sự cố. Sensei vui lòng thử lại sau giây lát hoặc dùng tab Lọc Theo Thông Số Hồ.',
+        }, status=502)
+
+    log_ai_usage('scan', user=request.user, ip_hash=ip_h, model_used=model_used, status='success')
+
+    hydrated_products = []
+    for item in analysis['recommended_plants']:
+        prod = product_obj_map.get(item['product_id'])
+        if not prod:
+            continue
+        hydrated_products.append({
+            'id': prod.id,
+            'name': prod.name,
+            'scientific_name': prod.scientific_name,
+            'current_price': int(prod.current_price),
+            'price_display': f"{prod.current_price:,.0f}₫".replace(',', '.'),
+            'image_url': prod.display_image_url,
+            'position_display': prod.get_placement_position_display(),
+            'co2_display': prod.get_co2_requirement_display(),
+            'light_display': prod.get_light_requirement_display(),
+            'detail_url': reverse('product_detail', kwargs={'slug': prod.slug}),
+            'add_to_cart_url': reverse('add_to_cart', kwargs={'product_id': prod.id}),
+            'layer_role': item['layer_role'],
+            'reason': item['reason'],
+        })
+
+    preset_data = None
+    preset_id = analysis.get('recommended_preset_id')
+    if preset_id and preset_id in preset_obj_map:
+        pr = preset_obj_map[preset_id]
+        preset_data = {
+            'id': pr.id,
+            'name': pr.name,
+            'tank_size': pr.tank_size,
+            'style': pr.style,
+            'total_price_display': f"{pr.total_price:,.0f}₫".replace(',', '.'),
+            'url': reverse('layout_presets'),
+        }
+
+    if not request.session.session_key:
+        request.session.create()
+
+    context_token = secrets.token_urlsafe(24)
+    cache.set(
+        f"ai_desk_ctx:{context_token}",
+        {
+            'session_key': request.session.session_key,
+            'image_bytes': image_bytes,
+            'recommended_tank': analysis['recommended_tank'],
+            'placement_box': analysis['placement_box'],
+            'plant_names': [item['name'] for item in hydrated_products],
+            'render_scene_prompt': analysis.get('render_scene_prompt', ''),
+        },
+        timeout=900,
+    )
+
+    updated_quota = get_ai_quota_status(user=request.user, ip_hash=ip_h)
+
+    return JsonResponse({
+        'success': True,
+        'model_used': model_used,
+        'render_context_token': context_token,
+        'analysis': {
+            'space_summary': analysis['space_summary'],
+            'lighting_assessment': analysis['lighting_assessment'],
+            'detected_style': analysis['detected_style'],
+            'estimated_free_width_cm': analysis['estimated_free_width_cm'],
+            'recommended_tank': analysis['recommended_tank'],
+            'placement_box': analysis['placement_box'],
+            'placement_tips': analysis['placement_tips'],
+            'suggested_co2': analysis['suggested_co2'],
+            'suggested_light': analysis['suggested_light'],
+        },
+        'recommended_products': hydrated_products,
+        'recommended_preset': preset_data,
+        'quota': updated_quota,
+    })
+
+
+@require_POST
+def ai_desk_render_view(request):
+    """
+    Endpoint POST dùng `gemini-nano-banana-2.1` vẽ phối cảnh đặt bể thủy sinh trực tiếp
+    lên ảnh góc bàn vừa quét (bắt buộc đăng nhập & khóa trần ngân sách hàng tháng).
+    """
+    if not request.user.is_authenticated:
+        return JsonResponse({
+            'success': False,
+            'login_required': True,
+            'login_url': f"{reverse('login')}?next={reverse('plant_assistant')}",
+            'message': 'Vui lòng đăng nhập tài khoản để sử dụng tính năng vẽ phối cảnh AI đặt bể lên bàn.',
+        }, status=401)
+
+    if not settings.AI_RENDER_ENABLED or not settings.GEMINI_API_KEY:
+        return JsonResponse({
+            'success': False,
+            'code': 'NOT_CONFIGURED',
+            'message': 'Tính năng vẽ phối cảnh AI hiện đang tắt hoặc chưa cấu hình GEMINI_API_KEY.',
+        }, status=503)
+
+    ip = get_client_ip(request)
+    ip_h = hash_ip(ip)
+
+    if check_rate_limit('ai_render', ip, limit=3):
+        return JsonResponse({
+            'success': False,
+            'message': 'Bạn tạo ảnh phối cảnh quá nhanh (tối đa 3 ảnh / 10 phút). Vui lòng đợi ít phút.',
+        }, status=429)
+
+    allowed, quota_err, quota = can_run_ai_action('render', user=request.user, ip_hash=ip_h)
+    if not allowed:
+        return JsonResponse({'success': False, 'message': quota_err, 'quota': quota}, status=429)
+
+    context_token = (request.POST.get('render_context_token') or '').strip()
+    if not context_token and request.body:
+        try:
+            body_data = json.loads(request.body.decode('utf-8'))
+            if isinstance(body_data, dict):
+                context_token = str(body_data.get('render_context_token') or '').strip()
+        except Exception:
+            context_token = ''
+
+    cached_ctx = cache.get(f"ai_desk_ctx:{context_token}") if context_token else None
+    if not cached_ctx or not request.session.session_key or cached_ctx.get('session_key') != request.session.session_key:
+        return JsonResponse({
+            'success': False,
+            'message': 'Phiên ảnh góc bàn đã hết hạn (quá 15 phút) hoặc không hợp lệ. Vui lòng quét lại ảnh bàn.',
+        }, status=400)
+
+    record_rate_limit_hit('ai_render', ip, 600)
+
+    try:
+        b64_data, mime_type = render_tank_preview_with_nano_banana(
+            desk_image_bytes=cached_ctx['image_bytes'],
+            tank_info=cached_ctx['recommended_tank'],
+            plant_names=cached_ctx.get('plant_names', []),
+            placement_box=cached_ctx.get('placement_box'),
+            render_scene_prompt=cached_ctx.get('render_scene_prompt', ''),
+        )
+    except Exception as exc:
+        log_ai_usage('render', user=request.user, ip_hash=ip_h, model_used=settings.GEMINI_IMAGE_MODEL, status='failed')
+        err_lower = str(exc).lower()
+        if any(k in err_lower for k in ('billing', 'quota', 'permission', '403', '429', 'eligible')):
+            return JsonResponse({
+                'success': False,
+                'message': 'Model Nano Banana 2.1 cần tài khoản AI Studio đã liên kết Google Cloud Billing (quyền lợi $10 credit Google AI Pro).',
+            }, status=503)
+        return JsonResponse({
+            'success': False,
+            'message': 'Không thể tạo ảnh phối cảnh AI lúc này. Sensei vui lòng thử lại sau giây lát.',
+        }, status=502)
+
+    log_ai_usage('render', user=request.user, ip_hash=ip_h, model_used=settings.GEMINI_IMAGE_MODEL, status='success')
+    updated_quota = get_ai_quota_status(user=request.user, ip_hash=ip_h)
+
+    return JsonResponse({
+        'success': True,
+        'model_used': settings.GEMINI_IMAGE_MODEL,
+        'image_data_url': f"data:{mime_type};base64,{b64_data}",
+        'quota': updated_quota,
+    })
 
 
 # ------------------------------------------------------------------------------

@@ -1,19 +1,305 @@
 {% extends 'shop/base.html' %}
 {% load static %}
 
-{% block title %}Trợ Lý Chọn Cây Phù Hợp - AquaPlant{% endblock %}
+{% block title %}Trợ Lý AI & Chọn Cây Phù Hợp - AquaPlant{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
-    <div class="bg-white border border-slate-200 p-6">
-        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 text-amber-900 border border-amber-200 text-[11px] font-bold mb-2 uppercase">
-            <i class="fa-solid fa-wand-magic-sparkles text-amber-700"></i> Tư Vấn Sinh Thái Thông Minh
-        </span>
-        <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">Trợ Lý Chọn Cây Phù Hợp Với Hồ Nhà Bạn</h1>
-        <p class="text-xs text-slate-500 mt-1">Chọn điều kiện CO₂, đèn chiếu sáng và kinh nghiệm chăm sóc để lọc ra những loài cây dễ sống khỏe nhất.</p>
+    <!-- HEADER BANNER -->
+    <div class="bg-white border border-slate-200 p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div>
+            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] text-[11px] font-bold mb-2 uppercase">
+                <i class="fa-solid fa-camera text-[#2F5C3E]"></i> Trợ Lý Thị Giác AI & Tư Vấn Sinh Thái
+            </span>
+            <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">Trợ Lý Chọn Cây & Phối Cảnh Bể Theo Góc Bàn</h1>
+            <p class="text-xs text-slate-500 mt-1">Chụp ảnh bàn làm việc để Gemini AI phân tích ánh sáng, kích thước, gợi ý bể + cây thật từ kho và vẽ phối cảnh đặt bể lên bàn.</p>
+        </div>
+
+        <!-- TAB SWITCHER -->
+        <div class="inline-flex bg-slate-100 p-1 border border-slate-200 self-start lg:self-auto flex-shrink-0" role="tablist">
+            <button type="button" id="tab-btn-ai" role="tab" aria-selected="{% if not has_searched %}true{% else %}false{% endif %}"
+                class="px-3.5 py-2 text-xs font-bold transition flex items-center gap-1.5 {% if not has_searched %}bg-[#7AA88B] text-white shadow-sm{% else %}text-slate-700 hover:text-slate-900{% endif %}">
+                <i class="fa-solid fa-wand-magic-sparkles"></i> Quét Góc Bàn Bằng AI
+            </button>
+            <button type="button" id="tab-btn-filter" role="tab" aria-selected="{% if has_searched %}true{% else %}false{% endif %}"
+                class="px-3.5 py-2 text-xs font-bold transition flex items-center gap-1.5 {% if has_searched %}bg-[#7AA88B] text-white shadow-sm{% else %}text-slate-700 hover:text-slate-900{% endif %}">
+                <i class="fa-solid fa-sliders"></i> Lọc Theo Thông Số Hồ
+            </button>
+        </div>
     </div>
 
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+    <!-- ====================================================================== -->
+    <!-- TAB 1: QUÉT GÓC BÀN BẰNG AI (GEMINI-4-HYDROGEN + NANO BANANA 2.1)      -->
+    <!-- ====================================================================== -->
+    <div id="panel-ai" class="{% if has_searched %}hidden{% endif %} grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        <!-- CỘT TRÁI: FORM CHỤP / TẢI ẢNH GÓC BÀN -->
+        <div class="bg-white border border-slate-200 p-5 space-y-4">
+            <div class="pb-2.5 border-b border-slate-100 flex items-center justify-between gap-2">
+                <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-camera-retro text-[#7AA88B]"></i> Chụp Hoặc Tải Ảnh Bàn
+                </h2>
+                <span class="text-[10px] font-mono font-bold px-2 py-0.5 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9]">
+                    {{ ai_vision_model }}
+                </span>
+            </div>
+
+            {% if not ai_configured %}
+            <div class="bg-amber-50 border border-amber-200 text-amber-900 p-3 text-[11px] leading-relaxed">
+                <div class="font-bold flex items-center gap-1.5 mb-0.5">
+                    <i class="fa-solid fa-key"></i> Chưa gắn GEMINI_API_KEY trên máy chủ
+                </div>
+                <p>Giao diện AI đã sẵn sàng. Chủ shop chỉ cần thêm biến môi trường <span class="font-mono font-bold">GEMINI_API_KEY</span> trên Render Dashboard để kích hoạt quét ảnh thật.</p>
+            </div>
+            {% endif %}
+
+            <form id="ai-scan-form" class="space-y-4 text-xs" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <div>
+                    <label for="desk-image-input" class="block font-bold text-slate-800 mb-1.5">
+                        Ảnh góc bàn / kệ muốn đặt bể <span class="text-rose-600">*</span>
+                    </label>
+
+                    <label id="desk-dropzone" for="desk-image-input"
+                        class="block border-2 border-dashed border-slate-300 hover:border-[#7AA88B] bg-slate-50 hover:bg-[#EEF5F0]/50 p-4 text-center cursor-pointer transition">
+                        <input type="file" id="desk-image-input" name="desk_image"
+                            accept="image/jpeg,image/png,image/webp" capture="environment" class="hidden">
+
+                        <div id="dropzone-placeholder" class="space-y-2 py-3">
+                            <div class="w-10 h-10 bg-white border border-slate-200 text-[#7AA88B] flex items-center justify-center mx-auto text-lg">
+                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                            </div>
+                            <div class="font-bold text-slate-800">Nhấn để chụp ảnh hoặc chọn file từ máy</div>
+                            <p class="text-[11px] text-slate-500">Hỗ trợ JPG, PNG, WEBP (tự tối ưu dung lượng khi gửi).</p>
+                        </div>
+
+                        <div id="dropzone-preview-wrap" class="hidden space-y-2">
+                            <img id="dropzone-preview-img" src="" alt="Ảnh góc bàn đã chọn"
+                                class="w-full max-h-48 object-contain border border-slate-200 bg-white mx-auto">
+                            <div id="dropzone-file-label" class="text-[11px] text-[#2F5C3E] font-semibold truncate"></div>
+                        </div>
+                    </label>
+                </div>
+
+                <div>
+                    <label for="desk-width-input" class="block font-bold text-slate-800 mb-1.5">
+                        Chiều rộng chỗ trống ước chừng (cm — tùy chọn)
+                    </label>
+                    <input type="text" id="desk-width-input" name="desk_width_cm" maxlength="20"
+                        placeholder="Ví dụ: 35 hoặc 60 (bỏ trống để AI tự ước lượng)"
+                        class="w-full bg-slate-50 border border-slate-300 p-2.5 text-xs focus:outline-none focus:border-[#7AA88B]">
+                </div>
+
+                <div>
+                    <label for="desk-note-input" class="block font-bold text-slate-800 mb-1.5">
+                        Mong muốn thêm (tùy chọn)
+                    </label>
+                    <textarea id="desk-note-input" name="user_note" rows="2" maxlength="300"
+                        placeholder="Ví dụ: Bàn văn phòng ít nắng, thích bể tối giản dễ chăm, không muốn gắn bình CO₂..."
+                        class="w-full bg-slate-50 border border-slate-300 p-2.5 text-xs focus:outline-none focus:border-[#7AA88B] resize-none"></textarea>
+                </div>
+
+                <div id="ai-scan-error" class="hidden bg-rose-50 border border-rose-200 text-rose-800 p-3 text-[11px] leading-relaxed"></div>
+
+                <button type="submit" id="ai-scan-submit-btn"
+                    class="w-full bg-[#7AA88B] hover:bg-[#6B997C] disabled:opacity-60 text-white font-bold py-3 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-magnifying-glass-chart"></i>
+                    <span>Quét Góc Bàn & Gợi Ý Bể + Cây</span>
+                </button>
+
+                <div class="pt-2 border-t border-slate-100 text-[11px] text-slate-500 space-y-1">
+                    <div class="flex items-center justify-between">
+                        <span>Hạn mức vẽ phối cảnh tháng này:</span>
+                        <strong id="quota-monthly-badge" class="font-mono text-[#2F5C3E]">
+                            còn {{ ai_quota.monthly_remaining }}/{{ ai_quota.monthly_cap }} ảnh
+                        </strong>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span>Lượt vẽ phối cảnh hôm nay của bạn:</span>
+                        <strong id="quota-user-badge" class="font-mono text-[#2F5C3E]">
+                            còn {{ ai_quota.user_remaining_today }}/{{ ai_quota.user_daily_cap }} lượt
+                        </strong>
+                    </div>
+                    <p class="text-[10px] text-slate-400 pt-1">
+                        Lưu ý bảo mật: Tránh chụp giấy tờ cá nhân hoặc thông tin nhạy cảm trên mặt bàn khi tải ảnh lên.
+                    </p>
+                </div>
+            </form>
+        </div>
+
+        <!-- CỘT PHẢI: KẾT QUẢ PHÂN TÍCH AI, KHOANH VÙNG ĐẶT BỂ & PHỐI CẢNH NANO BANANA -->
+        <div class="lg:col-span-2 space-y-4">
+            <!-- TRẠNG THÁI CHỜ BAN ĐẦU -->
+            <div id="ai-empty-state" class="bg-white border border-slate-200 p-8 sm:p-10 text-center space-y-4">
+                <div class="w-14 h-14 bg-[#EEF5F0] text-[#7AA88B] border border-[#C5DEC9] flex items-center justify-center text-2xl mx-auto">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                </div>
+                <div class="space-y-1">
+                    <h3 class="font-bold text-sm text-slate-900">Chưa có ảnh góc bàn nào được quét</h3>
+                    <p class="text-xs text-slate-500 max-w-lg mx-auto leading-relaxed">
+                        Tải ảnh bàn làm việc hoặc góc kệ ở cột bên trái để trợ lý AI đề xuất kích thước bể, cây thủy sinh thật đang có sẵn trong kho và dựng ảnh phối cảnh trực tiếp.
+                    </p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-left pt-2">
+                    <div class="border border-slate-200 bg-slate-50 p-3 text-[11px] space-y-1">
+                        <div class="font-bold text-[#2F5C3E]">1. Đọc góc & ánh sáng</div>
+                        <p class="text-slate-500">Nhận diện mặt bàn, nguồn sáng tự nhiên, đồ vật xung quanh và khoảng trống đặt bể.</p>
+                    </div>
+                    <div class="border border-slate-200 bg-slate-50 p-3 text-[11px] space-y-1">
+                        <div class="font-bold text-[#2F5C3E]">2. Chọn cây từ kho thật</div>
+                        <p class="text-slate-500">Chỉ đề xuất các loài cây đang mở bán trong cửa hàng kèm nút thêm giỏ hàng ngay.</p>
+                    </div>
+                    <div class="border border-slate-200 bg-slate-50 p-3 text-[11px] space-y-1">
+                        <div class="font-bold text-[#2F5C3E]">3. Vẽ phối cảnh đặt bể</div>
+                        <p class="text-slate-500">Dùng {{ ai_image_model }} ghép thử bể cây vào đúng góc bàn bạn vừa chụp.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TRẠNG THÁI ĐANG QUÉT -->
+            <div id="ai-loading-state" class="hidden bg-white border border-slate-200 p-10 text-center space-y-3">
+                <div class="w-12 h-12 border-4 border-[#EEF5F0] border-t-[#7AA88B] rounded-full animate-spin mx-auto"></div>
+                <h3 class="font-bold text-sm text-slate-900">Gemini Vision đang phân tích góc bàn của bạn...</h3>
+                <p class="text-xs text-slate-500">Đang đánh giá diện tích trống, nguồn sáng và đối chiếu hồ sơ sinh học cây trong kho.</p>
+            </div>
+
+            <!-- KẾT QUẢ QUÉT AI -->
+            <div id="ai-result-container" class="hidden space-y-4">
+                <!-- HEADER KẾT QUẢ -->
+                <div class="bg-[#EEF5F0] border border-[#C5DEC9] p-4 flex flex-wrap items-center justify-between gap-2 text-xs">
+                    <div>
+                        <strong class="text-[#2F5C3E] block text-sm">Kết quả phân tích không gian & đề xuất bố trí</strong>
+                        <span id="ai-model-badge" class="text-slate-600 text-[11px] font-mono"></span>
+                    </div>
+                    <span id="ai-style-badge" class="bg-white border border-[#C5DEC9] px-2.5 py-1 font-bold text-[#2F5C3E]"></span>
+                </div>
+
+                <!-- KHUNG ẢNH KHOANH VÙNG + ĐỀ XUẤT BỂ -->
+                <div class="bg-white border border-slate-200 p-5 grid grid-cols-1 md:grid-cols-2 gap-5 items-start">
+                    <div class="space-y-2">
+                        <div class="text-[11px] font-bold uppercase tracking-wider text-slate-700 flex items-center justify-between">
+                            <span>Vị trí đặt bể AI đề xuất</span>
+                            <span id="ai-width-est-badge" class="font-mono text-[#2F5C3E]"></span>
+                        </div>
+                        <div class="relative border border-slate-200 bg-slate-900/5 overflow-hidden">
+                            <img id="ai-annotated-img" src="" alt="Góc bàn với vùng đề xuất đặt bể" class="w-full h-auto block">
+                            <div id="ai-placement-overlay"
+                                class="absolute border-2 border-[#7AA88B] bg-[#7AA88B]/20 pointer-events-none transition-all">
+                                <span id="ai-placement-label"
+                                    class="inline-block bg-[#2F5C3E] text-white text-[10px] font-bold px-2 py-0.5 shadow-sm whitespace-nowrap"></span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-3 text-xs">
+                        <div class="border border-[#C5DEC9] bg-[#EEF5F0]/60 p-3.5 space-y-1.5">
+                            <div class="text-[10px] font-extrabold uppercase tracking-wider text-[#2F5C3E]">Bể Thủy Sinh Đề Xuất</div>
+                            <div id="ai-tank-title" class="text-base font-extrabold text-slate-900"></div>
+                            <div id="ai-tank-meta" class="text-[11px] text-slate-600 font-semibold"></div>
+                            <p id="ai-tank-reason" class="text-slate-700 leading-relaxed pt-1"></p>
+                        </div>
+
+                        <div class="space-y-2 text-[11px]">
+                            <div>
+                                <strong class="text-slate-900">Đánh giá không gian:</strong>
+                                <p id="ai-space-summary" class="text-slate-600 leading-relaxed mt-0.5"></p>
+                            </div>
+                            <div>
+                                <strong class="text-slate-900">Ánh sáng & kiểm soát rêu:</strong>
+                                <p id="ai-lighting-summary" class="text-slate-600 leading-relaxed mt-0.5"></p>
+                            </div>
+                            <div>
+                                <strong class="text-slate-900">Lưu ý lắp đặt thực tế:</strong>
+                                <ul id="ai-tips-list" class="list-disc pl-4 text-slate-600 space-y-0.5 mt-0.5"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PHẦN VẼ PHỐI CẢNH NANO BANANA 2.1 -->
+                {% if ai_render_enabled %}
+                <div class="bg-white border border-slate-200 p-5 space-y-3">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div class="space-y-0.5">
+                            <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
+                                <i class="fa-solid fa-image text-[#7AA88B]"></i> Mô Phỏng Phối Cảnh Đặt Bể Lên Bàn Thật
+                            </h3>
+                            <p class="text-[11px] text-slate-500">
+                                Sử dụng <span class="font-mono">{{ ai_image_model }}</span> dựng thử bể thủy sinh khớp ánh sáng và góc chụp bức ảnh vừa tải.
+                            </p>
+                        </div>
+
+                        {% if user.is_authenticated %}
+                        <button type="button" id="ai-render-btn"
+                            class="bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white text-xs font-bold px-4 py-2.5 transition flex items-center justify-center gap-2 flex-shrink-0">
+                            <i class="fa-solid fa-sparkles"></i>
+                            <span>Xem Phối Cảnh Đặt Bể Lên Bàn</span>
+                        </button>
+                        {% else %}
+                        <a href="{% url 'login' %}?next={% url 'plant_assistant' %}"
+                            class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2.5 transition inline-flex items-center justify-center gap-2 flex-shrink-0">
+                            <i class="fa-solid fa-right-to-bracket"></i>
+                            <span>Đăng nhập để vẽ phối cảnh AI</span>
+                        </a>
+                        {% endif %}
+                    </div>
+
+                    <div id="ai-render-error" class="hidden bg-rose-50 border border-rose-200 text-rose-800 p-3 text-[11px]"></div>
+
+                    <div id="ai-render-loading" class="hidden border border-slate-200 bg-slate-50 p-6 text-center space-y-2">
+                        <div class="w-9 h-9 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin mx-auto"></div>
+                        <p class="text-xs font-semibold text-slate-700">Đang dựng ảnh phối cảnh Nano Banana 2.1 (thường mất 10 - 20 giây)...</p>
+                    </div>
+
+                    <div id="ai-render-result-wrap" class="hidden space-y-3 pt-2 border-t border-slate-100">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div class="space-y-1">
+                                <div class="text-[11px] font-bold text-slate-500 uppercase">Ảnh bàn gốc</div>
+                                <img id="ai-compare-before" src="" alt="Ảnh góc bàn ban đầu" class="w-full border border-slate-200">
+                            </div>
+                            <div class="space-y-1">
+                                <div class="text-[11px] font-bold text-[#2F5C3E] uppercase flex items-center justify-between">
+                                    <span>Phối cảnh AI gợi ý</span>
+                                    <a id="ai-render-download" href="#" download="aquaplant-phoi-canh-be.jpg"
+                                        class="text-[11px] font-bold text-[#2F5C3E] hover:underline lowercase">
+                                        <i class="fa-solid fa-download mr-0.5"></i> tải ảnh
+                                    </a>
+                                </div>
+                                <img id="ai-compare-after" src="" alt="Ảnh phối cảnh đặt bể lên bàn" class="w-full border-2 border-[#7AA88B]">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                <!-- DANH SÁCH CÂY THẬT TRONG KHO ĐƯỢC AI GỢI Ý -->
+                <div class="space-y-3">
+                    <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-seedling text-[#7AA88B]"></i> Cây Thủy Sinh Đang Bán Phù Hợp Với Bàn Này
+                    </h3>
+                    <div id="ai-products-list" class="space-y-3"></div>
+                </div>
+
+                <!-- BỐ CỤC MẪU GỢI Ý (NẾU CÓ) -->
+                <div id="ai-preset-box" class="hidden bg-[#EEF5F0] border border-[#C5DEC9] p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+                    <div class="space-y-0.5">
+                        <div class="text-[10px] font-bold uppercase text-[#2F5C3E]">Combo Bố Cục Tham Khảo</div>
+                        <div id="ai-preset-title" class="font-extrabold text-sm text-slate-900"></div>
+                        <div id="ai-preset-meta" class="text-[11px] text-slate-600"></div>
+                    </div>
+                    <a id="ai-preset-link" href="{% url 'layout_presets' %}"
+                        class="bg-white border border-[#7AA88B] text-[#2F5C3E] hover:bg-[#7AA88B] hover:text-white font-bold px-4 py-2 transition text-center flex-shrink-0">
+                        Xem Combo Bố Cục
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ====================================================================== -->
+    <!-- TAB 2: LỌC THEO THÔNG SỐ HỒ (BỘ LỌC CỔ ĐIỂN GIỮ NGUYÊN 100%)          -->
+    <!-- ====================================================================== -->
+    <div id="panel-filter" class="{% if not has_searched %}hidden{% endif %} grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <div class="bg-white border border-slate-200 p-5 space-y-4">
             <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-900 pb-2 border-b border-slate-100 flex items-center gap-2">
                 <i class="fa-solid fa-sliders text-[#7AA88B]"></i> Thông Số Hồ Cá
@@ -122,4 +408,408 @@
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    const tabAiBtn = document.getElementById('tab-btn-ai');
+    const tabFilterBtn = document.getElementById('tab-btn-filter');
+    const panelAi = document.getElementById('panel-ai');
+    const panelFilter = document.getElementById('panel-filter');
+
+    function switchTab(mode) {
+        const isAi = mode === 'ai';
+        panelAi.classList.toggle('hidden', !isAi);
+        panelFilter.classList.toggle('hidden', isAi);
+
+        tabAiBtn.setAttribute('aria-selected', isAi ? 'true' : 'false');
+        tabFilterBtn.setAttribute('aria-selected', isAi ? 'false' : 'true');
+
+        tabAiBtn.className = isAi
+            ? 'px-3.5 py-2 text-xs font-bold transition flex items-center gap-1.5 bg-[#7AA88B] text-white shadow-sm'
+            : 'px-3.5 py-2 text-xs font-bold transition flex items-center gap-1.5 text-slate-700 hover:text-slate-900';
+
+        tabFilterBtn.className = !isAi
+            ? 'px-3.5 py-2 text-xs font-bold transition flex items-center gap-1.5 bg-[#7AA88B] text-white shadow-sm'
+            : 'px-3.5 py-2 text-xs font-bold transition flex items-center gap-1.5 text-slate-700 hover:text-slate-900';
+    }
+
+    if (tabAiBtn && tabFilterBtn) {
+        tabAiBtn.addEventListener('click', () => switchTab('ai'));
+        tabFilterBtn.addEventListener('click', () => switchTab('filter'));
+    }
+
+    const scanForm = document.getElementById('ai-scan-form');
+    if (!scanForm) return;
+
+    const imageInput = document.getElementById('desk-image-input');
+    const dropzone = document.getElementById('desk-dropzone');
+    const placeholder = document.getElementById('dropzone-placeholder');
+    const previewWrap = document.getElementById('dropzone-preview-wrap');
+    const previewImg = document.getElementById('dropzone-preview-img');
+    const fileLabel = document.getElementById('dropzone-file-label');
+
+    const scanErrorBox = document.getElementById('ai-scan-error');
+    const scanBtn = document.getElementById('ai-scan-submit-btn');
+    const emptyState = document.getElementById('ai-empty-state');
+    const loadingState = document.getElementById('ai-loading-state');
+    const resultBox = document.getElementById('ai-result-container');
+
+    const renderBtn = document.getElementById('ai-render-btn');
+    const renderErrBox = document.getElementById('ai-render-error');
+    const renderLoading = document.getElementById('ai-render-loading');
+    const renderResultWrap = document.getElementById('ai-render-result-wrap');
+
+    let selectedFile = null;
+    let previewDataUrl = '';
+    let activeRenderContextToken = '';
+
+    function getCsrfToken() {
+        const inp = scanForm.querySelector('input[name="csrfmiddlewaretoken"]');
+        return inp ? inp.value : '';
+    }
+
+    function showScanError(msg) {
+        scanErrorBox.textContent = msg;
+        scanErrorBox.classList.remove('hidden');
+    }
+
+    function clearScanError() {
+        scanErrorBox.textContent = '';
+        scanErrorBox.classList.add('hidden');
+    }
+
+    function updateQuotaBadges(quota) {
+        if (!quota) return;
+        const mBadge = document.getElementById('quota-monthly-badge');
+        const uBadge = document.getElementById('quota-user-badge');
+        if (mBadge) {
+            mBadge.textContent = 'còn ' + quota.monthly_remaining + '/' + quota.monthly_cap + ' ảnh';
+        }
+        if (uBadge) {
+            uBadge.textContent = 'còn ' + quota.user_remaining_today + '/' + quota.user_daily_cap + ' lượt';
+        }
+    }
+
+    function handleChosenFile(file) {
+        if (!file) return;
+        selectedFile = file;
+        clearScanError();
+
+        const reader = new FileReader();
+        reader.onload = function (ev) {
+            previewDataUrl = ev.target.result || '';
+            previewImg.src = previewDataUrl;
+            fileLabel.textContent = file.name + ' (' + Math.max(1, Math.round(file.size / 1024)) + ' KB)';
+            placeholder.classList.add('hidden');
+            previewWrap.classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    imageInput.addEventListener('change', function (e) {
+        if (e.target.files && e.target.files[0]) {
+            handleChosenFile(e.target.files[0]);
+        }
+    });
+
+    dropzone.addEventListener('dragover', function (e) {
+        e.preventDefault();
+        dropzone.classList.add('border-[#7AA88B]', 'bg-[#EEF5F0]/50');
+    });
+    dropzone.addEventListener('dragleave', function () {
+        dropzone.classList.remove('border-[#7AA88B]', 'bg-[#EEF5F0]/50');
+    });
+    dropzone.addEventListener('drop', function (e) {
+        e.preventDefault();
+        dropzone.classList.remove('border-[#7AA88B]', 'bg-[#EEF5F0]/50');
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+            handleChosenFile(e.dataTransfer.files[0]);
+        }
+    });
+
+    function downscaleImageFile(file) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            const objUrl = URL.createObjectURL(file);
+            img.onload = function () {
+                try {
+                    const maxDim = 1280;
+                    let w = img.naturalWidth || img.width;
+                    let h = img.naturalHeight || img.height;
+                    if (!w || !h || (w <= maxDim && h <= maxDim && file.size <= 1200000)) {
+                        URL.revokeObjectURL(objUrl);
+                        resolve(file);
+                        return;
+                    }
+                    if (w > h && w > maxDim) {
+                        h = Math.round((h * maxDim) / w);
+                        w = maxDim;
+                    } else if (h >= w && h > maxDim) {
+                        w = Math.round((w * maxDim) / h);
+                        h = maxDim;
+                    }
+                    const canvas = document.createElement('canvas');
+                    canvas.width = w;
+                    canvas.height = h;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, w, h);
+                    canvas.toBlob(function (blob) {
+                        URL.revokeObjectURL(objUrl);
+                        if (blob) {
+                            resolve(new File([blob], 'desk_scan.jpg', { type: 'image/jpeg' }));
+                        } else {
+                            resolve(file);
+                        }
+                    }, 'image/jpeg', 0.85);
+                } catch (_) {
+                    URL.revokeObjectURL(objUrl);
+                    resolve(file);
+                }
+            };
+            img.onerror = function () {
+                URL.revokeObjectURL(objUrl);
+                resolve(file);
+            };
+            img.src = objUrl;
+        });
+    }
+
+    function buildProductCard(prod, csrfToken) {
+        const card = document.createElement('div');
+        card.className = 'bg-white border border-slate-200 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:border-[#7AA88B] transition';
+
+        const left = document.createElement('div');
+        left.className = 'flex items-center gap-4';
+
+        const imgLink = document.createElement('a');
+        imgLink.href = prod.detail_url;
+        imgLink.className = 'w-20 h-20 border border-slate-200 overflow-hidden flex-shrink-0';
+        const img = document.createElement('img');
+        img.src = prod.image_url;
+        img.alt = prod.name;
+        img.className = 'w-full h-full object-cover';
+        imgLink.appendChild(img);
+
+        const meta = document.createElement('div');
+        meta.className = 'text-xs space-y-1';
+
+        const badge = document.createElement('span');
+        badge.className = 'inline-block px-2 py-0.5 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] text-[10px] font-bold';
+        badge.textContent = prod.layer_role || prod.position_display;
+
+        const titleH3 = document.createElement('h4');
+        titleH3.className = 'font-bold text-sm text-slate-900';
+        const titleA = document.createElement('a');
+        titleA.href = prod.detail_url;
+        titleA.className = 'hover:text-[#2F5C3E]';
+        titleA.textContent = prod.name;
+        titleH3.appendChild(titleA);
+
+        const specsP = document.createElement('p');
+        specsP.className = 'text-slate-500 text-[11px]';
+        specsP.textContent = (prod.co2_display || '') + ' · ' + (prod.light_display || '');
+
+        const reasonP = document.createElement('p');
+        reasonP.className = 'text-[#2F5C3E] font-semibold text-[11px]';
+        reasonP.textContent = '✓ ' + (prod.reason || '');
+
+        meta.appendChild(badge);
+        meta.appendChild(titleH3);
+        meta.appendChild(specsP);
+        meta.appendChild(reasonP);
+
+        left.appendChild(imgLink);
+        left.appendChild(meta);
+
+        const right = document.createElement('div');
+        right.className = 'flex sm:flex-col items-center sm:items-end justify-between gap-2 flex-shrink-0 border-t sm:border-t-0 pt-3 sm:pt-0';
+
+        const priceSpan = document.createElement('span');
+        priceSpan.className = 'font-mono font-black text-base text-rose-700';
+        priceSpan.textContent = prod.price_display;
+
+        const cartForm = document.createElement('form');
+        cartForm.method = 'POST';
+        cartForm.action = prod.add_to_cart_url;
+
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = csrfToken;
+
+        const qtyInput = document.createElement('input');
+        qtyInput.type = 'hidden';
+        qtyInput.name = 'quantity';
+        qtyInput.value = '1';
+
+        const addBtn = document.createElement('button');
+        addBtn.type = 'submit';
+        addBtn.className = 'bg-[#7AA88B] hover:bg-[#6B997C] text-white text-xs font-bold px-4 py-2 transition';
+        const icon = document.createElement('i');
+        icon.className = 'fa-solid fa-cart-plus mr-1';
+        addBtn.appendChild(icon);
+        addBtn.appendChild(document.createTextNode('Thêm Giỏ'));
+
+        cartForm.appendChild(csrfInput);
+        cartForm.appendChild(qtyInput);
+        cartForm.appendChild(addBtn);
+
+        right.appendChild(priceSpan);
+        right.appendChild(cartForm);
+
+        card.appendChild(left);
+        card.appendChild(right);
+        return card;
+    }
+
+    function renderScanResult(data) {
+        const a = data.analysis || {};
+        const tank = a.recommended_tank || {};
+        activeRenderContextToken = data.render_context_token || '';
+
+        document.getElementById('ai-model-badge').textContent = 'Model: ' + (data.model_used || '');
+        document.getElementById('ai-style-badge').textContent = a.detected_style || 'Không gian bàn';
+        document.getElementById('ai-width-est-badge').textContent = a.estimated_free_width_cm || '';
+
+        const annotatedImg = document.getElementById('ai-annotated-img');
+        annotatedImg.src = previewDataUrl;
+
+        const box = Array.isArray(a.placement_box) && a.placement_box.length === 4 ? a.placement_box : [350, 250, 750, 750];
+        const overlay = document.getElementById('ai-placement-overlay');
+        overlay.style.top = (box[0] / 10) + '%';
+        overlay.style.left = (box[1] / 10) + '%';
+        overlay.style.height = Math.max(8, (box[2] - box[0]) / 10) + '%';
+        overlay.style.width = Math.max(8, (box[3] - box[1]) / 10) + '%';
+        document.getElementById('ai-placement-label').textContent = 'Vị trí đặt bể · ' + (tank.size_cm || '30x20x25 cm');
+
+        document.getElementById('ai-tank-title').textContent = (tank.size_cm || '') + ' · ' + (tank.style_name || '');
+        document.getElementById('ai-tank-meta').textContent = (tank.shape || '') + (tank.volume_liters ? ' · ' + tank.volume_liters : '');
+        document.getElementById('ai-tank-reason').textContent = tank.placement_reason || '';
+        document.getElementById('ai-space-summary').textContent = a.space_summary || '';
+        document.getElementById('ai-lighting-summary').textContent = a.lighting_assessment || '';
+
+        const tipsUl = document.getElementById('ai-tips-list');
+        tipsUl.textContent = '';
+        (a.placement_tips || []).forEach(function (tip) {
+            const li = document.createElement('li');
+            li.textContent = tip;
+            tipsUl.appendChild(li);
+        });
+
+        const productsWrap = document.getElementById('ai-products-list');
+        productsWrap.textContent = '';
+        const csrfToken = getCsrfToken();
+        (data.recommended_products || []).forEach(function (prod) {
+            productsWrap.appendChild(buildProductCard(prod, csrfToken));
+        });
+
+        const presetBox = document.getElementById('ai-preset-box');
+        if (data.recommended_preset) {
+            document.getElementById('ai-preset-title').textContent = data.recommended_preset.name;
+            document.getElementById('ai-preset-meta').textContent =
+                data.recommended_preset.tank_size + ' · ' + data.recommended_preset.style + ' · Giá set tham khảo: ' + data.recommended_preset.total_price_display;
+            document.getElementById('ai-preset-link').href = data.recommended_preset.url;
+            presetBox.classList.remove('hidden');
+        } else {
+            presetBox.classList.add('hidden');
+        }
+
+        if (renderResultWrap) renderResultWrap.classList.add('hidden');
+        if (renderErrBox) {
+            renderErrBox.textContent = '';
+            renderErrBox.classList.add('hidden');
+        }
+
+        updateQuotaBadges(data.quota);
+        emptyState.classList.add('hidden');
+        loadingState.classList.add('hidden');
+        resultBox.classList.remove('hidden');
+    }
+
+    scanForm.addEventListener('submit', async function (e) {
+        e.preventDefault();
+        clearScanError();
+
+        if (!selectedFile) {
+            showScanError('Sensei vui lòng chụp hoặc chọn ảnh góc bàn trước khi bấm quét nhé!');
+            return;
+        }
+
+        scanBtn.disabled = true;
+        emptyState.classList.add('hidden');
+        resultBox.classList.add('hidden');
+        loadingState.classList.remove('hidden');
+
+        try {
+            const preparedFile = await downscaleImageFile(selectedFile);
+            const formData = new FormData();
+            formData.append('desk_image', preparedFile);
+            formData.append('desk_width_cm', document.getElementById('desk-width-input').value.trim());
+            formData.append('user_note', document.getElementById('desk-note-input').value.trim());
+
+            const resp = await fetch("{% url 'ai_desk_scan' %}", {
+                method: 'POST',
+                headers: { 'X-CSRFToken': getCsrfToken() },
+                body: formData,
+            });
+            const data = await resp.json();
+            if (!resp.ok || !data.success) {
+                loadingState.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                showScanError(data.message || 'Không thể phân tích ảnh lúc này.');
+                updateQuotaBadges(data.quota);
+                return;
+            }
+            renderScanResult(data);
+        } catch (_) {
+            loadingState.classList.add('hidden');
+            emptyState.classList.remove('hidden');
+            showScanError('Mất kết nối tới máy chủ khi phân tích ảnh. Vui lòng thử lại.');
+        } finally {
+            scanBtn.disabled = false;
+        }
+    });
+
+    if (renderBtn) {
+        renderBtn.addEventListener('click', async function () {
+            if (!activeRenderContextToken) return;
+
+            renderErrBox.textContent = '';
+            renderErrBox.classList.add('hidden');
+            renderBtn.disabled = true;
+            renderLoading.classList.remove('hidden');
+
+            try {
+                const formData = new FormData();
+                formData.append('render_context_token', activeRenderContextToken);
+
+                const resp = await fetch("{% url 'ai_desk_render' %}", {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCsrfToken() },
+                    body: formData,
+                });
+                const data = await resp.json();
+                if (!resp.ok || !data.success) {
+                    renderErrBox.textContent = data.message || 'Không thể vẽ phối cảnh lúc này.';
+                    renderErrBox.classList.remove('hidden');
+                    updateQuotaBadges(data.quota);
+                    return;
+                }
+
+                document.getElementById('ai-compare-before').src = previewDataUrl;
+                document.getElementById('ai-compare-after').src = data.image_data_url;
+                document.getElementById('ai-render-download').href = data.image_data_url;
+                renderResultWrap.classList.remove('hidden');
+                updateQuotaBadges(data.quota);
+            } catch (_) {
+                renderErrBox.textContent = 'Lỗi kết nối khi tạo phối cảnh AI. Vui lòng thử lại.';
+                renderErrBox.classList.remove('hidden');
+            } finally {
+                renderLoading.classList.add('hidden');
+                renderBtn.disabled = false;
+            }
+        });
+    }
+})();
+</script>
 {% endblock %}

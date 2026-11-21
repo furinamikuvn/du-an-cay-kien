@@ -5,6 +5,7 @@
 from django.contrib import admin
 from django.utils.html import format_html
 from .models import (
+    AIUsageLog,
     Article,
     Category,
     Coupon,
@@ -258,6 +259,21 @@ class ArticleAdmin(admin.ModelAdmin):
 class FAQAdmin(admin.ModelAdmin):
     list_display = ('order_num', 'question')
     ordering = ('order_num',)
+
+
+@admin.register(AIUsageLog)
+class AIUsageLogAdmin(admin.ModelAdmin):
+    list_display = ('action_type', 'model_used', 'user', 'status', 'created_at')
+    list_filter = ('action_type', 'status', 'model_used', 'created_at')
+    date_hierarchy = 'created_at'
+    search_fields = ('user__username', 'model_used', 'ip_hash')
+    readonly_fields = ('action_type', 'user', 'ip_hash', 'model_used', 'status', 'created_at')
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
 
 
 admin.site.site_header = "Hệ Thống Quản Trị Website Bán Cây Cảnh (AquaPlant)"

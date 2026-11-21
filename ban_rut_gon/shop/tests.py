@@ -573,4 +573,140 @@ class AquaPlantShopTest(TestCase):
             self.assertEqual(self.client.get('/tra-cuu-don-hang/?keyword=0988777666').status_code, 200)
         self.assertEqual(self.client.get('/tra-cuu-don-hang/?keyword=0988777666').status_code, 429)
 
+    def test_16_ai_desk_assistant_and_quota_caps(self):
+        """TC16: Trợ lý thị giác AI quét góc bàn (gemini-4-hydrogen -> fallback 3.8-flash) & vẽ phối cảnh Nano Banana 2.1 có khóa trần"""
+        import base64
+        import json
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from django.test import override_settings
+        from PIL import Image
+        from shop.models import AIUsageLog
+
+        def make_valid_jpeg_file(name='desk.jpg'):
+            buf = io.BytesIO()
+            Image.new('RGB', (160, 120), color=(110, 155, 125)).save(buf, format='JPEG')
+            return SimpleUploadedFile(name, buf.getvalue(), content_type='image/jpeg')
+
+        # 1. Trang trợ lý có cả 2 tab AI và Bộ lọc cổ điển
+        page_resp = self.client.get('/tro-ly-chon-cay/')
+        self.assertEqual(page_resp.status_code, 200)
+        self.assertContains(page_resp, 'Quét Góc Bàn Bằng AI')
+        self.assertContains(page_resp, 'Lọc Theo Thông Số Hồ')
+
+        # 2. GET vào 2 endpoint POST phải trả 405
+        self.assertEqual(self.client.get('/tro-ly-chon-cay/ai-scan/').status_code, 405)
+        self.assertEqual(self.client.get('/tro-ly-chon-cay/ai-render-preview/').status_code, 405)
+
+        # 3. Thiếu GEMINI_API_KEY -> trả 503 JSON sạch sẽ
+        with override_settings(GEMINI_API_KEY=''):
+            no_key_resp = self.client.post('/tro-ly-chon-cay/ai-scan/', {'desk_image': make_valid_jpeg_file()})
+            self.assertEqual(no_key_resp.status_code, 503)
+            self.assertEqual(no_key_resp.json()['code'], 'NOT_CONFIGURED')
+
+        # 4. Chặn file giả mạo trước khi gọi Gemini API
+        with override_settings(GEMINI_API_KEY='test-key-only'), patch('shop.ai_assistant.genai.Client') as mock_client_cls:
+            bad_img = SimpleUploadedFile('evil.jpg', b'<script>alert(1)</script>', content_type='image/jpeg')
+            bad_resp = self.client.post('/tro-ly-chon-cay/ai-scan/', {'desk_image': bad_img})
+            self.assertEqual(bad_resp.status_code, 400)
+            mock_client_cls.assert_not_called()
+
+        mock_scan_payload = {
+            'space_summary': 'Bàn gỗ rộng rãi gần cửa sổ ánh sáng tán xạ nhẹ.',
+            'lighting_assessment': 'Ánh sáng gián tiếp tốt, chỉ cần đèn LED thủy sinh công suất vừa.',
+            'detected_style': 'Tối giản hiện đại',
+            'estimated_free_width_cm': 'Khoảng 40 cm',
+            'recommended_tank': {
+                'size_cm': '35x22x26 cm',
+                'shape': 'Chữ nhật siêu trong rimless',
+                'volume_liters': '20 Lít',
+                'style_name': 'Nature đá lũa kết hợp Ráy',
+                'placement_reason': 'Vừa khít góc phải mặt bàn, không che màn hình.',
+            },
+            'placement_box': [280, 520, 760, 910],
+            'placement_tips': ['Lót thảm cao su chống trượt dưới đáy bể', 'Đặt gần ổ cắm điện có công tắc riêng'],
+            'suggested_co2': 'no',
+            'suggested_light': 'low',
+            'recommended_plants': [
+                {'product_id': self.product.id, 'layer_role': 'Trung cảnh', 'reason': 'Sống khỏe không cần bình CO2'},
+                {'product_id': 999999, 'layer_role': 'Ảo giác', 'reason': 'ID không tồn tại sẽ bị loại'},
+            ],
+            'recommended_preset_id': None,
+            'render_scene_prompt': '35cm rimless planted aquarium tank with Anubias nana on dark aquasoil and driftwood',
+        }
+
+        # 5. Quét bàn thành công với gemini-4-hydrogen & lọc bỏ ID ảo
+        with override_settings(GEMINI_API_KEY='test-key-only'), patch('shop.ai_assistant.genai.Client') as mock_client_cls:
+            mock_client = mock_client_cls.return_value
+            mock_client.interactions.create.return_value = SimpleNamespace(
+                output_text=json.dumps(mock_scan_payload, ensure_ascii=False)
+            )
+
+            scan_resp = self.client.post('/tro-ly-chon-cay/ai-scan/', {
+                'desk_image': make_valid_jpeg_file(),
+                'desk_width_cm': '40',
+                'user_note': 'Bàn văn phòng ít nắng',
+            })
+            self.assertEqual(scan_resp.status_code, 200)
+            scan_data = scan_resp.json()
+            self.assertTrue(scan_data['success'])
+            self.assertEqual(scan_data['model_used'], 'gemini-4-hydrogen')
+            self.assertEqual([p['id'] for p in scan_data['recommended_products']], [self.product.id])
+            self.assertEqual(scan_data['analysis']['placement_box'], [280, 520, 760, 910])
+            token = scan_data['render_context_token']
+            self.assertTrue(token)
+            self.assertEqual(AIUsageLog.objects.filter(action_type='scan', status='success').count(), 1)
+
+        # 6. Fallback sang gemini-3.8-flash khi gemini-4-hydrogen gặp lỗi
+        with override_settings(GEMINI_API_KEY='test-key-only'), patch('shop.ai_assistant.genai.Client') as mock_client_cls:
+            mock_client = mock_client_cls.return_value
+            mock_client.interactions.create.side_effect = [
+                RuntimeError('Primary model temporary error'),
+                SimpleNamespace(output_text=json.dumps(mock_scan_payload, ensure_ascii=False)),
+            ]
+            fb_resp = self.client.post('/tro-ly-chon-cay/ai-scan/', {'desk_image': make_valid_jpeg_file('desk2.jpg')})
+            self.assertEqual(fb_resp.status_code, 200)
+            self.assertEqual(fb_resp.json()['model_used'], 'gemini-3.8-flash')
+
+        # 7. Vẽ phối cảnh Nano Banana 2.1: chặn khách vãng lai (401), cho phép user đăng nhập & khóa trần
+        with override_settings(GEMINI_API_KEY='test-key-only'):
+            anon_render = self.client.post('/tro-ly-chon-cay/ai-render-preview/', {'render_context_token': token})
+            self.assertEqual(anon_render.status_code, 401)
+            self.assertTrue(anon_render.json()['login_required'])
+
+        render_user = User.objects.create_user(username='ai_render_user', password='Password123!')
+        self.client.force_login(render_user)
+
+        # Quét lại dưới session đã đăng nhập để lấy token hợp lệ thuộc session này
+        cache.clear()
+        with override_settings(GEMINI_API_KEY='test-key-only'), patch('shop.ai_assistant.genai.Client') as mock_client_cls:
+            mock_client = mock_client_cls.return_value
+            mock_client.interactions.create.return_value = SimpleNamespace(
+                output_text=json.dumps(mock_scan_payload, ensure_ascii=False)
+            )
+            user_scan = self.client.post('/tro-ly-chon-cay/ai-scan/', {'desk_image': make_valid_jpeg_file('user_desk.jpg')})
+            self.assertEqual(user_scan.status_code, 200)
+            user_token = user_scan.json()['render_context_token']
+
+        fake_rendered_b64 = base64.b64encode(make_valid_jpeg_file('rendered.jpg').read()).decode('utf-8')
+        with override_settings(
+            GEMINI_API_KEY='test-key-only',
+            AI_RENDER_PER_USER_DAILY=1,
+            AI_RENDER_MONTHLY_CAP=1,
+        ), patch('shop.ai_assistant.genai.Client') as mock_client_cls:
+            mock_client = mock_client_cls.return_value
+            mock_client.interactions.create.return_value = SimpleNamespace(
+                output_image=SimpleNamespace(data=fake_rendered_b64, mime_type='image/jpeg')
+            )
+
+            render_ok = self.client.post('/tro-ly-chon-cay/ai-render-preview/', {'render_context_token': user_token})
+            self.assertEqual(render_ok.status_code, 200)
+            self.assertTrue(render_ok.json()['image_data_url'].startswith('data:image/jpeg;base64,'))
+            self.assertEqual(AIUsageLog.objects.filter(action_type='render', status='success').count(), 1)
+
+            # Lần thứ 2 trong ngày phải bị chặn (429) bảo vệ credit $10/tháng
+            render_capped = self.client.post('/tro-ly-chon-cay/ai-render-preview/', {'render_context_token': user_token})
+            self.assertEqual(render_capped.status_code, 429)
+
+
 

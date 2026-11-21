@@ -113,7 +113,7 @@ class SecurityHeadersMiddleware:
         "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com",
         "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com",
         "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com",
-        "img-src 'self' data: https:",
+        "img-src 'self' data: blob: https:",
         "connect-src 'self' https://cdn.tailwindcss.com",
         "object-src 'none'",
         "frame-ancestors 'none'",

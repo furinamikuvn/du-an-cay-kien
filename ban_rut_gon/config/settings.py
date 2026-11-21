@@ -233,3 +233,17 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'home'
+
+# ------------------------------------------------------------------------------
+# 9. CẤU HÌNH TRỢ LÝ THỊ GIÁC AI (GEMINI MULTIMODAL & NANO BANANA 2.1)
+# ------------------------------------------------------------------------------
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
+GEMINI_VISION_MODEL = os.environ.get('GEMINI_VISION_MODEL', 'gemini-4-hydrogen').strip()
+GEMINI_VISION_FALLBACK_MODEL = os.environ.get('GEMINI_VISION_FALLBACK_MODEL', 'gemini-3.8-flash').strip()
+GEMINI_IMAGE_MODEL = os.environ.get('GEMINI_IMAGE_MODEL', 'gemini-nano-banana-2.1').strip()
+
+AI_RENDER_ENABLED = os.environ.get('AI_RENDER_ENABLED', 'True').lower() in ('true', '1', 'yes')
+AI_RENDER_MONTHLY_CAP = int(os.environ.get('AI_RENDER_MONTHLY_CAP', '120'))
+AI_RENDER_DAILY_CAP = int(os.environ.get('AI_RENDER_DAILY_CAP', '15'))
+AI_RENDER_PER_USER_DAILY = int(os.environ.get('AI_RENDER_PER_USER_DAILY', '3'))
+AI_SCAN_DAILY_CAP = int(os.environ.get('AI_SCAN_DAILY_CAP', '150'))

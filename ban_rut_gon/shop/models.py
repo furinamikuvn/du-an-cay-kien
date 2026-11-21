@@ -682,3 +682,39 @@ class FAQ(models.Model):
 
     def __str__(self):
         return self.question
+
+
+# ------------------------------------------------------------------------------
+# 11. NHẬT KÝ SỬ DỤNG TRỢ LÝ THỊ GIÁC AI & KIỂM SOÁT HẠN MỨC CREDIT
+# ------------------------------------------------------------------------------
+class AIUsageLog(models.Model):
+    """
+    Ghi nhận lịch sử gọi Gemini Vision (quét góc bàn) & Nano Banana 2.1 (vẽ phối cảnh),
+    đảm bảo khóa trần ngân sách $10/tháng trên database bền vững.
+    """
+    ACTION_CHOICES = [
+        ('scan', 'Quét phân tích góc bàn (Vision)'),
+        ('render', 'Vẽ phối cảnh đặt bể lên bàn (Nano Banana)'),
+    ]
+
+    action_type = models.CharField(max_length=20, choices=ACTION_CHOICES, db_index=True, verbose_name="Loại tác vụ AI")
+    user = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='ai_usage_logs',
+        verbose_name="Người dùng"
+    )
+    ip_hash = models.CharField(max_length=64, db_index=True, verbose_name="Mã băm IP")
+    model_used = models.CharField(max_length=80, blank=True, default='', verbose_name="Model sử dụng")
+    status = models.CharField(max_length=20, default='success', verbose_name="Trạng thái")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name="Thời điểm gọi")
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "Nhật ký gọi AI"
+        verbose_name_plural = "Nhật ký & Hạn mức AI"
+
+    def __str__(self):
+        return f"[{self.action_type}] {self.model_used} - {self.status} ({self.created_at:%Y-%m-%d %H:%M})"

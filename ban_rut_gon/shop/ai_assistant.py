@@ -1,0 +1,413 @@
+"""
+Dịch vụ Trợ lý Thị giác AI cho AquaPlant Shop (Google GenAI Interactions API).
+
+Cấu trúc Combo 1:
+- Quét & phân tích ảnh góc bàn / kệ làm việc -> gợi ý kích thước bể + cây thật từ DB:
+  Model chính `gemini-4-hydrogen`, tự động dự phòng sang `gemini-3.8-flash`.
+- Vẽ/ghép phối cảnh bể thủy sinh + cây thật lên chính bức ảnh góc bàn:
+  Model `gemini-nano-banana-2.1` với khóa trần ngân sách bền vững theo tháng/ngày/user.
+"""
+
+import base64
+import hashlib
+import io
+import logging
+from typing import List, Literal, Optional
+
+from django.conf import settings
+from django.utils import timezone
+from google import genai
+from PIL import Image, ImageOps
+from pydantic import BaseModel, Field
+
+from .models import AIUsageLog
+from .security import validate_image_file
+
+logger = logging.getLogger(__name__)
+
+
+# ------------------------------------------------------------------------------
+# 1. LƯỢC ĐỒ STRUCTURED OUTPUT (PYDANTIC SCHEMAS)
+# ------------------------------------------------------------------------------
+class TankRecommendation(BaseModel):
+    size_cm: str = Field(description="Kích thước bể đề xuất (ví dụ: '30x20x25 cm' hoặc '45x30x30 cm').")
+    shape: str = Field(description="Kiểu dáng bể (ví dụ: 'Cube vuông siêu trong giấu keo', 'Chữ nhật ngang rimless').")
+    volume_liters: str = Field(description="Dung tích nước ước tính (ví dụ: '15 - 20 Lít').")
+    style_name: str = Field(description="Phong cách layout hợp với bàn (ví dụ: 'Iwagumi tối giản', 'Rừng ráy & đá lũa').")
+    placement_reason: str = Field(description="Giải thích bằng tiếng Việt lý do kích thước và phong cách bể này hợp với góc bàn trong ảnh.")
+
+
+class RecommendedPlantItem(BaseModel):
+    product_id: int = Field(description="ID chính xác của sản phẩm lấy từ danh mục shop cung cấp.")
+    layer_role: str = Field(description="Vị trí bố trí trong bể (ví dụ: 'Tiền cảnh thảm đáy', 'Trung cảnh kẽ đá', 'Hậu cảnh').")
+    reason: str = Field(description="Lý do ngắn gọn bằng tiếng Việt vì sao cây này phù hợp điều kiện ánh sáng và góc bàn.")
+
+
+class DeskScanResult(BaseModel):
+    space_summary: str = Field(description="Nhận xét tổng quan về mặt bàn, chất liệu, độ rộng trống và vật dụng xung quanh bằng tiếng Việt.")
+    lighting_assessment: str = Field(description="Đánh giá ánh sáng tự nhiên / ánh sáng phòng trong ảnh và lưu ý về đèn thủy sinh / rêu hại.")
+    detected_style: str = Field(description="Phong cách nội thất nhận diện được (ví dụ: 'Tối giản hiện đại', 'Gỗ ấm cúng', 'Gaming setup').")
+    estimated_free_width_cm: str = Field(description="Ước lượng khoảng trống bề ngang có thể đặt bể (ví dụ: 'Khoảng 35 - 45 cm').")
+    recommended_tank: TankRecommendation
+    placement_box: List[int] = Field(
+        description="4 số nguyên chuẩn hóa [ymin, xmin, ymax, xmax] trong khoảng 0..1000 khoanh vùng vị trí đặt bể đẹp nhất trên bàn."
+    )
+    placement_tips: List[str] = Field(
+        description="3 đến 4 lưu ý thực tế về ổ điện, tải trọng bàn, chống bắn nước hoặc hướng nhìn khi đặt bể."
+    )
+    suggested_co2: Literal["no", "yes"] = Field(description="Gợi ý có cần bình CO2 hay không ('no' hoặc 'yes').")
+    suggested_light: Literal["low", "medium", "high"] = Field(description="Cường độ đèn phù hợp ('low', 'medium', hoặc 'high').")
+    recommended_plants: List[RecommendedPlantItem] = Field(
+        description="Danh sách 3 đến 4 loài cây phù hợp chọn CHỈ TỪ danh mục sản phẩm shop cung cấp."
+    )
+    recommended_preset_id: Optional[int] = Field(
+        default=None,
+        description="ID bố cục mẫu (LayoutPreset) phù hợp nhất trong danh sách shop nếu có, hoặc null."
+    )
+    render_scene_prompt: str = Field(
+        description="Short English visual description of the proposed planted aquarium tank (plants, hardscape, compact LED clip light) to place onto the desk."
+    )
+
+
+SYSTEM_INSTRUCTION = (
+    "Bạn là Chuyên gia Thiết kế Bể Thủy Sinh & Tư vấn Sinh học của cửa hàng AquaPlant tại Việt Nam. "
+    "Nhiệm vụ của bạn là phân tích ảnh góc bàn/kệ do khách hàng chụp, đánh giá diện tích trống, "
+    "chất liệu mặt bàn, góc nhìn và ánh sáng xung quanh để đề xuất loại bể thủy sinh và cây trồng phù hợp nhất. "
+    "NGUYÊN TẮC BẮT BUỘC:\n"
+    "1. CHỈ được chọn `product_id` và `recommended_preset_id` có trong danh sách JSON cửa hàng cung cấp; "
+    "tuyệt đối không tự bịa tên sản phẩm hoặc ID ngoài danh mục.\n"
+    "2. Tọa độ `placement_box` phải theo thứ tự [ymin, xmin, ymax, xmax] thang 0..1000 nằm gọn trên bề mặt đặt bể trong ảnh.\n"
+    "3. Không khẳng định đo chính xác tuyệt đối đến từng mm nếu thiếu thông số đầu vào; luôn ước lượng hợp lý dựa theo vật tham chiếu (laptop, bàn phím, ly, mép bàn).\n"
+    "4. Tất cả nội dung tư vấn (trừ `render_scene_prompt`) viết bằng tiếng Việt tự nhiên, rõ ràng, súc tích."
+)
+
+
+# ------------------------------------------------------------------------------
+# 2. TIỀN XỬ LÝ ẢNH & KIỂM SOÁT HẠN MỨC BỀN VỮNG (QUOTA GUARDS)
+# ------------------------------------------------------------------------------
+def hash_ip(ip_address):
+    return hashlib.sha256(str(ip_address or 'unknown').encode('utf-8')).hexdigest()
+
+
+def prepare_desk_image_bytes(uploaded_file, max_dim=1024):
+    """Kiểm tra tính hợp lệ của tệp ảnh, xoay theo EXIF, thu nhỏ <= max_dim và xuất JPEG chuẩn."""
+    validate_image_file(uploaded_file)
+    if hasattr(uploaded_file, 'seek'):
+        uploaded_file.seek(0)
+
+    with Image.open(uploaded_file) as img:
+        img = ImageOps.exif_transpose(img)
+        if img.mode != 'RGB':
+            img = img.convert('RGB')
+        img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+        out = io.BytesIO()
+        img.save(out, format='JPEG', quality=82, optimize=True)
+        return out.getvalue()
+
+
+def get_ai_quota_status(user=None, ip_hash=''):
+    """Đọc số lượt AI đã sử dụng trong ngày/tháng từ bảng AIUsageLog."""
+    now = timezone.localtime()
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+    monthly_used = AIUsageLog.objects.filter(
+        action_type='render',
+        status='success',
+        created_at__gte=month_start,
+    ).count()
+    daily_used = AIUsageLog.objects.filter(
+        action_type='render',
+        status='success',
+        created_at__gte=today_start,
+    ).count()
+    scan_daily_used = AIUsageLog.objects.filter(
+        action_type='scan',
+        status='success',
+        created_at__gte=today_start,
+    ).count()
+
+    if user is not None and getattr(user, 'is_authenticated', False):
+        user_used_today = AIUsageLog.objects.filter(
+            action_type='render',
+            status='success',
+            user=user,
+            created_at__gte=today_start,
+        ).count()
+    elif ip_hash:
+        user_used_today = AIUsageLog.objects.filter(
+            action_type='render',
+            status='success',
+            ip_hash=ip_hash,
+            created_at__gte=today_start,
+        ).count()
+    else:
+        user_used_today = 0
+
+    monthly_cap = settings.AI_RENDER_MONTHLY_CAP
+    daily_cap = settings.AI_RENDER_DAILY_CAP
+    user_daily_cap = settings.AI_RENDER_PER_USER_DAILY
+    scan_daily_cap = settings.AI_SCAN_DAILY_CAP
+
+    return {
+        'monthly_used': monthly_used,
+        'monthly_cap': monthly_cap,
+        'monthly_remaining': max(0, monthly_cap - monthly_used),
+        'daily_used': daily_used,
+        'daily_cap': daily_cap,
+        'user_used_today': user_used_today,
+        'user_daily_cap': user_daily_cap,
+        'user_remaining_today': max(0, user_daily_cap - user_used_today),
+        'scan_daily_used': scan_daily_used,
+        'scan_daily_cap': scan_daily_cap,
+    }
+
+
+def can_run_ai_action(action_type, user=None, ip_hash=''):
+    """Kiểm tra xem yêu cầu hiện tại có còn nằm trong trần ngân sách cho phép hay không."""
+    quota = get_ai_quota_status(user=user, ip_hash=ip_hash)
+    if action_type == 'scan':
+        if quota['scan_daily_used'] >= quota['scan_daily_cap']:
+            return False, (
+                f"Hệ thống đã chạm giới hạn {quota['scan_daily_cap']} lượt quét AI trong ngày hôm nay. "
+                "Sensei vui lòng sử dụng tab 'Lọc Theo Thông Số Hồ' hoặc quay lại vào ngày mai."
+            ), quota
+        return True, '', quota
+
+    if quota['monthly_used'] >= quota['monthly_cap']:
+        return False, (
+            f"Đã đạt trần an toàn {quota['monthly_cap']} ảnh phối cảnh trong tháng để bảo vệ gói $10 credit."
+        ), quota
+    if quota['daily_used'] >= quota['daily_cap']:
+        return False, (
+            f"Hệ thống đã đạt giới hạn {quota['daily_cap']} lượt vẽ phối cảnh trong ngày hôm nay."
+        ), quota
+    if quota['user_used_today'] >= quota['user_daily_cap']:
+        return False, (
+            f"Mỗi tài khoản chỉ được tạo tối đa {quota['user_daily_cap']} ảnh phối cảnh AI mỗi ngày để tiết kiệm credit chung."
+        ), quota
+    return True, '', quota
+
+
+def log_ai_usage(action_type, user=None, ip_hash='', model_used='', status='success'):
+    """Lưu log bền vững vào DB."""
+    auth_user = user if (user is not None and getattr(user, 'is_authenticated', False)) else None
+    return AIUsageLog.objects.create(
+        action_type=action_type,
+        user=auth_user,
+        ip_hash=ip_hash or 'unknown',
+        model_used=model_used[:80],
+        status=status[:20],
+    )
+
+
+# ------------------------------------------------------------------------------
+# 3. PHÂN TÍCH ẢNH GÓC BÀN VỚI GEMINI-4-HYDROGEN (+ FALLBACK GEMINI-3.8-FLASH)
+# ------------------------------------------------------------------------------
+def sanitize_placement_box(raw_box):
+    """Chuẩn hóa tọa độ [ymin, xmin, ymax, xmax] về phạm vi [0..1000] hợp lệ."""
+    default_box = [350, 250, 750, 750]
+    if not isinstance(raw_box, (list, tuple)) or len(raw_box) != 4:
+        return default_box
+    try:
+        vals = [max(0, min(1000, int(round(float(v))))) for v in raw_box]
+    except (TypeError, ValueError):
+        return default_box
+
+    ymin, xmin, ymax, xmax = vals
+    if ymin >= ymax or xmin >= xmax or (ymax - ymin) < 50 or (xmax - xmin) < 50:
+        return default_box
+    return [ymin, xmin, ymax, xmax]
+
+
+def _ground_recommendations(parsed: DeskScanResult, catalog_products, catalog_presets):
+    """Đối chiếu lại 100% ID AI trả về với danh mục sản phẩm có thật trong DB."""
+    valid_product_map = {p['id']: p for p in catalog_products}
+    valid_preset_ids = {pr['id'] for pr in catalog_presets}
+
+    grounded_items = []
+    seen_ids = set()
+    for item in parsed.recommended_plants:
+        if item.product_id in valid_product_map and item.product_id not in seen_ids:
+            seen_ids.add(item.product_id)
+            grounded_items.append({
+                'product_id': item.product_id,
+                'layer_role': item.layer_role.strip() or 'Trung cảnh',
+                'reason': item.reason.strip(),
+            })
+
+    # Bổ sung tự động từ DB nếu AI gợi ý quá ít hoặc ID bị lệch
+    if len(grounded_items) < 2 and catalog_products:
+        sorted_candidates = sorted(
+            catalog_products,
+            key=lambda p: (
+                0 if p['co2_code'] == parsed.suggested_co2 else 1,
+                0 if p['light_code'] == parsed.suggested_light else 1,
+                p['id'],
+            ),
+        )
+        for p in sorted_candidates:
+            if p['id'] in seen_ids:
+                continue
+            seen_ids.add(p['id'])
+            grounded_items.append({
+                'product_id': p['id'],
+                'layer_role': p['position_label'],
+                'reason': f"Phù hợp điều kiện {p['co2_label']} và ánh sáng {p['light_label']} của góc bàn.",
+            })
+            if len(grounded_items) >= 3:
+                break
+
+    preset_id = parsed.recommended_preset_id if parsed.recommended_preset_id in valid_preset_ids else None
+    placement_tips = [t.strip() for t in parsed.placement_tips if t and t.strip()][:4]
+
+    return {
+        'space_summary': parsed.space_summary.strip(),
+        'lighting_assessment': parsed.lighting_assessment.strip(),
+        'detected_style': parsed.detected_style.strip(),
+        'estimated_free_width_cm': parsed.estimated_free_width_cm.strip(),
+        'recommended_tank': parsed.recommended_tank.model_dump(),
+        'placement_box': sanitize_placement_box(parsed.placement_box),
+        'placement_tips': placement_tips,
+        'suggested_co2': parsed.suggested_co2,
+        'suggested_light': parsed.suggested_light,
+        'recommended_plants': grounded_items[:4],
+        'recommended_preset_id': preset_id,
+        'render_scene_prompt': (parsed.render_scene_prompt or '').strip(),
+    }
+
+
+def analyze_desk_with_gemini(image_bytes, catalog_products, catalog_presets, desk_width_cm='', user_note=''):
+    """
+    Gửi ảnh góc bàn + danh mục thật của shop lên Gemini Vision (`gemini-4-hydrogen`),
+    tự động chuyển sang `gemini-3.8-flash` nếu model chính gặp lỗi/quá tải.
+    """
+    import json
+
+    if not settings.GEMINI_API_KEY:
+        raise RuntimeError("Thiếu cấu hình GEMINI_API_KEY.")
+
+    catalog_payload = {
+        'products': catalog_products,
+        'layout_presets': catalog_presets,
+    }
+    extra_hints = []
+    if desk_width_cm:
+        extra_hints.append(f"- Chiều rộng khoảng trống khách ước lượng: {desk_width_cm} cm.")
+    if user_note:
+        extra_hints.append(f"- Mong muốn thêm của khách hàng: {user_note}")
+    hints_block = "\n".join(extra_hints) if extra_hints else "- Không có ghi chú kích thước bổ sung."
+
+    user_prompt = (
+        "Hãy quan sát kỹ bức ảnh góc bàn / không gian này và tư vấn bể thủy sinh + cây phù hợp.\n"
+        f"Thông tin bổ sung từ khách:\n{hints_block}\n\n"
+        f"Danh mục sản phẩm & bố cục hiện có của shop (CHỈ chọn product_id và recommended_preset_id trong đây):\n"
+        f"{json.dumps(catalog_payload, ensure_ascii=False)}"
+    )
+
+    client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    models_to_try = [settings.GEMINI_VISION_MODEL]
+    if settings.GEMINI_VISION_FALLBACK_MODEL and settings.GEMINI_VISION_FALLBACK_MODEL not in models_to_try:
+        models_to_try.append(settings.GEMINI_VISION_FALLBACK_MODEL)
+
+    last_error = None
+    b64_image = base64.b64encode(image_bytes).decode('utf-8')
+    schema = DeskScanResult.model_json_schema()
+
+    for model_name in models_to_try:
+        try:
+            interaction = client.interactions.create(
+                model=model_name,
+                system_instruction=SYSTEM_INSTRUCTION,
+                input=[
+                    {"type": "text", "text": user_prompt},
+                    {
+                        "type": "image",
+                        "data": b64_image,
+                        "mime_type": "image/jpeg",
+                    },
+                ],
+                response_format={
+                    "type": "text",
+                    "mime_type": "application/json",
+                    "schema": schema,
+                },
+                store=False,
+            )
+            raw_text = getattr(interaction, 'output_text', None)
+            if not raw_text:
+                raise ValueError("Phản hồi AI không chứa nội dung JSON.")
+            parsed = DeskScanResult.model_validate_json(raw_text)
+            return _ground_recommendations(parsed, catalog_products, catalog_presets), model_name
+        except Exception as exc:
+            logger.warning("Gemini vision model %s failed: %s", model_name, exc)
+            last_error = exc
+
+    raise RuntimeError(f"Không thể hoàn tất phân tích AI: {last_error}")
+
+
+# ------------------------------------------------------------------------------
+# 4. GHÉP PHỐI CẢNH ĐẶT BỂ LÊN BÀN VỚI NANO BANANA 2.1
+# ------------------------------------------------------------------------------
+def render_tank_preview_with_nano_banana(
+    desk_image_bytes,
+    tank_info,
+    plant_names,
+    placement_box,
+    render_scene_prompt='',
+):
+    """
+    Dùng `gemini-nano-banana-2.1` chỉnh sửa ảnh gốc để đặt một bể thủy sinh đúng kích thước/cây
+    lên vị trí trống được đề xuất trên mặt bàn, giữ nguyên bối cảnh thật xung quanh.
+    """
+    if not settings.GEMINI_API_KEY:
+        raise RuntimeError("Thiếu cấu hình GEMINI_API_KEY.")
+
+    ymin, xmin, ymax, xmax = sanitize_placement_box(placement_box)
+    plants_desc = ", ".join(plant_names) if plant_names else "Anubias nana, Java fern, lush green foreground carpet"
+    size_desc = tank_info.get('size_cm', '30x20x25 cm')
+    style_desc = tank_info.get('style_name', 'Nature aquascape')
+    scene_detail = render_scene_prompt or f"a crystal-clear rimless glass aquascape tank ({size_desc}, {style_desc})"
+
+    edit_prompt = (
+        f"Photorealistic interior photo editing: Using the provided photo as the exact base scene, "
+        f"place {scene_detail} neatly on the desk surface inside the normalized region "
+        f"[ymin={ymin}, xmin={xmin}, ymax={ymax}, xmax={xmax}] (0..1000 scale). "
+        f"Inside the rimless ultra-clear glass aquarium, plant thriving {plants_desc} arranged naturally over dark aquasoil "
+        f"with smooth stones or driftwood and a sleek minimalist clip-on LED aquarium light on top. "
+        f"Match the original camera angle, perspective, ambient room lighting, soft contact shadows, and subtle glass reflections. "
+        f"Keep the desk material, laptop/decor, background wall, and surrounding items completely intact and realistic."
+    )
+
+    client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    interaction = client.interactions.create(
+        model=settings.GEMINI_IMAGE_MODEL,
+        input=[
+            {"type": "text", "text": edit_prompt},
+            {
+                "type": "image",
+                "data": base64.b64encode(desk_image_bytes).decode('utf-8'),
+                "mime_type": "image/jpeg",
+            },
+        ],
+        response_format={
+            "type": "image",
+            "image_size": "1K",
+            "mime_type": "image/jpeg",
+            "delivery": "inline",
+        },
+        store=False,
+    )
+
+    output_img = getattr(interaction, 'output_image', None)
+    if output_img and getattr(output_img, 'data', None):
+        mime = getattr(output_img, 'mime_type', None) or 'image/jpeg'
+        return output_img.data, mime
+
+    # Kiểm tra dự phòng trong các step model_output
+    for step in getattr(interaction, 'steps', []) or []:
+        for part in getattr(step, 'content', []) or []:
+            if getattr(part, 'type', None) == 'image' and getattr(part, 'data', None):
+                return part.data, getattr(part, 'mime_type', None) or 'image/jpeg'
+
+    raise RuntimeError("Model vẽ phối cảnh không trả về dữ liệu hình ảnh.")

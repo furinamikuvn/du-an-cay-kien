@@ -10,6 +10,8 @@ urlpatterns = [
     # 1. Trang chủ & các tính năng thủy sinh chuyên sâu
     path('', views.home_view, name='home'),
     path('tro-ly-chon-cay/', views_extras.plant_assistant_view, name='plant_assistant'),
+    path('tro-ly-chon-cay/ai-scan/', views_extras.ai_desk_scan_view, name='ai_desk_scan'),
+    path('tro-ly-chon-cay/ai-render-preview/', views_extras.ai_desk_render_view, name='ai_desk_render'),
     path('tinh-so-luong-cay/', views_extras.plant_quantity_view, name='plant_quantity'),
     path('bo-cuc-mau/', views_extras.layout_presets_view, name='layout_presets'),
     path('bo-cuc-mau/add-combo/', views_extras.add_combo_to_cart_view, name='add_combo_to_cart'),
