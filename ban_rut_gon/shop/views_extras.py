@@ -360,6 +360,8 @@ def ai_desk_render_view(request):
 
     context_token = ''
     raw_preset_id = ''
+    placement_position = 'auto'
+    tank_scale = 'balanced'
     if (request.content_type or '').lower().startswith('application/json'):
         try:
             body_data = json.loads((request.body or b'').decode('utf-8'))
@@ -367,12 +369,21 @@ def ai_desk_render_view(request):
                 context_token = str(body_data.get('render_context_token') or '').strip()
                 if body_data.get('preset_id') is not None:
                     raw_preset_id = str(body_data.get('preset_id')).strip()
+                placement_position = str(body_data.get('placement_position') or 'auto').strip().lower()
+                tank_scale = str(body_data.get('tank_scale') or 'balanced').strip().lower()
         except Exception:
             context_token = ''
             raw_preset_id = ''
     else:
         context_token = (request.POST.get('render_context_token') or '').strip()
         raw_preset_id = (request.POST.get('preset_id') or '').strip()
+        placement_position = (request.POST.get('placement_position') or 'auto').strip().lower()
+        tank_scale = (request.POST.get('tank_scale') or 'balanced').strip().lower()
+
+    if placement_position not in ('auto', 'center', 'left', 'right'):
+        placement_position = 'auto'
+    if tank_scale not in ('compact', 'balanced', 'statement'):
+        tank_scale = 'balanced'
 
     cached_ctx = cache.get(f"ai_desk_ctx:{context_token}") if context_token else None
     if not cached_ctx or not request.session.session_key or cached_ctx.get('session_key') != request.session.session_key:
@@ -394,17 +405,27 @@ def ai_desk_render_view(request):
     tank_template_bytes = selected_preset.get_local_image_bytes(max_dim=1024) if selected_preset else None
     tank_template_name = selected_preset.name if (selected_preset and tank_template_bytes) else ''
 
+    effective_tank_info = dict(cached_ctx.get('recommended_tank') or {})
+    if selected_preset and tank_template_bytes:
+        effective_tank_info.update({
+            'size_cm': selected_preset.tank_size,
+            'style_name': selected_preset.style,
+            'width_cm': selected_preset.tank_width_cm,
+        })
+
     record_rate_limit_hit('ai_render', ip, 600)
 
     try:
         b64_data, mime_type, actual_model = render_tank_preview(
             desk_image_bytes=cached_ctx['image_bytes'],
-            tank_info=cached_ctx['recommended_tank'],
+            tank_info=effective_tank_info,
             plant_names=cached_ctx.get('plant_names', []),
             placement_box=cached_ctx.get('placement_box'),
             render_scene_prompt=cached_ctx.get('render_scene_prompt', ''),
             tank_template_image_bytes=tank_template_bytes,
             tank_template_name=tank_template_name,
+            placement_position=placement_position,
+            tank_scale=tank_scale,
         )
     except Exception as exc:
         log_ai_usage('render', user=request.user, ip_hash=ip_h, model_used=img_model, status='failed')

@@ -431,6 +431,36 @@ def get_active_image_provider_and_model():
     return (None, '')
 
 
+def _describe_placement_natural(placement_box, placement_position='auto', tank_scale='balanced'):
+    """Diễn đạt vị trí và tỷ lệ bể bằng tiếng Anh tự nhiên theo phối cảnh 3D (không lộ tọa độ thô)."""
+    _, xmin, _, xmax = sanitize_placement_box(placement_box)
+    pos_key = (placement_position or 'auto').strip().lower()
+    if pos_key == 'left':
+        pos_phrase = "positioned toward the left half of the clear tabletop surface, leaving the right-side objects untouched"
+    elif pos_key == 'right':
+        pos_phrase = "positioned toward the right half of the clear tabletop surface, balanced neatly in view"
+    elif pos_key == 'center':
+        pos_phrase = "centered symmetrically on the clear flat tabletop surface"
+    else:
+        center_x = (xmin + xmax) / 2.0
+        if center_x < 420:
+            pos_phrase = "positioned naturally toward the left side of the clear tabletop surface"
+        elif center_x > 580:
+            pos_phrase = "positioned naturally toward the right side of the clear tabletop surface"
+        else:
+            pos_phrase = "centered cleanly on the clear flat tabletop surface"
+
+    scale_key = (tank_scale or 'balanced').strip().lower()
+    if scale_key == 'compact':
+        scale_phrase = "compact, neat nano desktop proportions spanning roughly 35% to 45% of the visible table width"
+    elif scale_key == 'statement':
+        scale_phrase = "prominent centerpiece aquarium proportions spanning roughly 65% to 75% of the visible table width"
+    else:
+        scale_phrase = "well-proportioned desktop aquarium footprint spanning roughly 50% to 60% of the visible table width"
+
+    return pos_phrase, scale_phrase
+
+
 def _build_tank_edit_prompt(
     tank_info,
     plant_names,
@@ -438,8 +468,10 @@ def _build_tank_edit_prompt(
     render_scene_prompt='',
     has_tank_template=False,
     tank_template_name='',
+    placement_position='auto',
+    tank_scale='balanced',
 ):
-    ymin, xmin, ymax, xmax = sanitize_placement_box(placement_box)
+    pos_phrase, scale_phrase = _describe_placement_natural(placement_box, placement_position, tank_scale)
     plants_desc = ", ".join(plant_names) if plant_names else "Anubias nana, Java fern, lush green foreground carpet"
     size_desc = tank_info.get('size_cm', '30x20x25 cm')
     style_desc = tank_info.get('style_name', 'Nature aquascape')
@@ -448,25 +480,30 @@ def _build_tank_edit_prompt(
     if has_tank_template:
         ref_label = f" ({tank_template_name})" if tank_template_name else ""
         return (
-            f"Photorealistic multi-image composite editing: "
-            f"Use Image 1 (the customer's real desk and room photo) as the exact base scene — preserve the desk texture, "
-            f"camera perspective, background wall, surrounding gadgets/items, and natural room lighting 100% unchanged. "
-            f"Take the real aquascape tank layout, hardscape stones/driftwood, aquatic plant composition, and fish from Image 2{ref_label}, "
-            f"render it in a clean glass aquarium matching Image 1's camera angle, and composite it naturally onto the desk surface inside "
-            f"normalized region [ymin={ymin}, xmin={xmin}, ymax={ymax}, xmax={xmax}] (0..1000 scale). "
-            f"Scale it realistically to roughly {size_desc} relative to surrounding desk objects, add soft contact shadows underneath, "
-            f"subtle authentic glass reflections matching Image 1's light direction, and faithful scape details from Image 2. "
-            f"No floating artifacts, no extra clutter, no watermarks."
+            f"Photorealistic architectural interior photo editing & 3D multi-image integration: "
+            f"Use Image 1 (the customer's real tabletop/cabinet photo) as the immutable base scene — keep Image 1's wood grain, "
+            f"tabletop geometry, background tiles, walls, lighting, shadows, and every surrounding item 100% preserved. "
+            f"Place a real-world ADA-style frameless ultra-clear low-iron glass aquarium ({size_desc}, {style_desc}), "
+            f"resting flat on a thin 3mm matte black foam leveling mat, {pos_phrase} with {scale_phrase}. "
+            f"ALIGN 3D PERSPECTIVE STRICTLY TO IMAGE 1: the aquarium's front, side, and back glass edges must run parallel to "
+            f"the real tabletop edges and follow Image 1's exact elevated downward camera angle, cleanly revealing the crisp 45-degree "
+            f"glass corners, top water surface ripples, and a sleek minimalist slim aluminum clip-on/bracket LED aquarium bar light above the water. "
+            f"USE IMAGE 2{ref_label} STRICTLY AS THE INTERIOR AQUASCAPE SCAPE REFERENCE: faithfully recreate its underwater stone/driftwood "
+            f"hardscape layout, aquatic plants, substrate, and water clarity inside the glass tank — NEVER copy any bulky black plastic hood, "
+            f"wires, external equipment, stand, or dark room walls from Image 2, and NEVER paste Image 2 as a flat skewed cutout. "
+            f"OPTICAL RELIGHTING: harmonize exposure, white balance, and highlights so the aquarium belongs natively inside Image 1's bright daylight room, "
+            f"casting soft natural contact & directional shadows onto the wood tabletop beneath the mat, plus subtle table/room glass reflections. "
+            f"Single authentic smartphone photograph quality, sharp focus, no floating artifacts, no text, no watermarks."
         )
 
     return (
-        f"Photorealistic interior photo editing: Using the provided photo as the exact base scene, "
-        f"place {scene_detail} neatly on the desk surface inside the normalized region "
-        f"[ymin={ymin}, xmin={xmin}, ymax={ymax}, xmax={xmax}] (0..1000 scale). "
-        f"Inside the rimless ultra-clear glass aquarium, plant thriving {plants_desc} arranged naturally over dark aquasoil "
-        f"with smooth stones or driftwood and a sleek minimalist clip-on LED aquarium light on top. "
-        f"Match the original camera angle, perspective, ambient room lighting, soft contact shadows, and subtle glass reflections. "
-        f"Keep the desk material, laptop/decor, background wall, and surrounding items completely intact and realistic."
+        f"Photorealistic interior photo editing: Using the provided photo as the immutable base scene, "
+        f"place {scene_detail} resting flat on a thin matte black leveling mat, {pos_phrase} with {scale_phrase}. "
+        f"Align all aquarium edges strictly parallel to the tabletop perspective lines and match the exact elevated camera angle, "
+        f"showing the clear top water surface and a sleek minimalist slim LED aquarium bar light above the rimless ultra-clear glass tank. "
+        f"Inside the aquarium, arrange thriving {plants_desc} over dark aquasoil with natural stones or driftwood. "
+        f"Match Image 1's bright ambient room exposure, soft contact shadows on the table, and subtle glass reflections, "
+        f"keeping every surrounding object, table texture, and background wall completely intact."
     )
 
 
@@ -474,9 +511,11 @@ def _detect_aspect_ratio(image_bytes):
     """Chọn tỷ lệ khung hình Agnes AI gần nhất với ảnh gốc."""
     candidates = [
         ("16:9", 16 / 9),
+        ("3:2", 3 / 2),
         ("4:3", 4 / 3),
         ("1:1", 1.0),
         ("3:4", 3 / 4),
+        ("2:3", 2 / 3),
         ("9:16", 9 / 16),
     ]
     try:
@@ -498,6 +537,8 @@ def render_tank_preview_with_agnes(
     render_scene_prompt='',
     tank_template_image_bytes=None,
     tank_template_name='',
+    placement_position='auto',
+    tank_scale='balanced',
 ):
     """
     Gọi Agnes AI (`POST /v1/images/generations`) dùng model `agnes-image-2.5-flash`
@@ -527,8 +568,11 @@ def render_tank_preview_with_agnes(
         render_scene_prompt,
         has_tank_template=has_template,
         tank_template_name=tank_template_name,
+        placement_position=placement_position,
+        tank_scale=tank_scale,
     )
     aspect_ratio = _detect_aspect_ratio(desk_image_bytes)
+    image_size = getattr(settings, 'AGNES_IMAGE_SIZE', '1K') or '1K'
 
     models_to_try = [settings.AGNES_IMAGE_MODEL]
     fallback_model = getattr(settings, 'AGNES_IMAGE_FALLBACK_MODEL', '')
@@ -540,7 +584,7 @@ def render_tank_preview_with_agnes(
         payload = {
             "model": model_name,
             "prompt": edit_prompt,
-            "size": "1K",
+            "size": image_size,
             "ratio": aspect_ratio,
             "extra_body": {
                 "image": reference_images,
@@ -594,6 +638,8 @@ def render_tank_preview_with_nano_banana(
     render_scene_prompt='',
     tank_template_image_bytes=None,
     tank_template_name='',
+    placement_position='auto',
+    tank_scale='balanced',
 ):
     """
     Dùng `gemini-nano-banana-2.1` chỉnh sửa / ghép ảnh đa nguồn để đặt mẫu bể thủy sinh
@@ -610,6 +656,8 @@ def render_tank_preview_with_nano_banana(
         render_scene_prompt,
         has_tank_template=has_template,
         tank_template_name=tank_template_name,
+        placement_position=placement_position,
+        tank_scale=tank_scale,
     )
 
     input_parts = [
@@ -663,6 +711,8 @@ def render_tank_preview(
     render_scene_prompt='',
     tank_template_image_bytes=None,
     tank_template_name='',
+    placement_position='auto',
+    tank_scale='balanced',
 ):
     """Điều phối ghép/vẽ ảnh phối cảnh đặt bể theo nhà cung cấp đang cấu hình (Agnes / Gemini)."""
     provider, _ = get_active_image_provider_and_model()
@@ -675,6 +725,8 @@ def render_tank_preview(
             render_scene_prompt=render_scene_prompt,
             tank_template_image_bytes=tank_template_image_bytes,
             tank_template_name=tank_template_name,
+            placement_position=placement_position,
+            tank_scale=tank_scale,
         )
     if provider == 'gemini':
         return render_tank_preview_with_nano_banana(
@@ -685,5 +737,7 @@ def render_tank_preview(
             render_scene_prompt=render_scene_prompt,
             tank_template_image_bytes=tank_template_image_bytes,
             tank_template_name=tank_template_name,
+            placement_position=placement_position,
+            tank_scale=tank_scale,
         )
     raise RuntimeError("Chưa cấu hình AGNES_API_KEY hoặc GEMINI_API_KEY cho tính năng vẽ phối cảnh.")

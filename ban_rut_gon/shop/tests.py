@@ -814,7 +814,12 @@ class AquaPlantShopTest(TestCase):
                 )
                 render_resp = self.client.post(
                     '/tro-ly-chon-cay/ai-render-preview/',
-                    {'render_context_token': ctx_token, 'preset_id': preset.id},
+                    {
+                        'render_context_token': ctx_token,
+                        'preset_id': preset.id,
+                        'placement_position': 'center',
+                        'tank_scale': 'compact',
+                    },
                 )
                 self.assertEqual(render_resp.status_code, 200)
                 res_json = render_resp.json()
@@ -827,6 +832,11 @@ class AquaPlantShopTest(TestCase):
                 self.assertEqual(sent_payload['extra_body']['response_format'], 'b64_json')
                 self.assertEqual(len(sent_payload['extra_body']['image']), 2)
                 self.assertTrue(all(img.startswith('data:image/jpeg;base64,') for img in sent_payload['extra_body']['image']))
+                self.assertIn('Hồ 30 x 30 x 30 cm', sent_payload['prompt'])
+                self.assertIn('centered symmetrically on the clear flat tabletop surface', sent_payload['prompt'])
+                self.assertIn('35% to 45%', sent_payload['prompt'])
+                self.assertIn('ADA-style frameless ultra-clear low-iron glass aquarium', sent_payload['prompt'])
+                self.assertNotIn('[ymin=', sent_payload['prompt'])
                 self.assertTrue(
                     AIUsageLog.objects.filter(action_type='render', model_used='agnes-image-2.5-flash', status='success').exists()
                 )

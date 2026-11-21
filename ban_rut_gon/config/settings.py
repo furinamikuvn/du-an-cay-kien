@@ -248,6 +248,7 @@ AGNES_API_KEY = os.environ.get('AGNES_API_KEY', '').strip()
 AGNES_API_BASE_URL = os.environ.get('AGNES_API_BASE_URL', 'https://apihub.agnes-ai.com/v1').strip()
 AGNES_IMAGE_MODEL = os.environ.get('AGNES_IMAGE_MODEL', 'agnes-image-2.5-flash').strip()
 AGNES_IMAGE_FALLBACK_MODEL = os.environ.get('AGNES_IMAGE_FALLBACK_MODEL', 'agnes-image-2.1-flash').strip()
+AGNES_IMAGE_SIZE = os.environ.get('AGNES_IMAGE_SIZE', '1K').strip()
 
 # 'auto': ưu tiên Agnes AI (free, không cần thẻ) nếu có AGNES_API_KEY, ngược lại dùng Gemini nếu có GEMINI_API_KEY
 AI_IMAGE_PROVIDER = os.environ.get('AI_IMAGE_PROVIDER', 'auto').strip().lower()
