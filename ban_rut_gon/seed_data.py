@@ -365,39 +365,247 @@ def run_seed():
     )
     print("✓ Đã đồng bộ mã giảm giá (AQUA2026, FREESHIP)")
 
-    # 5. Combo Bố cục hồ mẫu (LayoutPreset & LayoutPresetItem)
+    # 5. Cơ sở dữ liệu 10 Bố cục hồ mẫu bản quyền mở (CC0 / Public Domain / CC BY / CC BY-SA)
     tran_chau = prods['cay-tran-chau-ngoc-trai']
     tieu_thao = prods['cay-tieu-thao-nau']
     vay_oc = prods['cay-vay-oc-sieu-do']
 
-    iwagumi, _ = LayoutPreset.objects.get_or_create(
-        name="Set Bố Cục Thảo Nguyên Iwagumi (Hồ 60cm)",
-        defaults={
+    preset_catalog = [
+        {
+            'name': 'Bể Nano Cube Lũa & Ráy Đen (Hồ 30cm)',
+            'tank_size': 'Hồ 30 x 30 x 30 cm',
+            'tank_width_cm': 30,
+            'recommended_space': 'nano',
+            'style': 'Tối giản Minimalist Nano',
+            'co2_required': 'no',
+            'light_level': 'low',
+            'description': 'Bể cube siêu nhỏ gọn dùng nền tối, khúc lũa tự nhiên và cụm Ráy Nana khỏe mạnh, cực hợp góc bàn làm việc hẹp hoặc kế bên màn hình.',
+            'total_price': Decimal('240000'),
+            'plant_list_text': '- 2 Chậu Ráy Nana (Gắn lũa & tiền cảnh)\n- 1 Bụi Tiêu Thảo Nâu (Điểm góc lũa)',
+            'image': 'tanks/tank_01_nano_wood.jpg',
+            'license_name': 'CC0 1.0 Public Domain',
+            'source_attribution': 'Tdwittt (Wikimedia Commons)',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Planted_Nano_Aquarium.JPG',
+            'items': [
+                (ray_nana, 2, 'Chính cảnh (Gắn khúc lũa)'),
+                (tieu_thao, 1, 'Trung cảnh (Chân lũa)'),
+            ],
+        },
+        {
+            'name': 'Bể Mini Thảm Xanh Đèn Kẹp Văn Phòng (Hồ 35cm)',
+            'tank_size': 'Hồ 35 x 22 x 25 cm',
+            'tank_width_cm': 35,
+            'recommended_space': 'nano',
+            'style': 'Desktop Nano Đèn Kẹp',
+            'co2_required': 'no',
+            'light_level': 'medium',
+            'description': 'Bể chữ nhật nhỏ gọn kèm đèn kẹp LED trắng, thảm nền xanh mướt và bụi cây hai bên tạo mảng xanh thư giãn cho bàn học.',
+            'total_price': Decimal('285000'),
+            'plant_list_text': '- 2 Cốc Trân Châu Ngọc Trai (Thảm nền)\n- 1 Chậu Ráy Nana (Bám đá)\n- 1 Bụi Tiêu Thảo Nâu (Góc hông)',
+            'image': 'tanks/tank_02_nano_neon.jpg',
+            'license_name': 'CC0 1.0 Public Domain',
+            'source_attribution': 'Trstcantik (Wikimedia Commons)',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Aquascape_mini.jpg',
+            'items': [
+                (tran_chau, 2, 'Tiền cảnh (Thảm đáy)'),
+                (ray_nana, 1, 'Trung cảnh (Kẽ đá)'),
+                (tieu_thao, 1, 'Hậu cảnh góc bể'),
+            ],
+        },
+        {
+            'name': 'Bể Để Bàn Nắp Đèn Kín An Toàn (Hồ 45cm)',
+            'tank_size': 'Hồ 45 x 30 x 32 cm',
+            'tank_width_cm': 45,
+            'recommended_space': 'medium',
+            'style': 'Cổ Điển Nắp Kín Ít Bay Hơi',
+            'co2_required': 'no',
+            'light_level': 'low',
+            'description': 'Thiết kế máng đèn kín hạn chế bay hơi nước lên bàn giấy, sử dụng cây ráy và tiêu thảo sống khỏe không cần bình CO2.',
+            'total_price': Decimal('305000'),
+            'plant_list_text': '- 2 Chậu Ráy Nana (Bám đá)\n- 2 Bụi Tiêu Thảo Nâu (Hậu cảnh hai bên)',
+            'image': 'tanks/tank_03_office_hood_45.jpg',
+            'license_name': 'Public Domain',
+            'source_attribution': '16toki (Wikimedia Commons)',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Aquarium_60cm.JPG',
+            'items': [
+                (ray_nana, 2, 'Trung cảnh (Gắn cụm đá)'),
+                (tieu_thao, 2, 'Hậu cảnh (Tạo chiều sâu)'),
+            ],
+        },
+        {
+            'name': 'Set Bố Cục Thảo Nguyên Iwagumi (Hồ 60cm)',
             'tank_size': 'Hồ 60 x 40 x 40 cm',
+            'tank_width_cm': 60,
+            'recommended_space': 'medium',
             'style': 'Phong cách Iwagumi Nhật Bản',
+            'co2_required': 'yes',
+            'light_level': 'high',
             'description': 'Bố cục thảm cỏ xanh mướt kết hợp đá tạo chiều sâu thảo nguyên tĩnh tại.',
             'total_price': Decimal('400000'),
             'plant_list_text': '- 3 Cốc Trân Châu Ngọc Trai (Tiền cảnh)\n- 2 Chậu Ráy Nana (Kẽ đá)\n- 1 Bụi Tiêu Thảo Nâu (Hậu cảnh)',
+            'image': 'tanks/tank_04_iwagumi_60.jpg',
+            'license_name': 'CC BY-SA 3.0',
+            'source_attribution': 'Moritz Holzinger (Wikimedia Commons)',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Iwagumi_Scape.jpg',
+            'items': [
+                (tran_chau, 3, 'Tiền cảnh (Thảm nền)'),
+                (ray_nana, 2, 'Trung cảnh (Kẽ đá)'),
+                (tieu_thao, 1, 'Hậu cảnh (Chân đá)'),
+            ],
         },
-    )
-    LayoutPresetItem.objects.get_or_create(preset=iwagumi, product=tran_chau, defaults={'quantity': 3, 'layer_role': 'Tiền cảnh (Thảm nền)'})
-    LayoutPresetItem.objects.get_or_create(preset=iwagumi, product=ray_nana, defaults={'quantity': 2, 'layer_role': 'Trung cảnh (Kẽ đá)'})
-    LayoutPresetItem.objects.get_or_create(preset=iwagumi, product=tieu_thao, defaults={'quantity': 1, 'layer_role': 'Hậu cảnh (Chân đá)'})
-
-    nature_wood, _ = LayoutPreset.objects.get_or_create(
-        name="Set Bố Cục Rừng Lũa Thủy Sinh Tự Nhiên (Hồ 90cm)",
-        defaults={
+        {
+            'name': 'Bố Cục Tam Giác Lũa Đèn Thanh & Cây Bán Cạn (Hồ 60cm)',
+            'tank_size': 'Hồ 60 x 40 x 40 cm',
+            'tank_width_cm': 60,
+            'recommended_space': 'medium',
+            'style': 'Tam Giác Đá Lũa Bán Cạn',
+            'co2_required': 'yes',
+            'light_level': 'medium',
+            'description': 'Khối lũa tập trung 2/3 góc trái vươn cành lá vượt mặt nước dưới thanh LED siêu mảnh, chừa bãi cỏ mở khoáng đạt bên phải.',
+            'total_price': Decimal('395000'),
+            'plant_list_text': '- 2 Cốc Trân Châu Ngọc Trai (Bãi cỏ phải)\n- 2 Chậu Ráy Nana (Gốc lũa)\n- 2 Bụi Tiêu Thảo Nâu (Cụm trung cảnh)',
+            'image': 'tanks/tank_05_triangle_60.jpg',
+            'license_name': 'CC BY-SA 4.0',
+            'source_attribution': 'Brudinho5 (Wikimedia Commons)',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Aquascape_im_Triangel_Design.jpg',
+            'items': [
+                (tran_chau, 2, 'Tiền cảnh (Bãi mở bên phải)'),
+                (ray_nana, 2, 'Trung cảnh (Gắn khúc lũa chính)'),
+                (tieu_thao, 2, 'Hậu cảnh (Tán gốc lũa trái)'),
+            ],
+        },
+        {
+            'name': 'Đỉnh Núi Song Sinh Minilandschaft (Hồ 60cm)',
+            'tank_size': 'Hồ 60 x 30 x 36 cm',
+            'tank_width_cm': 60,
+            'recommended_space': 'medium',
+            'style': 'Iwagumi Minilandschaft Thảm Cỏ',
+            'co2_required': 'yes',
+            'light_level': 'high',
+            'description': 'Hai khối đá vươn đỉnh bất đối xứng phủ thảm Trân Châu Ngọc Trai dày mượt, mang nét hùng vĩ mà vẫn gọn trên mặt bàn dài.',
+            'total_price': Decimal('445000'),
+            'plant_list_text': '- 4 Cốc Trân Châu Ngọc Trai (Phủ sườn đồi)\n- 1 Chậu Ráy Nana (Chân hẻm đá)\n- 2 Bụi Tiêu Thảo Nâu (Kẽ núi)',
+            'image': 'tanks/tank_06_minilandschaft_60.jpg',
+            'license_name': 'CC BY-SA 4.0',
+            'source_attribution': 'Lennart Jöhnk (Wikimedia Commons)',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Aquascaping-minilandschaft-lennart.jpg',
+            'items': [
+                (tran_chau, 4, 'Tiền cảnh (Phủ kín sườn đồi)'),
+                (ray_nana, 1, 'Trung cảnh (Kẽ chân đá)'),
+                (tieu_thao, 2, 'Điểm nhấn hẻm đá'),
+            ],
+        },
+        {
+            'name': 'Hẻm Núi Iwagumi Thảm Ngọc Trai (Hồ 90cm)',
             'tank_size': 'Hồ 90 x 45 x 45 cm',
+            'tank_width_cm': 90,
+            'recommended_space': 'large',
+            'style': 'Sơn Thủy Iwagumi Đá Vách',
+            'co2_required': 'yes',
+            'light_level': 'high',
+            'description': 'Dãy đá tai mèo dựng vách hẻm núi dẫn điểm hút mắt ở trung tâm, bao quanh bởi thảm xanh mịn cho bàn lớn hoặc tủ phòng khách.',
+            'total_price': Decimal('520000'),
+            'plant_list_text': '- 5 Cốc Trân Châu Ngọc Trai (Thảm hai sườn núi)\n- 2 Chậu Ráy Nana (Khe đá hẻm núi)',
+            'image': 'tanks/tank_07_mountain_90.jpg',
+            'license_name': 'CC BY-SA 3.0',
+            'source_attribution': 'Peter Kirwan (Wikimedia Commons)',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Peter_Kirwan_Mountainscape.jpg',
+            'items': [
+                (tran_chau, 5, 'Tiền cảnh & Triền núi'),
+                (ray_nana, 2, 'Trung cảnh (Khe đá hẻm núi)'),
+            ],
+        },
+        {
+            'name': 'Set Bố Cục Rừng Lũa Thủy Sinh Tự Nhiên (Hồ 90cm)',
+            'tank_size': 'Hồ 90 x 45 x 45 cm',
+            'tank_width_cm': 90,
+            'recommended_space': 'large',
             'style': 'Phong cách Nature Rừng Nhiệt Đới',
+            'co2_required': 'no',
+            'light_level': 'medium',
             'description': 'Bố cục lũa tự nhiên kết hợp cây ráy, tiêu thảo và vảy ốc đỏ rực rỡ.',
             'total_price': Decimal('325000'),
             'plant_list_text': '- 2 Chậu Ráy Nana (Gắn thân lũa)\n- 3 Bó Vảy Ốc Siêu Đỏ (Hậu cảnh)\n- 2 Bụi Tiêu Thảo Nâu (Gốc lũa)',
+            'image': 'tanks/tank_08_jungle_wood_90.jpg',
+            'license_name': 'CC BY-SA 4.0',
+            'source_attribution': 'George Farmer (Wikimedia Commons)',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Jungle_style_aquascape.jpg',
+            'items': [
+                (ray_nana, 2, 'Gắn thân lũa'),
+                (vay_oc, 3, 'Hậu cảnh (Tạo tán đỏ)'),
+                (tieu_thao, 2, 'Trung cảnh (Gốc lũa)'),
+            ],
         },
-    )
-    LayoutPresetItem.objects.get_or_create(preset=nature_wood, product=ray_nana, defaults={'quantity': 2, 'layer_role': 'Gắn thân lũa'})
-    LayoutPresetItem.objects.get_or_create(preset=nature_wood, product=vay_oc, defaults={'quantity': 3, 'layer_role': 'Hậu cảnh (Tạo tán đỏ)'})
-    LayoutPresetItem.objects.get_or_create(preset=nature_wood, product=tieu_thao, defaults={'quantity': 2, 'layer_role': 'Trung cảnh (Gốc lũa)'})
-    print("✓ Đã đồng bộ 2 Combo Bố cục hồ mẫu")
+        {
+            'name': 'Bể Rừng Già Nền Đèn Backlight Sáng Thoáng (Hồ 90cm)',
+            'tank_size': 'Hồ 90 x 45 x 45 cm',
+            'tank_width_cm': 90,
+            'recommended_space': 'large',
+            'style': 'Nature Backlight Rừng Thưa',
+            'co2_required': 'no',
+            'light_level': 'medium',
+            'description': 'Bố cục đảo cây hai bên chừa khoảng sáng xanh dịu ở giữa, hợp tường sáng màu và văn phòng hiện đại cần chiều sâu thị giác.',
+            'total_price': Decimal('380000'),
+            'plant_list_text': '- 2 Chậu Ráy Nana (Bám nhánh lũa)\n- 3 Bụi Tiêu Thảo Nâu (Chân cụm đảo)\n- 2 Bó Vảy Ốc Siêu Đỏ (Điểm sắc hậu cảnh)',
+            'image': 'tanks/tank_09_forest_backlight_90.jpg',
+            'license_name': 'CC BY 3.0',
+            'source_attribution': 'Georg Pirrung (Wikimedia Commons)',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:Forests_Underwater_(122868199).jpeg',
+            'items': [
+                (ray_nana, 2, 'Bám cành lũa vươn cao'),
+                (tieu_thao, 3, 'Trung cảnh hai đảo'),
+                (vay_oc, 2, 'Hậu cảnh điểm sắc đỏ'),
+            ],
+        },
+        {
+            'name': 'Vườn Thủy Sinh Hà Lan Vảy Ốc Rực Đỏ (Hồ 120cm)',
+            'tank_size': 'Hồ 120 x 50 x 50 cm',
+            'tank_width_cm': 120,
+            'recommended_space': 'large',
+            'style': 'Phong cách Dutch Garden Đa Sắc',
+            'co2_required': 'yes',
+            'light_level': 'high',
+            'description': 'Tầng tán cắt cắm nhiều màu sắc tương phản rực rỡ với bụi Vảy Ốc Siêu Đỏ, phù hợp quầy lễ tân hoặc tủ kệ rộng chịu tải tốt.',
+            'total_price': Decimal('565000'),
+            'plant_list_text': '- 5 Bó Vảy Ốc Siêu Đỏ (Cụm đỏ rực trung-hậu cảnh)\n- 3 Cốc Trân Châu Ngọc Trai (Thảm tiền cảnh)\n- 3 Bụi Tiêu Thảo Nâu (Chân tầng bụi)',
+            'image': 'tanks/tank_10_dutch_red_120.jpg',
+            'license_name': 'CC BY-SA 3.0',
+            'source_attribution': 'Shay Fertig (Wikimedia Commons)',
+            'source_url': 'https://commons.wikimedia.org/wiki/File:The_Enchanted_Garden_by_Shay_Fertig.jpg',
+            'items': [
+                (vay_oc, 5, 'Hậu cảnh (Khối sắc đỏ chủ đạo)'),
+                (tran_chau, 3, 'Tiền cảnh (Viền thảm xanh)'),
+                (tieu_thao, 3, 'Trung cảnh (Chuyển tầng màu nâu đồng)'),
+            ],
+        },
+    ]
+
+    for spec in preset_catalog:
+        preset_obj, _ = LayoutPreset.objects.update_or_create(
+            name=spec['name'],
+            defaults={
+                'tank_size': spec['tank_size'],
+                'tank_width_cm': spec['tank_width_cm'],
+                'recommended_space': spec['recommended_space'],
+                'style': spec['style'],
+                'co2_required': spec['co2_required'],
+                'light_level': spec['light_level'],
+                'description': spec['description'],
+                'total_price': spec['total_price'],
+                'plant_list_text': spec['plant_list_text'],
+                'image': spec['image'],
+                'license_name': spec['license_name'],
+                'source_attribution': spec['source_attribution'],
+                'source_url': spec['source_url'],
+            },
+        )
+        for item_prod, qty, role in spec['items']:
+            LayoutPresetItem.objects.update_or_create(
+                preset=preset_obj,
+                product=item_prod,
+                defaults={'quantity': qty, 'layer_role': role},
+            )
+    print(f"✓ Đã đồng bộ {len(preset_catalog)} Bố cục hồ mẫu kèm ảnh bản quyền mở")
 
     # 6. Cẩm nang thủy sinh & Hỏi đáp FAQ
     Article.objects.get_or_create(

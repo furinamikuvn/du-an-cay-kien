@@ -63,7 +63,11 @@ class DeskScanResult(BaseModel):
     )
     recommended_preset_id: Optional[int] = Field(
         default=None,
-        description="ID bố cục mẫu (LayoutPreset) phù hợp nhất trong danh sách shop nếu có, hoặc null."
+        description="ID bố cục mẫu (LayoutPreset) phù hợp nhất với khoảng trống bàn, ánh sáng và nhu cầu CO2 trong danh sách shop."
+    )
+    alternative_preset_ids: List[int] = Field(
+        default_factory=list,
+        description="Danh sách 2 đến 4 ID bố cục mẫu thay thế khác trong danh sách layout_presets phù hợp với mặt bàn để khách chọn ghép thử."
     )
     render_scene_prompt: str = Field(
         description="Short English visual description of the proposed planted aquarium tank (plants, hardscape, compact LED clip light) to place onto the desk."
@@ -75,7 +79,7 @@ SYSTEM_INSTRUCTION = (
     "Nhiệm vụ của bạn là phân tích ảnh góc bàn/kệ do khách hàng chụp, đánh giá diện tích trống, "
     "chất liệu mặt bàn, góc nhìn và ánh sáng xung quanh để đề xuất loại bể thủy sinh và cây trồng phù hợp nhất. "
     "NGUYÊN TẮC BẮT BUỘC:\n"
-    "1. CHỈ được chọn `product_id` và `recommended_preset_id` có trong danh sách JSON cửa hàng cung cấp; "
+    "1. CHỈ được chọn `product_id`, `recommended_preset_id` và `alternative_preset_ids` có trong danh sách JSON cửa hàng cung cấp; "
     "tuyệt đối không tự bịa tên sản phẩm hoặc ID ngoài danh mục.\n"
     "2. Tọa độ `placement_box` phải theo thứ tự [ymin, xmin, ymax, xmax] thang 0..1000 nằm gọn trên bề mặt đặt bể trong ảnh.\n"
     "3. Không khẳng định đo chính xác tuyệt đối đến từng mm nếu thiếu thông số đầu vào; luôn ước lượng hợp lý dựa theo vật tham chiếu (laptop, bàn phím, ly, mép bàn).\n"
@@ -237,10 +241,17 @@ def sanitize_placement_box(raw_box):
     return [ymin, xmin, ymax, xmax]
 
 
+def _extract_width_cm(width_text):
+    """Trích xuất ước lượng bề ngang (cm) từ chuỗi Gemini trả về để xếp hạng bể mẫu."""
+    import re
+    nums = [int(n) for n in re.findall(r'\d{2,3}', str(width_text or '')) if 15 <= int(n) <= 200]
+    return sum(nums) // len(nums) if nums else 50
+
+
 def _ground_recommendations(parsed: DeskScanResult, catalog_products, catalog_presets):
-    """Đối chiếu lại 100% ID AI trả về với danh mục sản phẩm có thật trong DB."""
+    """Đối chiếu lại 100% ID AI trả về với danh mục sản phẩm & kho mẫu bể thật trong DB."""
     valid_product_map = {p['id']: p for p in catalog_products}
-    valid_preset_ids = {pr['id'] for pr in catalog_presets}
+    valid_preset_map = {pr['id']: pr for pr in catalog_presets}
 
     grounded_items = []
     seen_ids = set()
@@ -275,7 +286,29 @@ def _ground_recommendations(parsed: DeskScanResult, catalog_products, catalog_pr
             if len(grounded_items) >= 3:
                 break
 
-    preset_id = parsed.recommended_preset_id if parsed.recommended_preset_id in valid_preset_ids else None
+    candidate_preset_ids = []
+    if parsed.recommended_preset_id in valid_preset_map:
+        candidate_preset_ids.append(parsed.recommended_preset_id)
+    for alt_id in (parsed.alternative_preset_ids or []):
+        if alt_id in valid_preset_map and alt_id not in candidate_preset_ids:
+            candidate_preset_ids.append(alt_id)
+
+    # Xếp hạng bổ sung toàn bộ kho mẫu bể thật theo độ vừa khoảng trống, CO2 & ánh sáng
+    if catalog_presets:
+        target_width = _extract_width_cm(parsed.estimated_free_width_cm)
+        remaining = [pr for pr in catalog_presets if pr['id'] not in candidate_preset_ids]
+        remaining.sort(
+            key=lambda pr: (
+                0 if int(pr.get('tank_width_cm') or 60) <= target_width + 10 else 1,
+                0 if pr.get('co2_required') == parsed.suggested_co2 else 1,
+                0 if pr.get('light_level') == parsed.suggested_light else 1,
+                abs(int(pr.get('tank_width_cm') or 60) - target_width),
+                pr['id'],
+            )
+        )
+        candidate_preset_ids.extend(pr['id'] for pr in remaining)
+
+    preset_id = candidate_preset_ids[0] if candidate_preset_ids else None
     placement_tips = [t.strip() for t in parsed.placement_tips if t and t.strip()][:4]
 
     return {
@@ -290,6 +323,7 @@ def _ground_recommendations(parsed: DeskScanResult, catalog_products, catalog_pr
         'suggested_light': parsed.suggested_light,
         'recommended_plants': grounded_items[:4],
         'recommended_preset_id': preset_id,
+        'candidate_preset_ids': candidate_preset_ids,
         'render_scene_prompt': (parsed.render_scene_prompt or '').strip(),
     }
 
@@ -397,12 +431,33 @@ def get_active_image_provider_and_model():
     return (None, '')
 
 
-def _build_tank_edit_prompt(tank_info, plant_names, placement_box, render_scene_prompt=''):
+def _build_tank_edit_prompt(
+    tank_info,
+    plant_names,
+    placement_box,
+    render_scene_prompt='',
+    has_tank_template=False,
+    tank_template_name='',
+):
     ymin, xmin, ymax, xmax = sanitize_placement_box(placement_box)
     plants_desc = ", ".join(plant_names) if plant_names else "Anubias nana, Java fern, lush green foreground carpet"
     size_desc = tank_info.get('size_cm', '30x20x25 cm')
     style_desc = tank_info.get('style_name', 'Nature aquascape')
     scene_detail = render_scene_prompt or f"a crystal-clear rimless glass aquascape tank ({size_desc}, {style_desc})"
+
+    if has_tank_template:
+        ref_label = f" ({tank_template_name})" if tank_template_name else ""
+        return (
+            f"Photorealistic multi-image composite editing: "
+            f"Use Image 1 (the customer's real desk and room photo) as the exact base scene — preserve the desk texture, "
+            f"camera perspective, background wall, surrounding gadgets/items, and natural room lighting 100% unchanged. "
+            f"Take the real aquascape tank layout, hardscape stones/driftwood, aquatic plant composition, and fish from Image 2{ref_label}, "
+            f"render it in a clean glass aquarium matching Image 1's camera angle, and composite it naturally onto the desk surface inside "
+            f"normalized region [ymin={ymin}, xmin={xmin}, ymax={ymax}, xmax={xmax}] (0..1000 scale). "
+            f"Scale it realistically to roughly {size_desc} relative to surrounding desk objects, add soft contact shadows underneath, "
+            f"subtle authentic glass reflections matching Image 1's light direction, and faithful scape details from Image 2. "
+            f"No floating artifacts, no extra clutter, no watermarks."
+        )
 
     return (
         f"Photorealistic interior photo editing: Using the provided photo as the exact base scene, "
@@ -441,10 +496,12 @@ def render_tank_preview_with_agnes(
     plant_names,
     placement_box,
     render_scene_prompt='',
+    tank_template_image_bytes=None,
+    tank_template_name='',
 ):
     """
     Gọi Agnes AI (`POST /v1/images/generations`) dùng model `agnes-image-2.5-flash`
-    (tự dự phòng `agnes-image-2.1-flash`) để ghép bể thủy sinh vào đúng ảnh bàn gốc.
+    (tự dự phòng `agnes-image-2.1-flash`) để ghép ảnh bể thật từ CSDL (nếu có) lên đúng góc bàn của khách.
     """
     api_key = getattr(settings, 'AGNES_API_KEY', '')
     if not api_key:
@@ -456,7 +513,21 @@ def render_tank_preview_with_agnes(
         "Content-Type": "application/json",
     }
     b64_desk = base64.b64encode(desk_image_bytes).decode('utf-8')
-    edit_prompt = _build_tank_edit_prompt(tank_info, plant_names, placement_box, render_scene_prompt)
+    reference_images = [f"data:image/jpeg;base64,{b64_desk}"]
+    has_template = bool(tank_template_image_bytes)
+    if has_template:
+        compact_tank = resize_jpeg_bytes(tank_template_image_bytes, max_dim=1024, quality=84)
+        b64_tank = base64.b64encode(compact_tank).decode('utf-8')
+        reference_images.append(f"data:image/jpeg;base64,{b64_tank}")
+
+    edit_prompt = _build_tank_edit_prompt(
+        tank_info,
+        plant_names,
+        placement_box,
+        render_scene_prompt,
+        has_tank_template=has_template,
+        tank_template_name=tank_template_name,
+    )
     aspect_ratio = _detect_aspect_ratio(desk_image_bytes)
 
     models_to_try = [settings.AGNES_IMAGE_MODEL]
@@ -472,7 +543,7 @@ def render_tank_preview_with_agnes(
             "size": "1K",
             "ratio": aspect_ratio,
             "extra_body": {
-                "image": [f"data:image/jpeg;base64,{b64_desk}"],
+                "image": reference_images,
                 "response_format": "b64_json",
             },
         }
@@ -521,27 +592,46 @@ def render_tank_preview_with_nano_banana(
     plant_names,
     placement_box,
     render_scene_prompt='',
+    tank_template_image_bytes=None,
+    tank_template_name='',
 ):
     """
-    Dùng `gemini-nano-banana-2.1` chỉnh sửa ảnh gốc để đặt một bể thủy sinh đúng kích thước/cây
+    Dùng `gemini-nano-banana-2.1` chỉnh sửa / ghép ảnh đa nguồn để đặt mẫu bể thủy sinh
     lên vị trí trống được đề xuất trên mặt bàn, giữ nguyên bối cảnh thật xung quanh.
     """
     if not settings.GEMINI_API_KEY:
         raise RuntimeError("Thiếu cấu hình GEMINI_API_KEY.")
 
-    edit_prompt = _build_tank_edit_prompt(tank_info, plant_names, placement_box, render_scene_prompt)
+    has_template = bool(tank_template_image_bytes)
+    edit_prompt = _build_tank_edit_prompt(
+        tank_info,
+        plant_names,
+        placement_box,
+        render_scene_prompt,
+        has_tank_template=has_template,
+        tank_template_name=tank_template_name,
+    )
+
+    input_parts = [
+        {"type": "text", "text": edit_prompt},
+        {
+            "type": "image",
+            "data": base64.b64encode(desk_image_bytes).decode('utf-8'),
+            "mime_type": "image/jpeg",
+        },
+    ]
+    if has_template:
+        compact_tank = resize_jpeg_bytes(tank_template_image_bytes, max_dim=1024, quality=84)
+        input_parts.append({
+            "type": "image",
+            "data": base64.b64encode(compact_tank).decode('utf-8'),
+            "mime_type": "image/jpeg",
+        })
 
     client = genai.Client(api_key=settings.GEMINI_API_KEY)
     interaction = client.interactions.create(
         model=settings.GEMINI_IMAGE_MODEL,
-        input=[
-            {"type": "text", "text": edit_prompt},
-            {
-                "type": "image",
-                "data": base64.b64encode(desk_image_bytes).decode('utf-8'),
-                "mime_type": "image/jpeg",
-            },
-        ],
+        input=input_parts,
         response_format={
             "type": "image",
             "image_size": "1K",
@@ -571,8 +661,10 @@ def render_tank_preview(
     plant_names,
     placement_box,
     render_scene_prompt='',
+    tank_template_image_bytes=None,
+    tank_template_name='',
 ):
-    """Điều phối tạo ảnh phối cảnh đặt bể theo nhà cung cấp đang cấu hình (Agnes / Gemini)."""
+    """Điều phối ghép/vẽ ảnh phối cảnh đặt bể theo nhà cung cấp đang cấu hình (Agnes / Gemini)."""
     provider, _ = get_active_image_provider_and_model()
     if provider == 'agnes':
         return render_tank_preview_with_agnes(
@@ -581,6 +673,8 @@ def render_tank_preview(
             plant_names=plant_names,
             placement_box=placement_box,
             render_scene_prompt=render_scene_prompt,
+            tank_template_image_bytes=tank_template_image_bytes,
+            tank_template_name=tank_template_name,
         )
     if provider == 'gemini':
         return render_tank_preview_with_nano_banana(
@@ -589,5 +683,7 @@ def render_tank_preview(
             plant_names=plant_names,
             placement_box=placement_box,
             render_scene_prompt=render_scene_prompt,
+            tank_template_image_bytes=tank_template_image_bytes,
+            tank_template_name=tank_template_name,
         )
     raise RuntimeError("Chưa cấu hình AGNES_API_KEY hoặc GEMINI_API_KEY cho tính năng vẽ phối cảnh.")

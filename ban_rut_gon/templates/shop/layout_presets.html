@@ -20,15 +20,32 @@
                 {% csrf_token %}
                 <div>
                     <div class="relative aspect-16/9 bg-slate-100 overflow-hidden border-b border-slate-200">
-                        <img src="{% if 'Iwagumi' in layout.name %}{% static 'images/iwagumi_60cm.jpg' %}{% else %}{% static 'images/nature_wood_90cm.png' %}{% endif %}"
+                        <img src="{{ layout.display_image_url }}"
                              alt="{{ layout.name }}" class="w-full h-52 object-cover">
                         <span class="absolute top-3 left-3 bg-[#7AA88B] text-white text-[10px] font-bold px-2.5 py-1 uppercase">
                             {{ layout.style }}
                         </span>
+                        {% if layout.license_name %}
+                        <span class="absolute top-3 right-3 bg-slate-900/80 text-white text-[10px] font-semibold px-2 py-0.5 backdrop-blur-xs">
+                            <i class="fa-regular fa-copyright mr-1 text-[#A7D7B8]"></i>{{ layout.license_name }}
+                        </span>
+                        {% endif %}
                         <span class="absolute bottom-3 right-3 bg-white/95 text-slate-800 text-xs font-bold px-2.5 py-1 border border-slate-200">
                             {{ layout.tank_size }}
                         </span>
                     </div>
+                    {% if layout.source_attribution %}
+                    <div class="px-5 py-1.5 bg-slate-50 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500">
+                        <span>Ảnh mẫu ({{ layout.get_recommended_space_display }} · {{ layout.get_co2_required_display }} · {{ layout.get_light_level_display }})</span>
+                        {% if layout.source_url %}
+                        <a href="{{ layout.source_url }}" target="_blank" rel="noopener noreferrer" class="text-[#2F5C3E] hover:underline font-medium">
+                            Nguồn: {{ layout.source_attribution }} <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+                        </a>
+                        {% else %}
+                        <span>Nguồn: {{ layout.source_attribution }}</span>
+                        {% endif %}
+                    </div>
+                    {% endif %}
 
                     <div class="p-5 space-y-4">
                         <div>

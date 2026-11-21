@@ -222,10 +222,10 @@
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div class="space-y-0.5">
                             <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                                <i class="fa-solid fa-image text-[#7AA88B]"></i> Mô Phỏng Phối Cảnh Đặt Bể Lên Bàn Thật
+                                <i class="fa-solid fa-image text-[#7AA88B]"></i> Ghép Ảnh Mẫu Bể Thật Từ CSDL Lên Bàn
                             </h3>
                             <p class="text-[11px] text-slate-500">
-                                Sử dụng <span class="font-mono">{{ ai_image_model }}</span> dựng thử bể thủy sinh khớp ánh sáng và góc chụp bức ảnh vừa tải.
+                                Chọn mẫu bể thủy sinh bản quyền mở trong CSDL ({{ preset_count }} mẫu) để <span class="font-mono">{{ ai_image_model }}</span> ghép trực tiếp vào góc bàn &amp; ánh sáng thực tế.
                             </p>
                         </div>
 
@@ -233,7 +233,7 @@
                         <button type="button" id="ai-render-btn"
                             class="bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white text-xs font-bold px-4 py-2.5 transition flex items-center justify-center gap-2 flex-shrink-0">
                             <i class="fa-solid fa-sparkles"></i>
-                            <span>Xem Phối Cảnh Đặt Bể Lên Bàn</span>
+                            <span id="ai-render-btn-label">Ghép Mẫu Bể Này Lên Bàn</span>
                         </button>
                         {% else %}
                         <a href="{% url 'login' %}?next={% url 'plant_assistant' %}"
@@ -244,6 +244,18 @@
                         {% endif %}
                     </div>
 
+                    <!-- CHỌN MẪU BỂ THẬT TỪ CSDL ĐỂ GHÉP LÊN BÀN -->
+                    <div id="ai-preset-picker-wrap" class="hidden space-y-2 pt-2 border-t border-slate-100">
+                        <div class="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                            <span class="font-bold text-slate-800 uppercase tracking-wide">
+                                <i class="fa-solid fa-layer-group text-[#7AA88B] mr-1"></i>
+                                Thư Viện Mẫu Bể Thật Từ CSDL (Chọn 1 mẫu để ghép lên bàn)
+                            </span>
+                            <span id="ai-preset-selected-label" class="text-[#2F5C3E] font-semibold"></span>
+                        </div>
+                        <div id="ai-preset-picker-grid" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5"></div>
+                    </div>
+
                     <div id="ai-render-error" class="hidden bg-rose-50 border border-rose-200 text-rose-800 p-3 text-[11px]"></div>
 
                     <div id="ai-render-loading" class="hidden border border-slate-200 bg-slate-50 p-6 text-center space-y-2">
@@ -252,20 +264,26 @@
                     </div>
 
                     <div id="ai-render-result-wrap" class="hidden space-y-3 pt-2 border-t border-slate-100">
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div class="space-y-1">
-                                <div class="text-[11px] font-bold text-slate-500 uppercase">Ảnh bàn gốc</div>
-                                <img id="ai-compare-before" src="" alt="Ảnh góc bàn ban đầu" class="w-full border border-slate-200">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div class="space-y-1.5">
+                                <div class="text-[11px] font-bold text-slate-500 uppercase">1. Ảnh bàn gốc</div>
+                                <img id="ai-compare-before" src="" alt="Ảnh góc bàn ban đầu" class="w-full h-52 object-cover border border-slate-200 bg-slate-50">
                             </div>
-                            <div class="space-y-1">
+                            <div id="ai-compare-template-col" class="hidden space-y-1.5">
+                                <div class="text-[11px] font-bold text-slate-700 uppercase">2. Mẫu bể thật từ CSDL</div>
+                                <img id="ai-compare-template-img" src="" alt="Mẫu bể thủy sinh từ CSDL" class="w-full h-52 object-cover border border-slate-200 bg-slate-50">
+                                <div id="ai-compare-template-meta" class="text-[11px] font-semibold text-slate-800 leading-snug"></div>
+                                <div id="ai-compare-template-license" class="text-[10px] text-slate-500 leading-snug"></div>
+                            </div>
+                            <div class="space-y-1.5">
                                 <div class="text-[11px] font-bold text-[#2F5C3E] uppercase flex items-center justify-between">
-                                    <span>Phối cảnh AI gợi ý</span>
+                                    <span>3. Kết quả ghép lên bàn</span>
                                     <a id="ai-render-download" href="#" download="aquaplant-phoi-canh-be.jpg"
                                         class="text-[11px] font-bold text-[#2F5C3E] hover:underline lowercase">
                                         <i class="fa-solid fa-download mr-0.5"></i> tải ảnh
                                     </a>
                                 </div>
-                                <img id="ai-compare-after" src="" alt="Ảnh phối cảnh đặt bể lên bàn" class="w-full border-2 border-[#7AA88B]">
+                                <img id="ai-compare-after" src="" alt="Ảnh phối cảnh đặt bể lên bàn" class="w-full h-52 object-cover border-2 border-[#7AA88B] bg-slate-50">
                             </div>
                         </div>
                     </div>
@@ -462,6 +480,8 @@
     let selectedFile = null;
     let previewDataUrl = '';
     let activeRenderContextToken = '';
+    let activePresetId = null;
+    let activePresetData = null;
 
     function getCsrfToken() {
         const inp = scanForm.querySelector('input[name="csrfmiddlewaretoken"]');
@@ -662,6 +682,93 @@
         return card;
     }
 
+    function renderPresetPicker(presets) {
+        const wrap = document.getElementById('ai-preset-picker-wrap');
+        const grid = document.getElementById('ai-preset-picker-grid');
+        const selectedLabel = document.getElementById('ai-preset-selected-label');
+        const btnLabel = document.getElementById('ai-render-btn-label');
+        if (!wrap || !grid) return;
+
+        grid.textContent = '';
+        activePresetId = null;
+        activePresetData = null;
+
+        if (!Array.isArray(presets) || presets.length === 0) {
+            wrap.classList.add('hidden');
+            if (selectedLabel) selectedLabel.textContent = '';
+            if (btnLabel) btnLabel.textContent = 'Xem Phối Cảnh Đặt Bể Lên Bàn';
+            return;
+        }
+
+        wrap.classList.remove('hidden');
+        const cardButtons = [];
+
+        function selectPreset(pr) {
+            activePresetId = pr.id;
+            activePresetData = pr;
+            if (selectedLabel) {
+                selectedLabel.textContent = 'Đang chọn: ' + pr.name + ' (' + (pr.tank_size || '') + ')';
+            }
+            if (btnLabel) {
+                btnLabel.textContent = 'Ghép Mẫu Bể Này Lên Bàn';
+            }
+            cardButtons.forEach(function (entry) {
+                if (entry.id === pr.id) {
+                    entry.btn.className = 'border-2 border-[#7AA88B] ring-2 ring-[#7AA88B]/30 bg-[#EEF5F0] overflow-hidden text-left transition flex flex-col';
+                } else {
+                    entry.btn.className = 'border border-slate-200 bg-white hover:border-[#7AA88B] overflow-hidden text-left transition flex flex-col';
+                }
+            });
+        }
+
+        presets.forEach(function (pr) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'border border-slate-200 bg-white hover:border-[#7AA88B] overflow-hidden text-left transition flex flex-col';
+
+            const thumbBox = document.createElement('div');
+            thumbBox.className = 'relative w-full h-20 bg-slate-100 overflow-hidden';
+
+            const img = document.createElement('img');
+            img.src = pr.image_url || '';
+            img.alt = pr.name || 'Mẫu bể thủy sinh';
+            img.className = 'w-full h-full object-cover';
+            thumbBox.appendChild(img);
+
+            if (pr.is_recommended) {
+                const recBadge = document.createElement('span');
+                recBadge.className = 'absolute top-1 left-1 bg-[#7AA88B] text-white text-[9px] font-bold px-1.5 py-0.5 uppercase';
+                recBadge.textContent = 'AI gợi ý';
+                thumbBox.appendChild(recBadge);
+            }
+
+            const body = document.createElement('div');
+            body.className = 'p-1.5 space-y-0.5 flex-1';
+
+            const title = document.createElement('div');
+            title.className = 'font-bold text-[10px] text-slate-900 leading-tight line-clamp-2';
+            title.textContent = pr.name || '';
+
+            const sub = document.createElement('div');
+            sub.className = 'text-[9px] text-slate-500 leading-tight';
+            sub.textContent = (pr.tank_size || '') + ' · ' + (pr.license_name || 'Open');
+
+            body.appendChild(title);
+            body.appendChild(sub);
+
+            btn.appendChild(thumbBox);
+            btn.appendChild(body);
+            btn.addEventListener('click', function () {
+                selectPreset(pr);
+            });
+
+            grid.appendChild(btn);
+            cardButtons.push({ id: pr.id, btn: btn });
+        });
+
+        selectPreset(presets[0]);
+    }
+
     function renderScanResult(data) {
         const a = data.analysis || {};
         const tank = a.recommended_tank || {};
@@ -719,6 +826,7 @@
             renderErrBox.textContent = '';
             renderErrBox.classList.add('hidden');
         }
+        renderPresetPicker(data.candidate_presets || (data.recommended_preset ? [data.recommended_preset] : []));
 
         updateQuotaBadges(data.quota);
         emptyState.classList.add('hidden');
@@ -818,6 +926,9 @@
             try {
                 const formData = new FormData();
                 formData.append('render_context_token', activeRenderContextToken);
+                if (activePresetId) {
+                    formData.append('preset_id', String(activePresetId));
+                }
 
                 const resp = await fetch("{% url 'ai_desk_render' %}", {
                     method: 'POST',
@@ -836,6 +947,40 @@
                 document.getElementById('ai-compare-before').src = previewDataUrl;
                 document.getElementById('ai-compare-after').src = data.image_data_url;
                 document.getElementById('ai-render-download').href = data.image_data_url;
+
+                const tplCol = document.getElementById('ai-compare-template-col');
+                if (tplCol) {
+                    const tpl = data.used_preset || activePresetData;
+                    if (tpl && tpl.image_url) {
+                        tplCol.classList.remove('hidden');
+                        document.getElementById('ai-compare-template-img').src = tpl.image_url;
+                        document.getElementById('ai-compare-template-meta').textContent =
+                            (tpl.name || '') + (tpl.tank_size ? ' · ' + tpl.tank_size : '');
+                        const licEl = document.getElementById('ai-compare-template-license');
+                        licEl.textContent = '';
+                        const prefix = document.createTextNode(
+                            'Bản quyền: ' + (tpl.license_name || 'Open License') + (tpl.source_attribution ? ' · Nguồn: ' : '')
+                        );
+                        licEl.appendChild(prefix);
+                        if (tpl.source_attribution) {
+                            const safeUrl = (tpl.source_url || '').trim();
+                            if (/^https?:\/\//i.test(safeUrl)) {
+                                const srcLink = document.createElement('a');
+                                srcLink.href = safeUrl;
+                                srcLink.target = '_blank';
+                                srcLink.rel = 'noopener noreferrer';
+                                srcLink.className = 'text-[#2F5C3E] hover:underline font-medium';
+                                srcLink.textContent = tpl.source_attribution;
+                                licEl.appendChild(srcLink);
+                            } else {
+                                licEl.appendChild(document.createTextNode(tpl.source_attribution));
+                            }
+                        }
+                    } else {
+                        tplCol.classList.add('hidden');
+                    }
+                }
+
                 renderResultWrap.classList.remove('hidden');
                 updateQuotaBadges(data.quota);
             } catch (err) {

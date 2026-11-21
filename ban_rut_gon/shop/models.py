@@ -13,11 +13,15 @@
 # 9. Article & FAQ: Cẩm nang thủy sinh & hỏi đáp thường gặp.
 # ==============================================================================
 
+import io
+import os
 import secrets
 
+from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import User
 from django.utils.text import slugify
+from PIL import Image, ImageOps
 
 from .security import validate_image_file
 
@@ -367,15 +371,74 @@ class Coupon(models.Model):
 # ------------------------------------------------------------------------------
 class LayoutPreset(models.Model):
     """
-    Gói combo bố cục hồ thủy sinh mẫu (Iwagumi 60cm, Rừng Lũa 90cm...).
-    Cho phép chọn/bỏ bớt cây thành phần và thêm nhanh vào giỏ hàng.
+    Gói combo bố cục hồ thủy sinh mẫu (Nano 30cm, Iwagumi 60cm, Rừng Lũa 90cm...).
+    Lưu kèm ảnh bể thật từ nguồn mở/không bản quyền để phục vụ hiển thị & ghép phối cảnh AI.
     """
+    SPACE_CHOICES = [
+        ('nano', 'Bàn nhỏ / Nano (25–40cm)'),
+        ('medium', 'Bàn vừa / Phổ thông (45–65cm)'),
+        ('large', 'Bàn lớn / Phòng khách (80–120cm)'),
+    ]
+    CO2_CHOICES = [
+        ('no', 'Không cần CO₂'),
+        ('yes', 'Cần bình CO₂'),
+    ]
+    LIGHT_CHOICES = [
+        ('low', 'Ánh sáng nhẹ'),
+        ('medium', 'Ánh sáng vừa'),
+        ('high', 'Ánh sáng mạnh (WRGB)'),
+    ]
+
     name = models.CharField(max_length=150, verbose_name="Tên bố cục hồ mẫu")
     tank_size = models.CharField(max_length=50, verbose_name="Kích thước hồ đề xuất")
+    tank_width_cm = models.PositiveIntegerField(default=60, verbose_name="Chiều ngang bể chuẩn (cm)")
+    recommended_space = models.CharField(
+        max_length=20,
+        choices=SPACE_CHOICES,
+        default='medium',
+        verbose_name="Kích thước góc bàn phù hợp",
+    )
     style = models.CharField(max_length=100, verbose_name="Phong cách bố cục")
+    co2_required = models.CharField(
+        max_length=10,
+        choices=CO2_CHOICES,
+        default='no',
+        verbose_name="Yêu cầu CO₂",
+    )
+    light_level = models.CharField(
+        max_length=10,
+        choices=LIGHT_CHOICES,
+        default='medium',
+        verbose_name="Cường độ đèn",
+    )
     description = models.TextField(verbose_name="Mô tả ý tưởng bố cục")
     total_price = models.DecimalField(max_digits=10, decimal_places=0, verbose_name="Tổng chi phí set cây (VNĐ)")
     plant_list_text = models.TextField(verbose_name="Danh sách cây thành phần")
+    image = models.ImageField(
+        upload_to='tanks/',
+        blank=True,
+        null=True,
+        validators=[validate_image_file],
+        verbose_name="Ảnh bể thủy sinh mẫu",
+    )
+    license_name = models.CharField(
+        max_length=80,
+        blank=True,
+        default='CC0 / Public Domain',
+        verbose_name="Giấy phép nguồn ảnh",
+    )
+    source_attribution = models.CharField(
+        max_length=180,
+        blank=True,
+        default='',
+        verbose_name="Tác giả / Nguồn gốc ảnh",
+    )
+    source_url = models.URLField(
+        max_length=400,
+        blank=True,
+        default='',
+        verbose_name="Liên kết nguồn gốc (Wikimedia/Open)",
+    )
 
     class Meta:
         verbose_name = "Bố cục hồ mẫu"
@@ -383,6 +446,47 @@ class LayoutPreset(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.tank_size})"
+
+    @property
+    def display_image_url(self):
+        """Trả về đường dẫn ảnh bể mẫu từ DB (MEDIA) hoặc fallback ảnh tĩnh hợp lệ."""
+        if self.image and self.image.name:
+            return self.image.url
+        if 'Iwagumi' in self.name:
+            return f"{settings.STATIC_URL}images/iwagumi_60cm.jpg"
+        return f"{settings.STATIC_URL}images/nature_wood_90cm.png"
+
+    def get_local_image_bytes(self, max_dim=1024):
+        """Đọc và chuẩn hóa ảnh bể mẫu thành bytes JPEG gọn nhẹ phục vụ AI ghép ảnh."""
+        file_path = None
+        if self.image and self.image.name:
+            try:
+                candidate = self.image.path
+                if os.path.exists(candidate):
+                    file_path = candidate
+            except Exception:
+                file_path = os.path.join(settings.MEDIA_ROOT, self.image.name)
+
+        if not file_path or not os.path.exists(file_path):
+            fallback_rel = 'images/iwagumi_60cm.jpg' if 'Iwagumi' in self.name else 'images/nature_wood_90cm.png'
+            candidate_static = os.path.join(settings.BASE_DIR, 'static', fallback_rel)
+            if os.path.exists(candidate_static):
+                file_path = candidate_static
+
+        if not file_path or not os.path.exists(file_path):
+            return None
+
+        try:
+            with Image.open(file_path) as img:
+                img = ImageOps.exif_transpose(img)
+                if img.mode != 'RGB':
+                    img = img.convert('RGB')
+                img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+                buf = io.BytesIO()
+                img.save(buf, format='JPEG', quality=84, optimize=True)
+                return buf.getvalue()
+        except Exception:
+            return None
 
     def get_combo_items(self):
         """

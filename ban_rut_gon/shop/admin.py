@@ -147,9 +147,29 @@ class LayoutPresetItemInline(admin.TabularInline):
 
 @admin.register(LayoutPreset)
 class LayoutPresetAdmin(admin.ModelAdmin):
-    list_display = ('name', 'tank_size', 'style', 'total_price')
-    search_fields = ('name', 'style')
+    list_display = (
+        'image_thumb',
+        'name',
+        'tank_width_cm',
+        'recommended_space',
+        'co2_required',
+        'light_level',
+        'license_name',
+        'total_price',
+    )
+    list_filter = ('recommended_space', 'co2_required', 'light_level', 'license_name')
+    search_fields = ('name', 'style', 'source_attribution')
+    readonly_fields = ('image_thumb',)
     inlines = [LayoutPresetItemInline]
+
+    @admin.display(description="Ảnh mẫu")
+    def image_thumb(self, obj):
+        from django.utils.html import format_html
+        return format_html(
+            '<img src="{}" alt="{}" style="height:44px;width:72px;object-fit:cover;border:1px solid #cbd5e1;" />',
+            obj.display_image_url,
+            obj.name,
+        )
 
 
 # ------------------------------------------------------------------------------

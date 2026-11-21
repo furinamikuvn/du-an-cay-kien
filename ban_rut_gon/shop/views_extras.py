@@ -98,6 +98,8 @@ def plant_assistant_view(request):
     ai_quota = get_ai_quota_status(user=request.user, ip_hash=ip_h)
     img_provider, img_model = get_active_image_provider_and_model()
 
+    all_presets = list(LayoutPreset.objects.order_by('tank_width_cm', 'id'))
+
     context = {
         'results': results,
         'has_searched': has_searched,
@@ -112,8 +114,32 @@ def plant_assistant_view(request):
         'ai_vision_model': settings.GEMINI_VISION_MODEL,
         'ai_image_model': img_model or settings.AGNES_IMAGE_MODEL,
         'ai_quota': ai_quota,
+        'all_presets': all_presets,
+        'preset_count': len(all_presets),
     }
     return render(request, 'shop/plant_assistant.html', context)
+
+
+def _serialize_layout_preset(pr, is_recommended=False):
+    """Chuẩn hóa thông tin mẫu bể thật trong CSDL (kèm ảnh & bản quyền mở) trả về JSON."""
+    return {
+        'id': pr.id,
+        'name': pr.name,
+        'tank_size': pr.tank_size,
+        'tank_width_cm': pr.tank_width_cm,
+        'recommended_space': pr.recommended_space,
+        'recommended_space_label': pr.get_recommended_space_display(),
+        'style': pr.style,
+        'co2_display': pr.get_co2_required_display(),
+        'light_display': pr.get_light_level_display(),
+        'total_price_display': f"{pr.total_price:,.0f}₫".replace(',', '.'),
+        'image_url': pr.display_image_url,
+        'license_name': pr.license_name or 'Open License',
+        'source_attribution': pr.source_attribution,
+        'source_url': pr.source_url,
+        'is_recommended': is_recommended,
+        'url': reverse('layout_presets'),
+    }
 
 
 @require_POST
@@ -191,14 +217,18 @@ def ai_desk_scan_view(request):
         for p in active_products
     ]
 
-    presets_qs = list(LayoutPreset.objects.all().order_by('id'))
+    presets_qs = list(LayoutPreset.objects.all().order_by('tank_width_cm', 'id'))
     preset_obj_map = {pr.id: pr for pr in presets_qs}
     catalog_presets = [
         {
             'id': pr.id,
             'name': pr.name,
             'tank_size': pr.tank_size,
+            'tank_width_cm': pr.tank_width_cm,
+            'recommended_space': pr.recommended_space,
             'style': pr.style,
+            'co2_required': pr.co2_required,
+            'light_level': pr.light_level,
         }
         for pr in presets_qs
     ]
@@ -241,18 +271,15 @@ def ai_desk_scan_view(request):
             'reason': item['reason'],
         })
 
-    preset_data = None
     preset_id = analysis.get('recommended_preset_id')
-    if preset_id and preset_id in preset_obj_map:
-        pr = preset_obj_map[preset_id]
-        preset_data = {
-            'id': pr.id,
-            'name': pr.name,
-            'tank_size': pr.tank_size,
-            'style': pr.style,
-            'total_price_display': f"{pr.total_price:,.0f}₫".replace(',', '.'),
-            'url': reverse('layout_presets'),
-        }
+    candidate_ids = analysis.get('candidate_preset_ids') or ([preset_id] if preset_id else [])
+    candidate_presets = []
+    for idx, cid in enumerate(candidate_ids):
+        pr = preset_obj_map.get(cid)
+        if pr:
+            candidate_presets.append(_serialize_layout_preset(pr, is_recommended=(idx == 0)))
+
+    preset_data = candidate_presets[0] if candidate_presets else None
 
     if not request.session.session_key:
         request.session.create()
@@ -267,6 +294,7 @@ def ai_desk_scan_view(request):
             'placement_box': analysis['placement_box'],
             'plant_names': [item['name'] for item in hydrated_products],
             'render_scene_prompt': analysis.get('render_scene_prompt', ''),
+            'default_preset_id': preset_id,
         },
         timeout=900,
     )
@@ -290,6 +318,7 @@ def ai_desk_scan_view(request):
         },
         'recommended_products': hydrated_products,
         'recommended_preset': preset_data,
+        'candidate_presets': candidate_presets,
         'quota': updated_quota,
     })
 
@@ -329,14 +358,21 @@ def ai_desk_render_view(request):
     if not allowed:
         return JsonResponse({'success': False, 'message': quota_err, 'quota': quota}, status=429)
 
-    context_token = (request.POST.get('render_context_token') or '').strip()
-    if not context_token and request.body:
+    context_token = ''
+    raw_preset_id = ''
+    if (request.content_type or '').lower().startswith('application/json'):
         try:
-            body_data = json.loads(request.body.decode('utf-8'))
+            body_data = json.loads((request.body or b'').decode('utf-8'))
             if isinstance(body_data, dict):
                 context_token = str(body_data.get('render_context_token') or '').strip()
+                if body_data.get('preset_id') is not None:
+                    raw_preset_id = str(body_data.get('preset_id')).strip()
         except Exception:
             context_token = ''
+            raw_preset_id = ''
+    else:
+        context_token = (request.POST.get('render_context_token') or '').strip()
+        raw_preset_id = (request.POST.get('preset_id') or '').strip()
 
     cached_ctx = cache.get(f"ai_desk_ctx:{context_token}") if context_token else None
     if not cached_ctx or not request.session.session_key or cached_ctx.get('session_key') != request.session.session_key:
@@ -344,6 +380,19 @@ def ai_desk_render_view(request):
             'success': False,
             'message': 'Phiên ảnh góc bàn đã hết hạn (quá 15 phút) hoặc không hợp lệ. Vui lòng quét lại ảnh bàn.',
         }, status=400)
+
+    selected_preset = None
+    target_preset_id = None
+    if raw_preset_id.isdigit():
+        target_preset_id = int(raw_preset_id)
+    elif cached_ctx.get('default_preset_id'):
+        target_preset_id = cached_ctx['default_preset_id']
+
+    if target_preset_id:
+        selected_preset = LayoutPreset.objects.filter(id=target_preset_id).first()
+
+    tank_template_bytes = selected_preset.get_local_image_bytes(max_dim=1024) if selected_preset else None
+    tank_template_name = selected_preset.name if (selected_preset and tank_template_bytes) else ''
 
     record_rate_limit_hit('ai_render', ip, 600)
 
@@ -354,6 +403,8 @@ def ai_desk_render_view(request):
             plant_names=cached_ctx.get('plant_names', []),
             placement_box=cached_ctx.get('placement_box'),
             render_scene_prompt=cached_ctx.get('render_scene_prompt', ''),
+            tank_template_image_bytes=tank_template_bytes,
+            tank_template_name=tank_template_name,
         )
     except Exception as exc:
         log_ai_usage('render', user=request.user, ip_hash=ip_h, model_used=img_model, status='failed')
@@ -381,10 +432,17 @@ def ai_desk_render_view(request):
 
     log_ai_usage('render', user=request.user, ip_hash=ip_h, model_used=actual_model, status='success')
     updated_quota = get_ai_quota_status(user=request.user, ip_hash=ip_h)
+    used_preset_payload = (
+        _serialize_layout_preset(selected_preset, is_recommended=(selected_preset.id == cached_ctx.get('default_preset_id')))
+        if (selected_preset and tank_template_bytes)
+        else None
+    )
 
     return JsonResponse({
         'success': True,
         'model_used': actual_model,
+        'multi_image_composite': bool(tank_template_bytes),
+        'used_preset': used_preset_payload,
         'image_data_url': f"data:{mime_type};base64,{b64_data}",
         'quota': updated_quota,
     })
