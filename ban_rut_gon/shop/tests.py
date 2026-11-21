@@ -650,7 +650,7 @@ class AquaPlantShopTest(TestCase):
             self.assertEqual(scan_resp.status_code, 200)
             scan_data = scan_resp.json()
             self.assertTrue(scan_data['success'])
-            self.assertEqual(scan_data['model_used'], 'gemini-3.8-flash')
+            self.assertEqual(scan_data['model_used'], 'gemini-4-hydrogen')
             self.assertEqual([p['id'] for p in scan_data['recommended_products']], [self.product.id])
             self.assertEqual(scan_data['analysis']['placement_box'], [280, 520, 760, 910])
 
@@ -663,7 +663,7 @@ class AquaPlantShopTest(TestCase):
             self.assertTrue(token)
             self.assertEqual(AIUsageLog.objects.filter(action_type='scan', status='success').count(), 1)
 
-        # 6. Fallback sang gemini-3.5-flash-lite (thinking_level='minimal') khi gemini-3.8-flash gặp lỗi
+        # 6. Fallback sang gemini-3.8-flash khi gemini-4-hydrogen gặp lỗi
         with override_settings(GEMINI_API_KEY='test-key-only'), patch('shop.ai_assistant.genai.Client') as mock_client_cls:
             mock_client = mock_client_cls.return_value
             mock_client.interactions.create.side_effect = [
@@ -672,9 +672,9 @@ class AquaPlantShopTest(TestCase):
             ]
             fb_resp = self.client.post('/tro-ly-chon-cay/ai-scan/', {'desk_image': make_valid_jpeg_file('desk2.jpg')})
             self.assertEqual(fb_resp.status_code, 200)
-            self.assertEqual(fb_resp.json()['model_used'], 'gemini-3.5-flash-lite')
+            self.assertEqual(fb_resp.json()['model_used'], 'gemini-3.8-flash')
             fb_kwargs = mock_client.interactions.create.call_args_list[1].kwargs
-            self.assertEqual(fb_kwargs['generation_config'], {'thinking_level': 'minimal', 'max_output_tokens': 1400})
+            self.assertEqual(fb_kwargs['generation_config'], {'thinking_level': 'low', 'max_output_tokens': 1400})
 
         # 7. Vẽ phối cảnh Nano Banana 2.1: chặn khách vãng lai (401), cho phép user đăng nhập & khóa trần
         with override_settings(GEMINI_API_KEY='test-key-only'):
