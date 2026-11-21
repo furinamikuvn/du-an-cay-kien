@@ -241,8 +241,24 @@ def ai_desk_scan_view(request):
             desk_width_cm=desk_width_cm,
             user_note=user_note,
         )
-    except Exception:
+    except Exception as exc:
         log_ai_usage('scan', user=request.user, ip_hash=ip_h, model_used=settings.GEMINI_VISION_MODEL, status='failed')
+        err_low = str(exc).lower()
+        if '429' in err_low or 'resource_exhausted' in err_low or 'quota' in err_low or 'rate' in err_low:
+            return JsonResponse({
+                'success': False,
+                'message': 'Giới hạn tốc độ/quota miễn phí của Google Gemini API vừa chạm ngưỡng tạm thời (429). Sensei đợi 30–60 giây rồi quét lại nhé.',
+            }, status=429)
+        if '401' in err_low or '403' in err_low or 'api_key' in err_low or 'permission' in err_low:
+            return JsonResponse({
+                'success': False,
+                'message': 'GEMINI_API_KEY trên máy chủ không hợp lệ hoặc chưa được cấp quyền truy cập model.',
+            }, status=503)
+        if 'timeout' in err_low or 'timed out' in err_low:
+            return JsonResponse({
+                'success': False,
+                'message': 'Máy chủ Gemini phản hồi chậm quá giới hạn ở tất cả model dự phòng. Sensei thử bấm Quét lại sau vài giây nhé.',
+            }, status=504)
         return JsonResponse({
             'success': False,
             'message': 'Trợ lý AI hiện đang bận hoặc kết nối tới Gemini gặp sự cố. Sensei vui lòng thử lại sau giây lát hoặc dùng tab Lọc Theo Thông Số Hồ.',

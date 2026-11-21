@@ -18,6 +18,7 @@ import requests
 from django.conf import settings
 from django.utils import timezone
 from google import genai
+from google.genai import types
 from PIL import Image, ImageOps
 from pydantic import BaseModel, Field
 
@@ -357,20 +358,40 @@ def analyze_desk_with_gemini(image_bytes, catalog_products, catalog_presets, des
         f"{json.dumps(catalog_payload, ensure_ascii=False, separators=(',', ':'))}"
     )
 
-    client = genai.Client(api_key=settings.GEMINI_API_KEY)
-    models_to_try = [settings.GEMINI_VISION_MODEL]
-    if settings.GEMINI_VISION_FALLBACK_MODEL and settings.GEMINI_VISION_FALLBACK_MODEL not in models_to_try:
-        models_to_try.append(settings.GEMINI_VISION_FALLBACK_MODEL)
+    call_timeout = float(getattr(settings, 'GEMINI_VISION_TIMEOUT', 14.0))
+    # Tắt vòng lặp retry ẩn (mặc định 4 lần = >65s treo trình duyệt) để chuyển model dự phòng tức thì
+    client = genai.Client(
+        api_key=settings.GEMINI_API_KEY,
+        http_options=types.HttpOptions(
+            timeout=int(max(5.0, call_timeout) * 1000),
+            retry_options=types.HttpRetryOptions(attempts=1),
+        ),
+    )
+
+    models_to_try = []
+    for candidate in (
+        settings.GEMINI_VISION_MODEL,
+        getattr(settings, 'GEMINI_VISION_FALLBACK_MODEL', ''),
+        'gemini-3.5-flash-lite',
+        'gemini-3.5-flash',
+    ):
+        name = (candidate or '').strip()
+        if name and name not in models_to_try:
+            models_to_try.append(name)
+    models_to_try = models_to_try[:3]
 
     last_error = None
     vision_bytes = resize_jpeg_bytes(image_bytes, max_dim=768, quality=76)
     b64_image = base64.b64encode(vision_bytes).decode('utf-8')
     schema = DeskScanResult.model_json_schema()
     configured_thinking = getattr(settings, 'GEMINI_VISION_THINKING_LEVEL', 'low') or 'low'
-    call_timeout = float(getattr(settings, 'GEMINI_VISION_TIMEOUT', 22.0))
 
     for model_name in models_to_try:
         thinking_level = 'minimal' if 'lite' in model_name.lower() else configured_thinking
+        gen_cfg = {
+            "thinking_level": thinking_level,
+            "max_output_tokens": 1400,
+        }
         try:
             interaction = client.interactions.create(
                 model=model_name,
@@ -384,14 +405,13 @@ def analyze_desk_with_gemini(image_bytes, catalog_products, catalog_presets, des
                         "resolution": "medium",
                     },
                 ],
-                generation_config={
-                    "thinking_level": thinking_level,
-                },
+                generation_config=gen_cfg,
                 response_format={
                     "type": "text",
                     "mime_type": "application/json",
                     "schema": schema,
                 },
+                automatic_continuation=False,
                 store=False,
                 timeout=call_timeout,
             )

@@ -238,10 +238,10 @@ LOGOUT_REDIRECT_URL = 'home'
 # 9. CẤU HÌNH TRỢ LÝ THỊ GIÁC AI (GEMINI MULTIMODAL & AGNES AI / NANO BANANA)
 # ------------------------------------------------------------------------------
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
-GEMINI_VISION_MODEL = os.environ.get('GEMINI_VISION_MODEL', 'gemini-4-hydrogen').strip()
-GEMINI_VISION_FALLBACK_MODEL = os.environ.get('GEMINI_VISION_FALLBACK_MODEL', 'gemini-3.8-flash').strip()
+GEMINI_VISION_MODEL = os.environ.get('GEMINI_VISION_MODEL', 'gemini-3.8-flash').strip()
+GEMINI_VISION_FALLBACK_MODEL = os.environ.get('GEMINI_VISION_FALLBACK_MODEL', 'gemini-3.5-flash-lite').strip()
 GEMINI_VISION_THINKING_LEVEL = os.environ.get('GEMINI_VISION_THINKING_LEVEL', 'low').strip().lower()
-GEMINI_VISION_TIMEOUT = float(os.environ.get('GEMINI_VISION_TIMEOUT', '25'))
+GEMINI_VISION_TIMEOUT = float(os.environ.get('GEMINI_VISION_TIMEOUT', '14'))
 GEMINI_IMAGE_MODEL = os.environ.get('GEMINI_IMAGE_MODEL', 'gemini-nano-banana-2.1').strip()
 
 AGNES_API_KEY = os.environ.get('AGNES_API_KEY', '').strip()
