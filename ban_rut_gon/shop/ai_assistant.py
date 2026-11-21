@@ -106,6 +106,22 @@ def prepare_desk_image_bytes(uploaded_file, max_dim=1024):
         return out.getvalue()
 
 
+def resize_jpeg_bytes(image_bytes, max_dim=768, quality=76):
+    """Nén ảnh xuống độ phân giải nhẹ hơn cho bước Vision phân tích nhanh (giảm độ trễ upload)."""
+    try:
+        with Image.open(io.BytesIO(image_bytes)) as img:
+            if max(img.size) <= max_dim and len(image_bytes) <= 120 * 1024:
+                return image_bytes
+            if img.mode != 'RGB':
+                img = img.convert('RGB')
+            img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
+            out = io.BytesIO()
+            img.save(out, format='JPEG', quality=quality, optimize=True)
+            return out.getvalue()
+    except Exception:
+        return image_bytes
+
+
 def get_ai_quota_status(user=None, ip_hash=''):
     """Đọc số lượt AI đã sử dụng trong ngày/tháng từ bảng AIUsageLog."""
     now = timezone.localtime()
@@ -280,8 +296,9 @@ def _ground_recommendations(parsed: DeskScanResult, catalog_products, catalog_pr
 
 def analyze_desk_with_gemini(image_bytes, catalog_products, catalog_presets, desk_width_cm='', user_note=''):
     """
-    Gửi ảnh góc bàn + danh mục thật của shop lên Gemini Vision (`gemini-4-hydrogen`),
-    tự động chuyển sang `gemini-3.8-flash` nếu model chính gặp lỗi/quá tải.
+    Gửi ảnh góc bàn + danh mục thật của shop lên Gemini Vision (`gemini-3.8-flash`),
+    bật thinking_level='low'/'minimal' để phản hồi siêu nhanh (~2-5 giây),
+    tự động dự phòng sang `gemini-3.5-flash-lite` nếu model chính gặp lỗi/quá thời gian.
     """
     import json
 
@@ -303,7 +320,7 @@ def analyze_desk_with_gemini(image_bytes, catalog_products, catalog_presets, des
         "Hãy quan sát kỹ bức ảnh góc bàn / không gian này và tư vấn bể thủy sinh + cây phù hợp.\n"
         f"Thông tin bổ sung từ khách:\n{hints_block}\n\n"
         f"Danh mục sản phẩm & bố cục hiện có của shop (CHỈ chọn product_id và recommended_preset_id trong đây):\n"
-        f"{json.dumps(catalog_payload, ensure_ascii=False)}"
+        f"{json.dumps(catalog_payload, ensure_ascii=False, separators=(',', ':'))}"
     )
 
     client = genai.Client(api_key=settings.GEMINI_API_KEY)
@@ -312,10 +329,14 @@ def analyze_desk_with_gemini(image_bytes, catalog_products, catalog_presets, des
         models_to_try.append(settings.GEMINI_VISION_FALLBACK_MODEL)
 
     last_error = None
-    b64_image = base64.b64encode(image_bytes).decode('utf-8')
+    vision_bytes = resize_jpeg_bytes(image_bytes, max_dim=768, quality=76)
+    b64_image = base64.b64encode(vision_bytes).decode('utf-8')
     schema = DeskScanResult.model_json_schema()
+    configured_thinking = getattr(settings, 'GEMINI_VISION_THINKING_LEVEL', 'low') or 'low'
+    call_timeout = float(getattr(settings, 'GEMINI_VISION_TIMEOUT', 22.0))
 
     for model_name in models_to_try:
+        thinking_level = 'minimal' if 'lite' in model_name.lower() else configured_thinking
         try:
             interaction = client.interactions.create(
                 model=model_name,
@@ -326,14 +347,19 @@ def analyze_desk_with_gemini(image_bytes, catalog_products, catalog_presets, des
                         "type": "image",
                         "data": b64_image,
                         "mime_type": "image/jpeg",
+                        "resolution": "medium",
                     },
                 ],
+                generation_config={
+                    "thinking_level": thinking_level,
+                },
                 response_format={
                     "type": "text",
                     "mime_type": "application/json",
                     "schema": schema,
                 },
                 store=False,
+                timeout=call_timeout,
             )
             raw_text = getattr(interaction, 'output_text', None)
             if not raw_text:
@@ -451,7 +477,7 @@ def render_tank_preview_with_agnes(
             },
         }
         try:
-            resp = requests.post(endpoint, headers=headers, json=payload, timeout=75)
+            resp = requests.post(endpoint, headers=headers, json=payload, timeout=60)
             if resp.status_code != 200:
                 raise RuntimeError(f"Agnes API HTTP {resp.status_code}: {resp.text[:200]}")
 

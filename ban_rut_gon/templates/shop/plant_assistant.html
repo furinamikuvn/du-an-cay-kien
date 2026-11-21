@@ -159,7 +159,7 @@
             <!-- TRẠNG THÁI ĐANG QUÉT -->
             <div id="ai-loading-state" class="hidden bg-white border border-slate-200 p-10 text-center space-y-3">
                 <div class="w-12 h-12 border-4 border-[#EEF5F0] border-t-[#7AA88B] rounded-full animate-spin mx-auto"></div>
-                <h3 class="font-bold text-sm text-slate-900">Gemini Vision đang phân tích góc bàn của bạn...</h3>
+                <h3 id="ai-loading-title" class="font-bold text-sm text-slate-900">Gemini Vision đang phân tích góc bàn của bạn...</h3>
                 <p class="text-xs text-slate-500">Đang đánh giá diện tích trống, nguồn sáng và đối chiếu hồ sơ sinh học cây trong kho.</p>
             </div>
 
@@ -248,7 +248,7 @@
 
                     <div id="ai-render-loading" class="hidden border border-slate-200 bg-slate-50 p-6 text-center space-y-2">
                         <div class="w-9 h-9 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin mx-auto"></div>
-                        <p class="text-xs font-semibold text-slate-700">Đang dựng ảnh phối cảnh bằng {{ ai_image_model }} (thường mất 10 - 25 giây)...</p>
+                        <p id="ai-render-loading-text" class="text-xs font-semibold text-slate-700" data-model="{{ ai_image_model }}">Đang dựng ảnh phối cảnh bằng {{ ai_image_model }}...</p>
                     </div>
 
                     <div id="ai-render-result-wrap" class="hidden space-y-3 pt-2 border-t border-slate-100">
@@ -533,10 +533,10 @@
             const objUrl = URL.createObjectURL(file);
             img.onload = function () {
                 try {
-                    const maxDim = 1280;
+                    const maxDim = 1024;
                     let w = img.naturalWidth || img.width;
                     let h = img.naturalHeight || img.height;
-                    if (!w || !h || (w <= maxDim && h <= maxDim && file.size <= 1200000)) {
+                    if (!w || !h || (w <= maxDim && h <= maxDim && file.size <= 350000)) {
                         URL.revokeObjectURL(objUrl);
                         resolve(file);
                         return;
@@ -560,7 +560,7 @@
                         } else {
                             resolve(file);
                         }
-                    }, 'image/jpeg', 0.85);
+                    }, 'image/jpeg', 0.80);
                 } catch (_) {
                     URL.revokeObjectURL(objUrl);
                     resolve(file);
@@ -735,6 +735,21 @@
             return;
         }
 
+        const loadingTitle = document.getElementById('ai-loading-title');
+        let sec = 0;
+        if (loadingTitle) loadingTitle.textContent = 'Gemini Vision đang phân tích góc bàn của bạn... (0s)';
+        const scanTimer = setInterval(function () {
+            sec += 1;
+            if (loadingTitle) {
+                loadingTitle.textContent = sec >= 20
+                    ? 'Máy chủ AI phản hồi chậm hơn bình thường, đang chờ hoàn tất... (' + sec + 's)'
+                    : 'Gemini Vision đang phân tích góc bàn của bạn... (' + sec + 's)';
+            }
+        }, 1000);
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 48000);
+
         scanBtn.disabled = true;
         emptyState.classList.add('hidden');
         resultBox.classList.add('hidden');
@@ -751,6 +766,7 @@
                 method: 'POST',
                 headers: { 'X-CSRFToken': getCsrfToken() },
                 body: formData,
+                signal: controller.signal,
             });
             const data = await resp.json();
             if (!resp.ok || !data.success) {
@@ -761,11 +777,17 @@
                 return;
             }
             renderScanResult(data);
-        } catch (_) {
+        } catch (err) {
             loadingState.classList.add('hidden');
             emptyState.classList.remove('hidden');
-            showScanError('Mất kết nối tới máy chủ khi phân tích ảnh. Vui lòng thử lại.');
+            showScanError(
+                err && err.name === 'AbortError'
+                    ? 'Quá thời gian chờ phản hồi AI (48 giây). Vui lòng bấm Quét lại hoặc thử ảnh gọn hơn.'
+                    : 'Mất kết nối tới máy chủ khi phân tích ảnh. Vui lòng thử lại.'
+            );
         } finally {
+            clearInterval(scanTimer);
+            clearTimeout(timeoutId);
             scanBtn.disabled = false;
         }
     });
@@ -773,6 +795,20 @@
     if (renderBtn) {
         renderBtn.addEventListener('click', async function () {
             if (!activeRenderContextToken) return;
+
+            const renderLoadingText = document.getElementById('ai-render-loading-text');
+            const modelLabel = (renderLoadingText && renderLoadingText.dataset.model) || 'AI';
+            let rSec = 0;
+            if (renderLoadingText) renderLoadingText.textContent = 'Đang dựng ảnh phối cảnh bằng ' + modelLabel + '... (0s)';
+            const renderTimer = setInterval(function () {
+                rSec += 1;
+                if (renderLoadingText) {
+                    renderLoadingText.textContent = 'Đang dựng ảnh phối cảnh bằng ' + modelLabel + '... (' + rSec + 's)';
+                }
+            }, 1000);
+
+            const rController = new AbortController();
+            const rTimeoutId = setTimeout(() => rController.abort(), 80000);
 
             renderErrBox.textContent = '';
             renderErrBox.classList.add('hidden');
@@ -787,6 +823,7 @@
                     method: 'POST',
                     headers: { 'X-CSRFToken': getCsrfToken() },
                     body: formData,
+                    signal: rController.signal,
                 });
                 const data = await resp.json();
                 if (!resp.ok || !data.success) {
@@ -801,10 +838,15 @@
                 document.getElementById('ai-render-download').href = data.image_data_url;
                 renderResultWrap.classList.remove('hidden');
                 updateQuotaBadges(data.quota);
-            } catch (_) {
-                renderErrBox.textContent = 'Lỗi kết nối khi tạo phối cảnh AI. Vui lòng thử lại.';
+            } catch (err) {
+                renderErrBox.textContent =
+                    err && err.name === 'AbortError'
+                        ? 'Quá thời gian chờ dựng ảnh (80 giây). Vui lòng thử bấm lại lần nữa nhé.'
+                        : 'Lỗi kết nối khi tạo phối cảnh AI. Vui lòng thử lại.';
                 renderErrBox.classList.remove('hidden');
             } finally {
+                clearInterval(renderTimer);
+                clearTimeout(rTimeoutId);
                 renderLoading.classList.add('hidden');
                 renderBtn.disabled = false;
             }

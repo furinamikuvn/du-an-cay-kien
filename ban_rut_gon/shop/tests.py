@@ -574,7 +574,7 @@ class AquaPlantShopTest(TestCase):
         self.assertEqual(self.client.get('/tra-cuu-don-hang/?keyword=0988777666').status_code, 429)
 
     def test_16_ai_desk_assistant_and_quota_caps(self):
-        """TC16: Trợ lý thị giác AI quét góc bàn (gemini-4-hydrogen -> fallback 3.8-flash) & vẽ phối cảnh Nano Banana 2.1 có khóa trần"""
+        """TC16: Trợ lý thị giác AI quét góc bàn (gemini-3.8-flash -> fallback 3.5-flash-lite) & vẽ phối cảnh Nano Banana 2.1 có khóa trần"""
         import base64
         import json
         from types import SimpleNamespace
@@ -635,7 +635,7 @@ class AquaPlantShopTest(TestCase):
             'render_scene_prompt': '35cm rimless planted aquarium tank with Anubias nana on dark aquasoil and driftwood',
         }
 
-        # 5. Quét bàn thành công với gemini-4-hydrogen & lọc bỏ ID ảo
+        # 5. Quét bàn thành công với gemini-3.8-flash (thinking_level='low', resolution='medium', timeout) & lọc bỏ ID ảo
         with override_settings(GEMINI_API_KEY='test-key-only'), patch('shop.ai_assistant.genai.Client') as mock_client_cls:
             mock_client = mock_client_cls.return_value
             mock_client.interactions.create.return_value = SimpleNamespace(
@@ -650,14 +650,20 @@ class AquaPlantShopTest(TestCase):
             self.assertEqual(scan_resp.status_code, 200)
             scan_data = scan_resp.json()
             self.assertTrue(scan_data['success'])
-            self.assertEqual(scan_data['model_used'], 'gemini-4-hydrogen')
+            self.assertEqual(scan_data['model_used'], 'gemini-3.8-flash')
             self.assertEqual([p['id'] for p in scan_data['recommended_products']], [self.product.id])
             self.assertEqual(scan_data['analysis']['placement_box'], [280, 520, 760, 910])
+
+            call_kwargs = mock_client.interactions.create.call_args.kwargs
+            self.assertEqual(call_kwargs['generation_config'], {'thinking_level': 'low'})
+            self.assertEqual(call_kwargs['input'][1]['resolution'], 'medium')
+            self.assertGreater(call_kwargs['timeout'], 0)
+
             token = scan_data['render_context_token']
             self.assertTrue(token)
             self.assertEqual(AIUsageLog.objects.filter(action_type='scan', status='success').count(), 1)
 
-        # 6. Fallback sang gemini-3.8-flash khi gemini-4-hydrogen gặp lỗi
+        # 6. Fallback sang gemini-3.5-flash-lite (thinking_level='minimal') khi gemini-3.8-flash gặp lỗi
         with override_settings(GEMINI_API_KEY='test-key-only'), patch('shop.ai_assistant.genai.Client') as mock_client_cls:
             mock_client = mock_client_cls.return_value
             mock_client.interactions.create.side_effect = [
@@ -666,7 +672,9 @@ class AquaPlantShopTest(TestCase):
             ]
             fb_resp = self.client.post('/tro-ly-chon-cay/ai-scan/', {'desk_image': make_valid_jpeg_file('desk2.jpg')})
             self.assertEqual(fb_resp.status_code, 200)
-            self.assertEqual(fb_resp.json()['model_used'], 'gemini-3.8-flash')
+            self.assertEqual(fb_resp.json()['model_used'], 'gemini-3.5-flash-lite')
+            fb_kwargs = mock_client.interactions.create.call_args_list[1].kwargs
+            self.assertEqual(fb_kwargs['generation_config'], {'thinking_level': 'minimal'})
 
         # 7. Vẽ phối cảnh Nano Banana 2.1: chặn khách vãng lai (401), cho phép user đăng nhập & khóa trần
         with override_settings(GEMINI_API_KEY='test-key-only'):
