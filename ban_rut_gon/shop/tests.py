@@ -691,6 +691,8 @@ class AquaPlantShopTest(TestCase):
         fake_rendered_b64 = base64.b64encode(make_valid_jpeg_file('rendered.jpg').read()).decode('utf-8')
         with override_settings(
             GEMINI_API_KEY='test-key-only',
+            AGNES_API_KEY='',
+            AI_IMAGE_PROVIDER='auto',
             AI_RENDER_PER_USER_DAILY=1,
             AI_RENDER_MONTHLY_CAP=1,
         ), patch('shop.ai_assistant.genai.Client') as mock_client_cls:
@@ -707,6 +709,112 @@ class AquaPlantShopTest(TestCase):
             # Lần thứ 2 trong ngày phải bị chặn (429) bảo vệ credit $10/tháng
             render_capped = self.client.post('/tro-ly-chon-cay/ai-render-preview/', {'render_context_token': user_token})
             self.assertEqual(render_capped.status_code, 429)
+
+    def test_17_agnes_free_image_compositing_and_fallback(self):
+        """TC17: Ghép ảnh miễn phí Agnes AI (agnes-image-2.5-flash -> fallback 2.1-flash & xử lý URL/b64_json)"""
+        import base64
+        import json
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from django.test import override_settings
+        from PIL import Image
+        from shop.ai_assistant import get_active_image_provider_and_model, render_tank_preview_with_agnes
+        from shop.models import AIUsageLog
+
+        def make_jpeg_bytes():
+            buf = io.BytesIO()
+            Image.new('RGB', (200, 150), color=(90, 140, 110)).save(buf, format='JPEG')
+            return buf.getvalue()
+
+        # 1. Auto ưu tiên Agnes miễn phí khi có AGNES_API_KEY
+        with override_settings(GEMINI_API_KEY='gk', AGNES_API_KEY='ak', AI_IMAGE_PROVIDER='auto'):
+            provider, model = get_active_image_provider_and_model()
+            self.assertEqual((provider, model), ('agnes', 'agnes-image-2.5-flash'))
+
+        desk_bytes = make_jpeg_bytes()
+        fake_b64 = base64.b64encode(desk_bytes).decode('utf-8')
+
+        # 2. Quét bàn + Render qua endpoint dùng Agnes b64_json
+        agnes_user = User.objects.create_user(username='agnes_tester', password='Password123!')
+        self.client.force_login(agnes_user)
+
+        mock_scan_payload = {
+            'space_summary': 'Bàn học gỗ gọn gàng.',
+            'lighting_assessment': 'Ánh sáng phòng vừa phải.',
+            'detected_style': 'Tối giản',
+            'estimated_free_width_cm': 'Khoảng 35 cm',
+            'recommended_tank': {
+                'size_cm': '30x20x25 cm',
+                'shape': 'Cube siêu trong',
+                'volume_liters': '15 Lít',
+                'style_name': 'Ráy & đá nhỏ',
+                'placement_reason': 'Vừa góc phải bàn.',
+            },
+            'placement_box': [300, 500, 750, 900],
+            'placement_tips': ['Lót thảm cao su'],
+            'suggested_co2': 'no',
+            'suggested_light': 'low',
+            'recommended_plants': [
+                {'product_id': self.product.id, 'layer_role': 'Trung cảnh', 'reason': 'Dễ sống'},
+            ],
+            'recommended_preset_id': None,
+            'render_scene_prompt': '30cm rimless nano planted tank',
+        }
+
+        with override_settings(GEMINI_API_KEY='gk', AGNES_API_KEY='ak'), patch('shop.ai_assistant.genai.Client') as mock_genai:
+            mock_genai.return_value.interactions.create.return_value = SimpleNamespace(
+                output_text=json.dumps(mock_scan_payload, ensure_ascii=False)
+            )
+            scan_resp = self.client.post('/tro-ly-chon-cay/ai-scan/', {
+                'desk_image': SimpleUploadedFile('desk.jpg', desk_bytes, content_type='image/jpeg'),
+            })
+            self.assertEqual(scan_resp.status_code, 200)
+            ctx_token = scan_resp.json()['render_context_token']
+
+        with override_settings(GEMINI_API_KEY='gk', AGNES_API_KEY='ak', AI_IMAGE_PROVIDER='auto'), patch(
+            'shop.ai_assistant.requests.post'
+        ) as mock_post:
+            mock_post.return_value = SimpleNamespace(
+                status_code=200,
+                json=lambda: {'data': [{'b64_json': f'data:image/jpeg;base64,{fake_b64}'}]},
+                text='OK',
+            )
+            render_resp = self.client.post('/tro-ly-chon-cay/ai-render-preview/', {'render_context_token': ctx_token})
+            self.assertEqual(render_resp.status_code, 200)
+            res_json = render_resp.json()
+            self.assertEqual(res_json['model_used'], 'agnes-image-2.5-flash')
+            self.assertTrue(res_json['image_data_url'].startswith('data:image/jpeg;base64,'))
+
+            sent_payload = mock_post.call_args.kwargs['json']
+            self.assertEqual(sent_payload['extra_body']['response_format'], 'b64_json')
+            self.assertTrue(sent_payload['extra_body']['image'][0].startswith('data:image/jpeg;base64,'))
+            self.assertTrue(
+                AIUsageLog.objects.filter(action_type='render', model_used='agnes-image-2.5-flash', status='success').exists()
+            )
+
+        # 3. Fallback sang agnes-image-2.1-flash (kèm hỗ trợ trả về URL HTTPS)
+        with override_settings(AGNES_API_KEY='ak'), patch('shop.ai_assistant.requests.post') as mock_post, patch(
+            'shop.ai_assistant.requests.get'
+        ) as mock_get:
+            mock_post.side_effect = [
+                SimpleNamespace(status_code=503, text='Busy'),
+                SimpleNamespace(status_code=200, json=lambda: {'data': [{'url': 'https://cdn.agnes-ai.com/out.png'}]}, text='OK'),
+            ]
+            mock_get.return_value = SimpleNamespace(
+                status_code=200,
+                headers={'Content-Type': 'image/png'},
+                content=desk_bytes,
+            )
+            out_b64, out_mime, used_model = render_tank_preview_with_agnes(
+                desk_image_bytes=desk_bytes,
+                tank_info=mock_scan_payload['recommended_tank'],
+                plant_names=['Ráy Nana'],
+                placement_box=[300, 500, 750, 900],
+            )
+            self.assertEqual(used_model, 'agnes-image-2.1-flash')
+            self.assertEqual(out_mime, 'image/png')
+            self.assertEqual(out_b64, fake_b64)
+
 
 
 

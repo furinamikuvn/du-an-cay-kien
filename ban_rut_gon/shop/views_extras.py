@@ -28,11 +28,12 @@ from django.views.decorators.http import require_POST
 from .ai_assistant import (
     analyze_desk_with_gemini,
     can_run_ai_action,
+    get_active_image_provider_and_model,
     get_ai_quota_status,
     hash_ip,
     log_ai_usage,
     prepare_desk_image_bytes,
-    render_tank_preview_with_nano_banana,
+    render_tank_preview,
 )
 from .forms import CustomPasswordChangeForm
 from .models import Article, FAQ, InventoryLot, LayoutPreset, Order, Product
@@ -95,6 +96,7 @@ def plant_assistant_view(request):
 
     ip_h = hash_ip(get_client_ip(request))
     ai_quota = get_ai_quota_status(user=request.user, ip_hash=ip_h)
+    img_provider, img_model = get_active_image_provider_and_model()
 
     context = {
         'results': results,
@@ -105,8 +107,10 @@ def plant_assistant_view(request):
         'position': position,
         'ai_configured': bool(settings.GEMINI_API_KEY),
         'ai_render_enabled': settings.AI_RENDER_ENABLED,
+        'ai_render_configured': bool(img_provider),
+        'ai_image_provider': img_provider or '',
         'ai_vision_model': settings.GEMINI_VISION_MODEL,
-        'ai_image_model': settings.GEMINI_IMAGE_MODEL,
+        'ai_image_model': img_model or settings.AGNES_IMAGE_MODEL,
         'ai_quota': ai_quota,
     }
     return render(request, 'shop/plant_assistant.html', context)
@@ -293,8 +297,8 @@ def ai_desk_scan_view(request):
 @require_POST
 def ai_desk_render_view(request):
     """
-    Endpoint POST dùng `gemini-nano-banana-2.1` vẽ phối cảnh đặt bể thủy sinh trực tiếp
-    lên ảnh góc bàn vừa quét (bắt buộc đăng nhập & khóa trần ngân sách hàng tháng).
+    Endpoint POST ghép phối cảnh đặt bể thủy sinh trực tiếp lên ảnh góc bàn vừa quét.
+    Ưu tiên Agnes AI miễn phí (AGNES_API_KEY), hoặc Gemini Nano Banana 2.1, kèm khóa trần DB.
     """
     if not request.user.is_authenticated:
         return JsonResponse({
@@ -304,11 +308,12 @@ def ai_desk_render_view(request):
             'message': 'Vui lòng đăng nhập tài khoản để sử dụng tính năng vẽ phối cảnh AI đặt bể lên bàn.',
         }, status=401)
 
-    if not settings.AI_RENDER_ENABLED or not settings.GEMINI_API_KEY:
+    img_provider, img_model = get_active_image_provider_and_model()
+    if not settings.AI_RENDER_ENABLED or not img_provider:
         return JsonResponse({
             'success': False,
             'code': 'NOT_CONFIGURED',
-            'message': 'Tính năng vẽ phối cảnh AI hiện đang tắt hoặc chưa cấu hình GEMINI_API_KEY.',
+            'message': 'Tính năng vẽ phối cảnh AI chưa được kích hoạt (cần AGNES_API_KEY miễn phí hoặc GEMINI_API_KEY có Billing).',
         }, status=503)
 
     ip = get_client_ip(request)
@@ -343,7 +348,7 @@ def ai_desk_render_view(request):
     record_rate_limit_hit('ai_render', ip, 600)
 
     try:
-        b64_data, mime_type = render_tank_preview_with_nano_banana(
+        b64_data, mime_type, actual_model = render_tank_preview(
             desk_image_bytes=cached_ctx['image_bytes'],
             tank_info=cached_ctx['recommended_tank'],
             plant_names=cached_ctx.get('plant_names', []),
@@ -351,24 +356,35 @@ def ai_desk_render_view(request):
             render_scene_prompt=cached_ctx.get('render_scene_prompt', ''),
         )
     except Exception as exc:
-        log_ai_usage('render', user=request.user, ip_hash=ip_h, model_used=settings.GEMINI_IMAGE_MODEL, status='failed')
+        log_ai_usage('render', user=request.user, ip_hash=ip_h, model_used=img_model, status='failed')
         err_lower = str(exc).lower()
+        if img_provider == 'agnes':
+            if '429' in err_lower or 'limit' in err_lower or 'credit' in err_lower:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Hạn mức miễn phí của Agnes AI vừa chạm giới hạn tạm thời. Sensei vui lòng đợi chút rồi thử lại nhé.',
+                }, status=503)
+            return JsonResponse({
+                'success': False,
+                'message': 'Agnes AI tạm thời chưa ghép được ảnh lúc này. Sensei vui lòng thử lại sau giây lát.',
+            }, status=502)
+
         if any(k in err_lower for k in ('billing', 'quota', 'permission', '403', '429', 'eligible')):
             return JsonResponse({
                 'success': False,
-                'message': 'Model Nano Banana 2.1 cần tài khoản AI Studio đã liên kết Google Cloud Billing (quyền lợi $10 credit Google AI Pro).',
+                'message': 'Model Nano Banana 2.1 cần liên kết Billing (hoặc Sensei thêm AGNES_API_KEY miễn phí không cần thẻ trên Render).',
             }, status=503)
         return JsonResponse({
             'success': False,
             'message': 'Không thể tạo ảnh phối cảnh AI lúc này. Sensei vui lòng thử lại sau giây lát.',
         }, status=502)
 
-    log_ai_usage('render', user=request.user, ip_hash=ip_h, model_used=settings.GEMINI_IMAGE_MODEL, status='success')
+    log_ai_usage('render', user=request.user, ip_hash=ip_h, model_used=actual_model, status='success')
     updated_quota = get_ai_quota_status(user=request.user, ip_hash=ip_h)
 
     return JsonResponse({
         'success': True,
-        'model_used': settings.GEMINI_IMAGE_MODEL,
+        'model_used': actual_model,
         'image_data_url': f"data:{mime_type};base64,{b64_data}",
         'quota': updated_quota,
     })

@@ -14,6 +14,7 @@ import io
 import logging
 from typing import List, Literal, Optional
 
+import requests
 from django.conf import settings
 from django.utils import timezone
 from google import genai
@@ -347,8 +348,147 @@ def analyze_desk_with_gemini(image_bytes, catalog_products, catalog_presets, des
 
 
 # ------------------------------------------------------------------------------
-# 4. GHÉP PHỐI CẢNH ĐẶT BỂ LÊN BÀN VỚI NANO BANANA 2.1
+# 4. GHÉP PHỐI CẢNH ĐẶT BỂ LÊN BÀN (AGNES AI FREE TIER & NANO BANANA 2.1)
 # ------------------------------------------------------------------------------
+def get_active_image_provider_and_model():
+    """
+    Xác định nhà cung cấp vẽ/ghép phối cảnh đang khả dụng.
+    Ưu tiên Agnes AI miễn phí (không cần thẻ tín dụng) khi có AGNES_API_KEY.
+    """
+    pref = (getattr(settings, 'AI_IMAGE_PROVIDER', 'auto') or 'auto').strip().lower()
+    has_agnes = bool(getattr(settings, 'AGNES_API_KEY', ''))
+    has_gemini = bool(getattr(settings, 'GEMINI_API_KEY', ''))
+
+    if pref == 'agnes':
+        return ('agnes', settings.AGNES_IMAGE_MODEL) if has_agnes else (None, '')
+    if pref == 'gemini':
+        return ('gemini', settings.GEMINI_IMAGE_MODEL) if has_gemini else (None, '')
+
+    if has_agnes:
+        return ('agnes', settings.AGNES_IMAGE_MODEL)
+    if has_gemini:
+        return ('gemini', settings.GEMINI_IMAGE_MODEL)
+    return (None, '')
+
+
+def _build_tank_edit_prompt(tank_info, plant_names, placement_box, render_scene_prompt=''):
+    ymin, xmin, ymax, xmax = sanitize_placement_box(placement_box)
+    plants_desc = ", ".join(plant_names) if plant_names else "Anubias nana, Java fern, lush green foreground carpet"
+    size_desc = tank_info.get('size_cm', '30x20x25 cm')
+    style_desc = tank_info.get('style_name', 'Nature aquascape')
+    scene_detail = render_scene_prompt or f"a crystal-clear rimless glass aquascape tank ({size_desc}, {style_desc})"
+
+    return (
+        f"Photorealistic interior photo editing: Using the provided photo as the exact base scene, "
+        f"place {scene_detail} neatly on the desk surface inside the normalized region "
+        f"[ymin={ymin}, xmin={xmin}, ymax={ymax}, xmax={xmax}] (0..1000 scale). "
+        f"Inside the rimless ultra-clear glass aquarium, plant thriving {plants_desc} arranged naturally over dark aquasoil "
+        f"with smooth stones or driftwood and a sleek minimalist clip-on LED aquarium light on top. "
+        f"Match the original camera angle, perspective, ambient room lighting, soft contact shadows, and subtle glass reflections. "
+        f"Keep the desk material, laptop/decor, background wall, and surrounding items completely intact and realistic."
+    )
+
+
+def _detect_aspect_ratio(image_bytes):
+    """Chọn tỷ lệ khung hình Agnes AI gần nhất với ảnh gốc."""
+    candidates = [
+        ("16:9", 16 / 9),
+        ("4:3", 4 / 3),
+        ("1:1", 1.0),
+        ("3:4", 3 / 4),
+        ("9:16", 9 / 16),
+    ]
+    try:
+        with Image.open(io.BytesIO(image_bytes)) as img:
+            w, h = img.size
+            if w > 0 and h > 0:
+                target = w / h
+                return min(candidates, key=lambda item: abs(item[1] - target))[0]
+    except Exception:
+        pass
+    return "4:3"
+
+
+def render_tank_preview_with_agnes(
+    desk_image_bytes,
+    tank_info,
+    plant_names,
+    placement_box,
+    render_scene_prompt='',
+):
+    """
+    Gọi Agnes AI (`POST /v1/images/generations`) dùng model `agnes-image-2.5-flash`
+    (tự dự phòng `agnes-image-2.1-flash`) để ghép bể thủy sinh vào đúng ảnh bàn gốc.
+    """
+    api_key = getattr(settings, 'AGNES_API_KEY', '')
+    if not api_key:
+        raise RuntimeError("Thiếu cấu hình AGNES_API_KEY.")
+
+    endpoint = f"{settings.AGNES_API_BASE_URL.rstrip('/')}/images/generations"
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+    b64_desk = base64.b64encode(desk_image_bytes).decode('utf-8')
+    edit_prompt = _build_tank_edit_prompt(tank_info, plant_names, placement_box, render_scene_prompt)
+    aspect_ratio = _detect_aspect_ratio(desk_image_bytes)
+
+    models_to_try = [settings.AGNES_IMAGE_MODEL]
+    fallback_model = getattr(settings, 'AGNES_IMAGE_FALLBACK_MODEL', '')
+    if fallback_model and fallback_model not in models_to_try:
+        models_to_try.append(fallback_model)
+
+    last_error = None
+    for model_name in models_to_try:
+        payload = {
+            "model": model_name,
+            "prompt": edit_prompt,
+            "size": "1K",
+            "ratio": aspect_ratio,
+            "extra_body": {
+                "image": [f"data:image/jpeg;base64,{b64_desk}"],
+                "response_format": "b64_json",
+            },
+        }
+        try:
+            resp = requests.post(endpoint, headers=headers, json=payload, timeout=75)
+            if resp.status_code != 200:
+                raise RuntimeError(f"Agnes API HTTP {resp.status_code}: {resp.text[:200]}")
+
+            body = resp.json()
+            items = body.get('data') or []
+            if not items or not isinstance(items, list):
+                raise ValueError("Phản hồi Agnes AI không có danh sách ảnh.")
+
+            first = items[0] if isinstance(items[0], dict) else {}
+            b64_raw = first.get('b64_json')
+            if b64_raw:
+                mime_type = 'image/jpeg'
+                b64_str = str(b64_raw).strip()
+                if b64_str.startswith('data:') and ';base64,' in b64_str:
+                    header_part, b64_str = b64_str.split(';base64,', 1)
+                    mime_candidate = header_part.replace('data:', '').strip().lower()
+                    if mime_candidate.startswith('image/'):
+                        mime_type = mime_candidate
+                return b64_str, mime_type, model_name
+
+            img_url = str(first.get('url') or '').strip()
+            if img_url.startswith('https://'):
+                img_resp = requests.get(img_url, timeout=30)
+                if img_resp.status_code != 200:
+                    raise RuntimeError(f"Không tải được ảnh kết quả từ Agnes (HTTP {img_resp.status_code}).")
+                ctype = (img_resp.headers.get('Content-Type') or '').split(';')[0].strip().lower()
+                mime_type = ctype if ctype.startswith('image/') else 'image/jpeg'
+                return base64.b64encode(img_resp.content).decode('utf-8'), mime_type, model_name
+
+            raise ValueError("Phản hồi Agnes AI thiếu cả b64_json và URL ảnh hợp lệ.")
+        except Exception as exc:
+            logger.warning("Agnes image model %s failed: %s", model_name, exc)
+            last_error = exc
+
+    raise RuntimeError(f"Agnes AI không thể hoàn tất ghép ảnh: {last_error}")
+
+
 def render_tank_preview_with_nano_banana(
     desk_image_bytes,
     tank_info,
@@ -363,21 +503,7 @@ def render_tank_preview_with_nano_banana(
     if not settings.GEMINI_API_KEY:
         raise RuntimeError("Thiếu cấu hình GEMINI_API_KEY.")
 
-    ymin, xmin, ymax, xmax = sanitize_placement_box(placement_box)
-    plants_desc = ", ".join(plant_names) if plant_names else "Anubias nana, Java fern, lush green foreground carpet"
-    size_desc = tank_info.get('size_cm', '30x20x25 cm')
-    style_desc = tank_info.get('style_name', 'Nature aquascape')
-    scene_detail = render_scene_prompt or f"a crystal-clear rimless glass aquascape tank ({size_desc}, {style_desc})"
-
-    edit_prompt = (
-        f"Photorealistic interior photo editing: Using the provided photo as the exact base scene, "
-        f"place {scene_detail} neatly on the desk surface inside the normalized region "
-        f"[ymin={ymin}, xmin={xmin}, ymax={ymax}, xmax={xmax}] (0..1000 scale). "
-        f"Inside the rimless ultra-clear glass aquarium, plant thriving {plants_desc} arranged naturally over dark aquasoil "
-        f"with smooth stones or driftwood and a sleek minimalist clip-on LED aquarium light on top. "
-        f"Match the original camera angle, perspective, ambient room lighting, soft contact shadows, and subtle glass reflections. "
-        f"Keep the desk material, laptop/decor, background wall, and surrounding items completely intact and realistic."
-    )
+    edit_prompt = _build_tank_edit_prompt(tank_info, plant_names, placement_box, render_scene_prompt)
 
     client = genai.Client(api_key=settings.GEMINI_API_KEY)
     interaction = client.interactions.create(
@@ -402,12 +528,40 @@ def render_tank_preview_with_nano_banana(
     output_img = getattr(interaction, 'output_image', None)
     if output_img and getattr(output_img, 'data', None):
         mime = getattr(output_img, 'mime_type', None) or 'image/jpeg'
-        return output_img.data, mime
+        return output_img.data, mime, settings.GEMINI_IMAGE_MODEL
 
     # Kiểm tra dự phòng trong các step model_output
     for step in getattr(interaction, 'steps', []) or []:
         for part in getattr(step, 'content', []) or []:
             if getattr(part, 'type', None) == 'image' and getattr(part, 'data', None):
-                return part.data, getattr(part, 'mime_type', None) or 'image/jpeg'
+                return part.data, getattr(part, 'mime_type', None) or 'image/jpeg', settings.GEMINI_IMAGE_MODEL
 
     raise RuntimeError("Model vẽ phối cảnh không trả về dữ liệu hình ảnh.")
+
+
+def render_tank_preview(
+    desk_image_bytes,
+    tank_info,
+    plant_names,
+    placement_box,
+    render_scene_prompt='',
+):
+    """Điều phối tạo ảnh phối cảnh đặt bể theo nhà cung cấp đang cấu hình (Agnes / Gemini)."""
+    provider, _ = get_active_image_provider_and_model()
+    if provider == 'agnes':
+        return render_tank_preview_with_agnes(
+            desk_image_bytes=desk_image_bytes,
+            tank_info=tank_info,
+            plant_names=plant_names,
+            placement_box=placement_box,
+            render_scene_prompt=render_scene_prompt,
+        )
+    if provider == 'gemini':
+        return render_tank_preview_with_nano_banana(
+            desk_image_bytes=desk_image_bytes,
+            tank_info=tank_info,
+            plant_names=plant_names,
+            placement_box=placement_box,
+            render_scene_prompt=render_scene_prompt,
+        )
+    raise RuntimeError("Chưa cấu hình AGNES_API_KEY hoặc GEMINI_API_KEY cho tính năng vẽ phối cảnh.")

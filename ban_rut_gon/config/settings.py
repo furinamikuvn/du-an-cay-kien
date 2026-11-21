@@ -235,12 +235,20 @@ LOGIN_REDIRECT_URL = 'home'
 LOGOUT_REDIRECT_URL = 'home'
 
 # ------------------------------------------------------------------------------
-# 9. CẤU HÌNH TRỢ LÝ THỊ GIÁC AI (GEMINI MULTIMODAL & NANO BANANA 2.1)
+# 9. CẤU HÌNH TRỢ LÝ THỊ GIÁC AI (GEMINI MULTIMODAL & AGNES AI / NANO BANANA)
 # ------------------------------------------------------------------------------
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '').strip()
 GEMINI_VISION_MODEL = os.environ.get('GEMINI_VISION_MODEL', 'gemini-4-hydrogen').strip()
 GEMINI_VISION_FALLBACK_MODEL = os.environ.get('GEMINI_VISION_FALLBACK_MODEL', 'gemini-3.8-flash').strip()
 GEMINI_IMAGE_MODEL = os.environ.get('GEMINI_IMAGE_MODEL', 'gemini-nano-banana-2.1').strip()
+
+AGNES_API_KEY = os.environ.get('AGNES_API_KEY', '').strip()
+AGNES_API_BASE_URL = os.environ.get('AGNES_API_BASE_URL', 'https://apihub.agnes-ai.com/v1').strip()
+AGNES_IMAGE_MODEL = os.environ.get('AGNES_IMAGE_MODEL', 'agnes-image-2.5-flash').strip()
+AGNES_IMAGE_FALLBACK_MODEL = os.environ.get('AGNES_IMAGE_FALLBACK_MODEL', 'agnes-image-2.1-flash').strip()
+
+# 'auto': ưu tiên Agnes AI (free, không cần thẻ) nếu có AGNES_API_KEY, ngược lại dùng Gemini nếu có GEMINI_API_KEY
+AI_IMAGE_PROVIDER = os.environ.get('AI_IMAGE_PROVIDER', 'auto').strip().lower()
 
 AI_RENDER_ENABLED = os.environ.get('AI_RENDER_ENABLED', 'True').lower() in ('true', '1', 'yes')
 AI_RENDER_MONTHLY_CAP = int(os.environ.get('AI_RENDER_MONTHLY_CAP', '120'))
