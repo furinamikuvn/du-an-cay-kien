@@ -449,9 +449,14 @@ class LayoutPreset(models.Model):
 
     @property
     def display_image_url(self):
-        """Trả về đường dẫn ảnh bể mẫu từ DB (MEDIA) hoặc fallback ảnh tĩnh hợp lệ."""
+        """Trả về đường dẫn ảnh bể mẫu từ DB (MEDIA) kèm cache-buster theo tệp thực tế."""
         if self.image and self.image.name:
-            return self.image.url
+            url = self.image.url
+            try:
+                st = os.stat(self.image.path)
+                return f"{url}?v={st.st_size}-{int(st.st_mtime)}"
+            except Exception:
+                return url
         if 'Iwagumi' in self.name:
             return f"{settings.STATIC_URL}images/iwagumi_60cm.jpg"
         return f"{settings.STATIC_URL}images/nature_wood_90cm.png"
