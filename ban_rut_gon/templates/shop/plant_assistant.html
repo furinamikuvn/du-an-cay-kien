@@ -1007,7 +1007,7 @@
         }, 1000);
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 48000);
+        const timeoutId = setTimeout(() => controller.abort(), 65000);
 
         scanBtn.disabled = true;
         emptyState.classList.add('hidden');
@@ -1041,7 +1041,7 @@
             emptyState.classList.remove('hidden');
             showScanError(
                 err && err.name === 'AbortError'
-                    ? 'Quá thời gian chờ phản hồi AI (48 giây). Vui lòng bấm Quét lại hoặc thử ảnh gọn hơn.'
+                    ? 'Quá thời gian chờ phản hồi AI (65 giây). Vui lòng bấm Quét lại hoặc thử ảnh gọn hơn.'
                     : 'Mất kết nối tới máy chủ khi phân tích ảnh. Vui lòng thử lại.'
             );
         } finally {
