@@ -8,39 +8,36 @@
     <!-- HEADER BANNER -->
     <div class="bg-white border border-slate-200 p-5 sm:p-6 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
-            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] text-[11px] font-bold mb-2 uppercase">
-                <i class="fa-solid fa-camera text-[#2F5C3E]"></i> Trợ Lý Thị Giác AI & Tư Vấn Sinh Thái
+            <span class="inline-block px-2.5 py-1 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] text-[11px] font-bold mb-2 uppercase">
+                Trợ Lý Thị Giác AI & Tư Vấn Sinh Thái
             </span>
             <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">Trợ Lý Chọn Cây & Phối Cảnh Bể Theo Góc Bàn</h1>
-            <p class="text-xs text-slate-500 mt-1">Chụp ảnh bàn làm việc để Gemini AI phân tích ánh sáng, kích thước, gợi ý bể + cây thật từ kho và vẽ phối cảnh đặt bể lên bàn.</p>
+            <p class="text-xs text-slate-500 mt-1">Chụp ảnh bàn làm việc để phân tích ánh sáng, kích thước, gợi ý bể + cây thật từ kho và vẽ phối cảnh đặt bể lên bàn.</p>
         </div>
 
         <!-- TAB SWITCHER -->
         <div class="inline-flex bg-slate-100 p-1 border border-slate-200 self-start lg:self-auto flex-shrink-0" role="tablist">
             <button type="button" id="tab-btn-ai" role="tab" aria-selected="{% if not has_searched %}true{% else %}false{% endif %}"
-                class="px-3.5 py-2 text-xs font-bold transition flex items-center gap-1.5 {% if not has_searched %}bg-[#7AA88B] text-white shadow-sm{% else %}text-slate-700 hover:text-slate-900{% endif %}">
-                <i class="fa-solid fa-wand-magic-sparkles"></i> Quét Góc Bàn Bằng AI
+                class="px-3.5 py-2 text-xs font-bold transition {% if not has_searched %}bg-[#7AA88B] text-white shadow-sm{% else %}text-slate-700 hover:text-slate-900{% endif %}">
+                Quét Góc Bàn Bằng AI
             </button>
             <button type="button" id="tab-btn-filter" role="tab" aria-selected="{% if has_searched %}true{% else %}false{% endif %}"
-                class="px-3.5 py-2 text-xs font-bold transition flex items-center gap-1.5 {% if has_searched %}bg-[#7AA88B] text-white shadow-sm{% else %}text-slate-700 hover:text-slate-900{% endif %}">
-                <i class="fa-solid fa-sliders"></i> Lọc Theo Thông Số Hồ
+                class="px-3.5 py-2 text-xs font-bold transition {% if has_searched %}bg-[#7AA88B] text-white shadow-sm{% else %}text-slate-700 hover:text-slate-900{% endif %}">
+                Lọc Theo Thông Số Hồ
             </button>
         </div>
     </div>
 
     <!-- ====================================================================== -->
-    <!-- TAB 1: QUÉT GÓC BÀN BẰNG AI (GEMINI-4-HYDROGEN + NANO BANANA 2.1)      -->
+    <!-- TAB 1: QUÉT GÓC BÀN BẰNG AI                                            -->
     <!-- ====================================================================== -->
     <div id="panel-ai" class="{% if has_searched %}hidden{% endif %} grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
         <!-- CỘT TRÁI: FORM CHỤP / TẢI ẢNH GÓC BÀN -->
         <div class="bg-white border border-slate-200 p-5 space-y-4">
-            <div class="pb-2.5 border-b border-slate-100 flex items-center justify-between gap-2">
-                <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-900 flex items-center gap-2">
-                    <i class="fa-solid fa-camera-retro text-[#7AA88B]"></i> Chụp Hoặc Tải Ảnh Bàn
+            <div class="pb-2.5 border-b border-slate-100">
+                <h2 class="text-xs font-extrabold uppercase tracking-wider text-slate-900">
+                    Chụp Hoặc Tải Ảnh Bàn
                 </h2>
-                <span class="text-[10px] font-mono font-bold px-2 py-0.5 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9]">
-                    {{ ai_vision_model }}
-                </span>
             </div>
 
             {% if not ai_configured %}
@@ -102,9 +99,8 @@
                 <div id="ai-scan-error" class="hidden bg-rose-50 border border-rose-200 text-rose-800 p-3 text-[11px] leading-relaxed"></div>
 
                 <button type="submit" id="ai-scan-submit-btn"
-                    class="w-full bg-[#7AA88B] hover:bg-[#6B997C] disabled:opacity-60 text-white font-bold py-3 transition flex items-center justify-center gap-2">
-                    <i class="fa-solid fa-magnifying-glass-chart"></i>
-                    <span>Quét Góc Bàn & Gợi Ý Bể + Cây</span>
+                    class="w-full bg-[#7AA88B] hover:bg-[#6B997C] disabled:opacity-60 text-white font-bold py-3 transition">
+                    Quét Góc Bàn & Gợi Ý Bể + Cây
                 </button>
 
                 <div class="pt-2 border-t border-slate-100 text-[11px] text-slate-500 space-y-1">
@@ -131,9 +127,6 @@
         <div class="lg:col-span-2 space-y-4">
             <!-- TRẠNG THÁI CHỜ BAN ĐẦU -->
             <div id="ai-empty-state" class="bg-white border border-slate-200 p-8 sm:p-10 text-center space-y-4">
-                <div class="w-14 h-14 bg-[#EEF5F0] text-[#7AA88B] border border-[#C5DEC9] flex items-center justify-center text-2xl mx-auto">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i>
-                </div>
                 <div class="space-y-1">
                     <h3 class="font-bold text-sm text-slate-900">Chưa có ảnh góc bàn nào được quét</h3>
                     <p class="text-xs text-slate-500 max-w-lg mx-auto leading-relaxed">
@@ -151,7 +144,7 @@
                     </div>
                     <div class="border border-slate-200 bg-slate-50 p-3 text-[11px] space-y-1">
                         <div class="font-bold text-[#2F5C3E]">3. Vẽ phối cảnh đặt bể</div>
-                        <p class="text-slate-500">Dùng {{ ai_image_model }} ghép thử bể cây vào đúng góc bàn bạn vừa chụp.</p>
+                        <p class="text-slate-500">Ghép thử bể cây vào đúng góc bàn bạn vừa chụp.</p>
                     </div>
                 </div>
             </div>
@@ -159,7 +152,7 @@
             <!-- TRẠNG THÁI ĐANG QUÉT -->
             <div id="ai-loading-state" class="hidden bg-white border border-slate-200 p-10 text-center space-y-3">
                 <div class="w-12 h-12 border-4 border-[#EEF5F0] border-t-[#7AA88B] rounded-full animate-spin mx-auto"></div>
-                <h3 id="ai-loading-title" class="font-bold text-sm text-slate-900">Gemini Vision đang phân tích góc bàn của bạn...</h3>
+                <h3 id="ai-loading-title" class="font-bold text-sm text-slate-900">Đang phân tích góc bàn của bạn...</h3>
                 <p class="text-xs text-slate-500">Đang đánh giá diện tích trống, nguồn sáng và đối chiếu hồ sơ sinh học cây trong kho.</p>
             </div>
 
@@ -169,7 +162,6 @@
                 <div class="bg-[#EEF5F0] border border-[#C5DEC9] p-4 flex flex-wrap items-center justify-between gap-2 text-xs">
                     <div>
                         <strong class="text-[#2F5C3E] block text-sm">Kết quả phân tích không gian & đề xuất bố trí</strong>
-                        <span id="ai-model-badge" class="text-slate-600 text-[11px] font-mono"></span>
                     </div>
                     <span id="ai-style-badge" class="bg-white border border-[#C5DEC9] px-2.5 py-1 font-bold text-[#2F5C3E]"></span>
                 </div>
@@ -221,25 +213,23 @@
                 <div class="bg-white border border-slate-200 p-5 space-y-3">
                     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div class="space-y-0.5">
-                            <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-900 flex items-center gap-1.5">
-                                <i class="fa-solid fa-image text-[#7AA88B]"></i> Ghép Ảnh Mẫu Bể Thật Từ CSDL Lên Bàn
+                            <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-900">
+                                Ghép Ảnh Mẫu Bể Thật Từ CSDL Lên Bàn
                             </h3>
                             <p class="text-[11px] text-slate-500">
-                                Chọn mẫu bể thủy sinh bản quyền mở trong CSDL ({{ preset_count }} mẫu) để <span class="font-mono">{{ ai_image_model }}</span> ghép trực tiếp vào góc bàn &amp; ánh sáng thực tế.
+                                Chọn mẫu bể thủy sinh bản quyền mở trong CSDL ({{ preset_count }} mẫu) để ghép trực tiếp vào góc bàn &amp; ánh sáng thực tế.
                             </p>
                         </div>
 
                         {% if user.is_authenticated %}
                         <button type="button" id="ai-render-btn"
-                            class="bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white text-xs font-bold px-4 py-2.5 transition flex items-center justify-center gap-2 flex-shrink-0">
-                            <i class="fa-solid fa-sparkles"></i>
+                            class="bg-slate-900 hover:bg-slate-800 disabled:opacity-60 text-white text-xs font-bold px-4 py-2.5 transition flex-shrink-0">
                             <span id="ai-render-btn-label">Ghép Mẫu Bể Này Lên Bàn</span>
                         </button>
                         {% else %}
                         <a href="{% url 'login' %}?next={% url 'plant_assistant' %}"
-                            class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2.5 transition inline-flex items-center justify-center gap-2 flex-shrink-0">
-                            <i class="fa-solid fa-right-to-bracket"></i>
-                            <span>Đăng nhập để vẽ phối cảnh AI</span>
+                            class="bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold px-4 py-2.5 transition inline-block flex-shrink-0">
+                            Đăng nhập để vẽ phối cảnh AI
                         </a>
                         {% endif %}
                     </div>
@@ -248,7 +238,6 @@
                     <div id="ai-preset-picker-wrap" class="hidden space-y-3 pt-2 border-t border-slate-100">
                         <div class="flex flex-wrap items-center justify-between gap-2 text-[11px]">
                             <span class="font-bold text-slate-800 uppercase tracking-wide">
-                                <i class="fa-solid fa-layer-group text-[#7AA88B] mr-1"></i>
                                 Thư Viện Mẫu Bể Thật Từ CSDL (Chọn 1 mẫu để ghép lên bàn)
                             </span>
                             <span id="ai-preset-selected-label" class="text-[#2F5C3E] font-semibold"></span>
@@ -277,7 +266,7 @@
 
                     <div id="ai-render-loading" class="hidden border border-slate-200 bg-slate-50 p-6 text-center space-y-2">
                         <div class="w-9 h-9 border-4 border-slate-200 border-t-slate-900 rounded-full animate-spin mx-auto"></div>
-                        <p id="ai-render-loading-text" class="text-xs font-semibold text-slate-700" data-model="{{ ai_image_model }}">Đang dựng ảnh phối cảnh bằng {{ ai_image_model }}...</p>
+                        <p id="ai-render-loading-text" class="text-xs font-semibold text-slate-700">Đang dựng ảnh phối cảnh...</p>
                     </div>
 
                     <div id="ai-render-result-wrap" class="hidden space-y-3 pt-3 border-t border-slate-100">
@@ -925,7 +914,6 @@
         const tank = a.recommended_tank || {};
         activeRenderContextToken = data.render_context_token || '';
 
-        document.getElementById('ai-model-badge').textContent = 'Model: ' + (data.model_used || '');
         document.getElementById('ai-style-badge').textContent = a.detected_style || 'Không gian bàn';
         document.getElementById('ai-width-est-badge').textContent = a.estimated_free_width_cm || '';
 
@@ -996,13 +984,13 @@
 
         const loadingTitle = document.getElementById('ai-loading-title');
         let sec = 0;
-        if (loadingTitle) loadingTitle.textContent = 'Gemini Vision đang phân tích góc bàn của bạn... (0s)';
+        if (loadingTitle) loadingTitle.textContent = 'Đang phân tích góc bàn của bạn... (0s)';
         const scanTimer = setInterval(function () {
             sec += 1;
             if (loadingTitle) {
                 loadingTitle.textContent = sec >= 20
-                    ? 'Máy chủ AI phản hồi chậm hơn bình thường, đang chờ hoàn tất... (' + sec + 's)'
-                    : 'Gemini Vision đang phân tích góc bàn của bạn... (' + sec + 's)';
+                    ? 'Hệ thống phản hồi chậm hơn bình thường, đang chờ hoàn tất... (' + sec + 's)'
+                    : 'Đang phân tích góc bàn của bạn... (' + sec + 's)';
             }
         }, 1000);
 
@@ -1056,13 +1044,12 @@
             if (!activeRenderContextToken) return;
 
             const renderLoadingText = document.getElementById('ai-render-loading-text');
-            const modelLabel = (renderLoadingText && renderLoadingText.dataset.model) || 'AI';
             let rSec = 0;
-            if (renderLoadingText) renderLoadingText.textContent = 'Đang dựng ảnh phối cảnh bằng ' + modelLabel + '... (0s)';
+            if (renderLoadingText) renderLoadingText.textContent = 'Đang dựng ảnh phối cảnh... (0s)';
             const renderTimer = setInterval(function () {
                 rSec += 1;
                 if (renderLoadingText) {
-                    renderLoadingText.textContent = 'Đang dựng ảnh phối cảnh bằng ' + modelLabel + '... (' + rSec + 's)';
+                    renderLoadingText.textContent = 'Đang dựng ảnh phối cảnh... (' + rSec + 's)';
                 }
             }, 1000);
 
