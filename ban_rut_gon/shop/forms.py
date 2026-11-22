@@ -94,6 +94,15 @@ class RegisterForm(forms.ModelForm):
         })
     )
 
+    email = forms.EmailField(
+        required=True,
+        label="Email liên hệ",
+        widget=forms.EmailInput(attrs={
+            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
+            'placeholder': 'email@example.com'
+        })
+    )
+
     class Meta:
         model = User
         fields = ['username', 'first_name', 'email']
@@ -111,10 +120,6 @@ class RegisterForm(forms.ModelForm):
                 'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
                 'placeholder': 'Nhập họ và tên của bạn'
             }),
-            'email': forms.EmailInput(attrs={
-                'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
-                'placeholder': 'email@example.com'
-            }),
         }
 
     def clean_username(self):
@@ -122,6 +127,14 @@ class RegisterForm(forms.ModelForm):
         if User.objects.filter(username=username).exists():
             raise forms.ValidationError("Tên đăng nhập này đã có người sử dụng. Vui lòng chọn tên khác.")
         return username
+
+    def clean_email(self):
+        email = (self.cleaned_data.get('email') or '').strip().lower()
+        if not email:
+            raise forms.ValidationError("Vui lòng nhập địa chỉ email hợp lệ.")
+        if User.objects.filter(email__iexact=email).exists():
+            raise forms.ValidationError("Địa chỉ email này đã được đăng ký bởi một tài khoản khác.")
+        return email
 
     def clean(self):
         cleaned_data = super().clean()
@@ -142,10 +155,11 @@ class RegisterForm(forms.ModelForm):
 
     def save(self, commit=True):
         user = super().save(commit=False)
+        user.email = (self.cleaned_data.get('email') or '').strip().lower()
         user.set_password(self.cleaned_data['password'])
         if commit:
             user.save()
-            UserProfile.objects.get_or_create(user=user, defaults={'role': 'customer'})
+            UserProfile.objects.get_or_create(user=user, defaults={'role': 'customer', 'email_verified': False})
         return user
 
 
@@ -365,13 +379,17 @@ class ProfileUpdateForm(forms.Form):
     def save(self):
         if not self.user:
             return None
+        old_email = (self.user.email or '').strip().lower()
+        new_email = self.cleaned_data['email'].strip().lower()
         full_name = self.cleaned_data['full_name'].strip()
         self.user.first_name = full_name
         self.user.last_name = ''
-        self.user.email = self.cleaned_data['email'].strip()
+        self.user.email = new_email
         self.user.save()
 
         profile, _ = UserProfile.objects.get_or_create(user=self.user, defaults={'role': 'customer'})
+        if old_email != new_email:
+            profile.email_verified = False
         profile.phone = self.cleaned_data['phone'].strip()
         profile.address = self.cleaned_data['address'].strip()
         profile.save()

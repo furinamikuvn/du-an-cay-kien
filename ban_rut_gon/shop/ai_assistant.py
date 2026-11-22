@@ -9,13 +9,18 @@ Cấu trúc Combo 1:
 """
 
 import base64
+import contextlib
 import hashlib
 import io
 import logging
+import threading
+from datetime import timedelta
 from typing import List, Literal, Optional
 
 import requests
 from django.conf import settings
+from django.db import connection, transaction
+from django.db.models import Q
 from django.utils import timezone
 from google import genai
 from google.genai import types
@@ -127,39 +132,76 @@ def resize_jpeg_bytes(image_bytes, max_dim=768, quality=76):
         return image_bytes
 
 
+_AI_QUOTA_LOCK = threading.Lock()
+_PG_AI_QUOTA_LOCK_KEY = 94827103
+_PENDING_SLOT_TTL_MINUTES = 5
+
+
+def _active_usage_filter(now):
+    """Chỉ tính các lượt thành công hoặc lượt pending đang chạy trong 5 phút gần nhất."""
+    pending_cutoff = now - timedelta(minutes=_PENDING_SLOT_TTL_MINUTES)
+    return Q(status='success') | Q(status='pending', created_at__gte=pending_cutoff)
+
+
+def _evaluate_ai_quota_limits(action_type, quota):
+    """Kiểm tra ngưỡng giới hạn dùng chung cho fast-fail và giữ chỗ nguyên tử."""
+    if action_type == 'scan':
+        if quota['scan_daily_used'] >= quota['scan_daily_cap']:
+            return False, (
+                f"Hệ thống đã chạm giới hạn {quota['scan_daily_cap']} lượt quét AI trong ngày hôm nay. "
+                "Vui lòng sử dụng tab 'Lọc Theo Thông Số Hồ' hoặc quay lại vào ngày mai."
+            )
+        return True, ''
+
+    if quota['monthly_used'] >= quota['monthly_cap']:
+        return False, (
+            f"Đã đạt trần an toàn {quota['monthly_cap']} ảnh phối cảnh trong tháng để bảo vệ gói $10 credit."
+        )
+    if quota['daily_used'] >= quota['daily_cap']:
+        return False, (
+            f"Hệ thống đã đạt giới hạn {quota['daily_cap']} lượt vẽ phối cảnh trong ngày hôm nay."
+        )
+    if quota['user_used_today'] >= quota['user_daily_cap']:
+        return False, (
+            f"Mỗi tài khoản chỉ được tạo tối đa {quota['user_daily_cap']} ảnh phối cảnh AI mỗi ngày để tiết kiệm credit chung."
+        )
+    return True, ''
+
+
 def get_ai_quota_status(user=None, ip_hash=''):
-    """Đọc số lượt AI đã sử dụng trong ngày/tháng từ bảng AIUsageLog."""
+    """Đọc số lượt AI đã sử dụng (hoặc đang giữ chỗ pending) trong ngày/tháng từ bảng AIUsageLog."""
     now = timezone.localtime()
     today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    active_q = _active_usage_filter(now)
 
     monthly_used = AIUsageLog.objects.filter(
+        active_q,
         action_type='render',
-        status='success',
         created_at__gte=month_start,
     ).count()
     daily_used = AIUsageLog.objects.filter(
+        active_q,
         action_type='render',
-        status='success',
         created_at__gte=today_start,
     ).count()
     scan_daily_used = AIUsageLog.objects.filter(
+        active_q,
         action_type='scan',
-        status='success',
         created_at__gte=today_start,
     ).count()
 
     if user is not None and getattr(user, 'is_authenticated', False):
         user_used_today = AIUsageLog.objects.filter(
+            active_q,
             action_type='render',
-            status='success',
             user=user,
             created_at__gte=today_start,
         ).count()
     elif ip_hash:
         user_used_today = AIUsageLog.objects.filter(
+            active_q,
             action_type='render',
-            status='success',
             ip_hash=ip_hash,
             created_at__gte=today_start,
         ).count()
@@ -188,27 +230,50 @@ def get_ai_quota_status(user=None, ip_hash=''):
 def can_run_ai_action(action_type, user=None, ip_hash=''):
     """Kiểm tra xem yêu cầu hiện tại có còn nằm trong trần ngân sách cho phép hay không."""
     quota = get_ai_quota_status(user=user, ip_hash=ip_hash)
-    if action_type == 'scan':
-        if quota['scan_daily_used'] >= quota['scan_daily_cap']:
-            return False, (
-                f"Hệ thống đã chạm giới hạn {quota['scan_daily_cap']} lượt quét AI trong ngày hôm nay. "
-                "Sensei vui lòng sử dụng tab 'Lọc Theo Thông Số Hồ' hoặc quay lại vào ngày mai."
-            ), quota
-        return True, '', quota
+    allowed, err_msg = _evaluate_ai_quota_limits(action_type, quota)
+    return allowed, err_msg, quota
 
-    if quota['monthly_used'] >= quota['monthly_cap']:
-        return False, (
-            f"Đã đạt trần an toàn {quota['monthly_cap']} ảnh phối cảnh trong tháng để bảo vệ gói $10 credit."
-        ), quota
-    if quota['daily_used'] >= quota['daily_cap']:
-        return False, (
-            f"Hệ thống đã đạt giới hạn {quota['daily_cap']} lượt vẽ phối cảnh trong ngày hôm nay."
-        ), quota
-    if quota['user_used_today'] >= quota['user_daily_cap']:
-        return False, (
-            f"Mỗi tài khoản chỉ được tạo tối đa {quota['user_daily_cap']} ảnh phối cảnh AI mỗi ngày để tiết kiệm credit chung."
-        ), quota
-    return True, '', quota
+
+def reserve_ai_action_slot(action_type, user=None, ip_hash='', model_used=''):
+    """
+    Khóa nguyên tử hạn mức AI bằng cách kiểm tra và tạo bản ghi AIUsageLog(status='pending')
+    bên trong transaction.atomic() trước khi gọi API ngoài, chống race condition đa worker/thread.
+    """
+    auth_user = user if (user is not None and getattr(user, 'is_authenticated', False)) else None
+    lock_ctx = contextlib.nullcontext() if connection.vendor == 'postgresql' else _AI_QUOTA_LOCK
+
+    with lock_ctx:
+        with transaction.atomic():
+            if connection.vendor == 'postgresql':
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT pg_advisory_xact_lock(%s)", [_PG_AI_QUOTA_LOCK_KEY])
+
+            quota = get_ai_quota_status(user=auth_user, ip_hash=ip_hash)
+            allowed, err_msg = _evaluate_ai_quota_limits(action_type, quota)
+            if not allowed:
+                return False, err_msg, quota, None
+
+            usage_log = AIUsageLog.objects.create(
+                action_type=action_type,
+                user=auth_user,
+                ip_hash=ip_hash or 'unknown',
+                model_used=(model_used or '')[:80],
+                status='pending',
+            )
+            return True, '', quota, usage_log
+
+
+def finalize_ai_usage_log(usage_log, status, model_used=None):
+    """Cập nhật kết quả cuối cùng ('success' hoặc 'failed') cho slot AIUsageLog đã giữ chỗ."""
+    if usage_log is None:
+        return None
+    update_fields = ['status']
+    usage_log.status = (status or 'failed')[:20]
+    if model_used is not None:
+        usage_log.model_used = model_used[:80]
+        update_fields.append('model_used')
+    usage_log.save(update_fields=update_fields)
+    return usage_log
 
 
 def log_ai_usage(action_type, user=None, ip_hash='', model_used='', status='success'):

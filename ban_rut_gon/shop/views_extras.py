@@ -28,12 +28,13 @@ from django.views.decorators.http import require_POST
 from .ai_assistant import (
     analyze_desk_with_gemini,
     can_run_ai_action,
+    finalize_ai_usage_log,
     get_active_image_provider_and_model,
     get_ai_quota_status,
     hash_ip,
-    log_ai_usage,
     prepare_desk_image_bytes,
     render_tank_preview,
+    reserve_ai_action_slot,
 )
 from .forms import CustomPasswordChangeForm
 from .models import Article, FAQ, InventoryLot, LayoutPreset, Order, Product
@@ -191,6 +192,15 @@ def ai_desk_scan_view(request):
     desk_width_cm = (request.POST.get('desk_width_cm') or '').strip()[:20]
     user_note = (request.POST.get('user_note') or '').strip()[:300]
 
+    allowed, quota_err, quota, usage_log = reserve_ai_action_slot(
+        'scan',
+        user=request.user,
+        ip_hash=ip_h,
+        model_used=settings.GEMINI_VISION_MODEL,
+    )
+    if not allowed:
+        return JsonResponse({'success': False, 'message': quota_err, 'quota': quota}, status=429)
+
     record_rate_limit_hit('ai_scan', ip, 600)
 
     active_products = list(
@@ -242,12 +252,12 @@ def ai_desk_scan_view(request):
             user_note=user_note,
         )
     except Exception as exc:
-        log_ai_usage('scan', user=request.user, ip_hash=ip_h, model_used=settings.GEMINI_VISION_MODEL, status='failed')
+        finalize_ai_usage_log(usage_log, 'failed', model_used=settings.GEMINI_VISION_MODEL)
         err_low = str(exc).lower()
         if '429' in err_low or 'resource_exhausted' in err_low or 'quota' in err_low or 'rate' in err_low:
             return JsonResponse({
                 'success': False,
-                'message': 'Giới hạn tốc độ/quota miễn phí của Google Gemini API vừa chạm ngưỡng tạm thời (429). Sensei đợi 30–60 giây rồi quét lại nhé.',
+                'message': 'Giới hạn tốc độ/quota miễn phí của Google Gemini API vừa chạm ngưỡng tạm thời (429). Vui lòng đợi 30–60 giây rồi quét lại nhé.',
             }, status=429)
         if '401' in err_low or '403' in err_low or 'api_key' in err_low or 'permission' in err_low:
             return JsonResponse({
@@ -257,14 +267,14 @@ def ai_desk_scan_view(request):
         if 'timeout' in err_low or 'timed out' in err_low:
             return JsonResponse({
                 'success': False,
-                'message': 'Máy chủ Gemini phản hồi chậm quá giới hạn ở tất cả model dự phòng. Sensei thử bấm Quét lại sau vài giây nhé.',
+                'message': 'Máy chủ Gemini phản hồi chậm quá giới hạn ở tất cả model dự phòng. Vui lòng thử bấm Quét lại sau vài giây nhé.',
             }, status=504)
         return JsonResponse({
             'success': False,
-            'message': 'Trợ lý AI hiện đang bận hoặc kết nối tới Gemini gặp sự cố. Sensei vui lòng thử lại sau giây lát hoặc dùng tab Lọc Theo Thông Số Hồ.',
+            'message': 'Trợ lý AI hiện đang bận hoặc kết nối tới Gemini gặp sự cố. Vui lòng thử lại sau giây lát hoặc dùng tab Lọc Theo Thông Số Hồ.',
         }, status=502)
 
-    log_ai_usage('scan', user=request.user, ip_hash=ip_h, model_used=model_used, status='success')
+    finalize_ai_usage_log(usage_log, 'success', model_used=model_used)
 
     hydrated_products = []
     for item in analysis['recommended_plants']:
@@ -304,6 +314,7 @@ def ai_desk_scan_view(request):
     cache.set(
         f"ai_desk_ctx:{context_token}",
         {
+            'user_id': request.user.id if request.user.is_authenticated else None,
             'session_key': request.session.session_key,
             'image_bytes': image_bytes,
             'recommended_tank': analysis['recommended_tank'],
@@ -314,6 +325,11 @@ def ai_desk_scan_view(request):
         },
         timeout=900,
     )
+    if not request.user.is_authenticated:
+        pending_tokens = list(request.session.get('ai_desk_tokens') or [])
+        pending_tokens.append(context_token)
+        request.session['ai_desk_tokens'] = pending_tokens[-5:]
+        request.session.modified = True
 
     updated_quota = get_ai_quota_status(user=request.user, ip_hash=ip_h)
 
@@ -402,7 +418,19 @@ def ai_desk_render_view(request):
         tank_scale = 'balanced'
 
     cached_ctx = cache.get(f"ai_desk_ctx:{context_token}") if context_token else None
-    if not cached_ctx or not request.session.session_key or cached_ctx.get('session_key') != request.session.session_key:
+    ctx_user_id = cached_ctx.get('user_id') if isinstance(cached_ctx, dict) else None
+    ctx_session_key = cached_ctx.get('session_key') if isinstance(cached_ctx, dict) else None
+    is_ctx_owner = bool(
+        isinstance(cached_ctx, dict) and (
+            (ctx_user_id is not None and ctx_user_id == request.user.id)
+            or (
+                ctx_user_id is None
+                and request.session.session_key
+                and ctx_session_key == request.session.session_key
+            )
+        )
+    )
+    if not is_ctx_owner:
         return JsonResponse({
             'success': False,
             'message': 'Phiên ảnh góc bàn đã hết hạn (quá 15 phút) hoặc không hợp lệ. Vui lòng quét lại ảnh bàn.',
@@ -429,6 +457,15 @@ def ai_desk_render_view(request):
             'width_cm': selected_preset.tank_width_cm,
         })
 
+    allowed, quota_err, quota, usage_log = reserve_ai_action_slot(
+        'render',
+        user=request.user,
+        ip_hash=ip_h,
+        model_used=img_model,
+    )
+    if not allowed:
+        return JsonResponse({'success': False, 'message': quota_err, 'quota': quota}, status=429)
+
     record_rate_limit_hit('ai_render', ip, 600)
 
     try:
@@ -444,30 +481,30 @@ def ai_desk_render_view(request):
             tank_scale=tank_scale,
         )
     except Exception as exc:
-        log_ai_usage('render', user=request.user, ip_hash=ip_h, model_used=img_model, status='failed')
+        finalize_ai_usage_log(usage_log, 'failed', model_used=img_model)
         err_lower = str(exc).lower()
         if img_provider == 'agnes':
             if '429' in err_lower or 'limit' in err_lower or 'credit' in err_lower:
                 return JsonResponse({
                     'success': False,
-                    'message': 'Hạn mức miễn phí của Agnes AI vừa chạm giới hạn tạm thời. Sensei vui lòng đợi chút rồi thử lại nhé.',
+                    'message': 'Hạn mức miễn phí của Agnes AI vừa chạm giới hạn tạm thời. Vui lòng đợi chút rồi thử lại nhé.',
                 }, status=503)
             return JsonResponse({
                 'success': False,
-                'message': 'Agnes AI tạm thời chưa ghép được ảnh lúc này. Sensei vui lòng thử lại sau giây lát.',
+                'message': 'Agnes AI tạm thời chưa ghép được ảnh lúc này. Vui lòng thử lại sau giây lát.',
             }, status=502)
 
         if any(k in err_lower for k in ('billing', 'quota', 'permission', '403', '429', 'eligible')):
             return JsonResponse({
                 'success': False,
-                'message': 'Model Nano Banana 2.1 cần liên kết Billing (hoặc Sensei thêm AGNES_API_KEY miễn phí không cần thẻ trên Render).',
+                'message': 'Model Nano Banana 2.1 cần liên kết Billing hoặc AGNES_API_KEY để vẽ phối cảnh.',
             }, status=503)
         return JsonResponse({
             'success': False,
-            'message': 'Không thể tạo ảnh phối cảnh AI lúc này. Sensei vui lòng thử lại sau giây lát.',
+            'message': 'Không thể tạo ảnh phối cảnh AI lúc này. Vui lòng thử lại sau giây lát.',
         }, status=502)
 
-    log_ai_usage('render', user=request.user, ip_hash=ip_h, model_used=actual_model, status='success')
+    finalize_ai_usage_log(usage_log, 'success', model_used=actual_model)
     updated_quota = get_ai_quota_status(user=request.user, ip_hash=ip_h)
     used_preset_payload = (
         _serialize_layout_preset(selected_preset, is_recommended=(selected_preset.id == cached_ctx.get('default_preset_id')))

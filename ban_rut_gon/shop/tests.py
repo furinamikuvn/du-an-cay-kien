@@ -864,6 +864,247 @@ class AquaPlantShopTest(TestCase):
             self.assertEqual(out_mime, 'image/png')
             self.assertEqual(out_b64, fake_b64)
 
+    def test_18_p0_cache_xff_email_hijack_and_seed_security(self):
+        """TC18 (P0): INF-01 DatabaseCache, SEC-01 chống giả mạo XFF, SEC-02 Email Pre-Hijack IDOR, SEC-03 chặn seed mật khẩu yếu"""
+        import os
+        from unittest.mock import patch
+        from django.conf import settings
+        from django.core.cache.backends.db import BaseDatabaseCache
+        from django.core.cache import caches
+        from django.test import RequestFactory, override_settings
+        from shop.security import check_rate_limit, get_client_ip, record_rate_limit_hit
+        import seed_data
+
+        # 1. INF-01: Cache mặc định dùng DatabaseCache (không còn LocMemCache cô lập theo worker)
+        self.assertIsInstance(caches['default'], BaseDatabaseCache)
+        self.assertNotIn('LocMemCache', settings.CACHES['default']['BACKEND'])
+        cache.set('inf01_bin_test', {'blob': b'\x89PNG\r\n\x1a\n', 'n': 1}, timeout=60)
+        self.assertEqual(cache.get('inf01_bin_test')['blob'], b'\x89PNG\r\n\x1a\n')
+        for _ in range(3):
+            record_rate_limit_hit('inf01_rl', '203.0.113.10', 600)
+        self.assertTrue(check_rate_limit('inf01_rl', '203.0.113.10', limit=3))
+
+        # 2. SEC-01: Chống giả mạo X-Forwarded-For & CF-Connecting-IP
+        rf = RequestFactory()
+        req_xff = rf.get('/', REMOTE_ADDR='127.0.0.1', HTTP_X_FORWARDED_FOR='1.2.3.4, 203.0.113.50')
+        self.assertEqual(get_client_ip(req_xff), '203.0.113.50')
+
+        req_xff_hop = rf.get('/', REMOTE_ADDR='10.0.0.5', HTTP_X_FORWARDED_FOR='1.2.3.4, 203.0.113.50, 100.64.1.2')
+        self.assertEqual(get_client_ip(req_xff_hop), '203.0.113.50')
+
+        req_direct = rf.get('/', REMOTE_ADDR='198.51.100.77', HTTP_X_FORWARDED_FOR='1.2.3.4')
+        self.assertEqual(get_client_ip(req_direct), '198.51.100.77')
+
+        with override_settings(TRUST_CF_CONNECTING_IP=False):
+            req_cf_spoof = rf.get('/', REMOTE_ADDR='127.0.0.1', HTTP_CF_CONNECTING_IP='9.9.9.9', HTTP_X_FORWARDED_FOR='198.51.100.11')
+            self.assertEqual(get_client_ip(req_cf_spoof), '198.51.100.11')
+
+        with override_settings(TRUST_CF_CONNECTING_IP=True):
+            req_cf_ok = rf.get('/', REMOTE_ADDR='127.0.0.1', HTTP_CF_CONNECTING_IP='198.51.100.88', HTTP_X_FORWARDED_FOR='1.2.3.4')
+            self.assertEqual(get_client_ip(req_cf_ok), '198.51.100.88')
+
+        # Giả mạo IP bên trái XFF liên tục vẫn bị chặn 429 tại /dang-nhap/
+        User.objects.create_user(username='xff_victim', password='StrongPassword123!')
+        for idx in range(5):
+            r = self.client.post(
+                '/dang-nhap/',
+                {'username': 'xff_victim', 'password': 'WrongPassword!'},
+                REMOTE_ADDR='127.0.0.1',
+                HTTP_X_FORWARDED_FOR=f'9.9.9.{idx + 1}, 203.0.113.99',
+            )
+            self.assertEqual(r.status_code, 200)
+        blocked_xff = self.client.post(
+            '/dang-nhap/',
+            {'username': 'xff_victim', 'password': 'WrongPassword!'},
+            REMOTE_ADDR='127.0.0.1',
+            HTTP_X_FORWARDED_FOR='9.9.9.200, 203.0.113.99',
+        )
+        self.assertEqual(blocked_xff.status_code, 429)
+
+        # 3. SEC-02: Email duy nhất (case-insensitive) & chặn Email Pre-Hijack IDOR khi tra cứu đơn
+        User.objects.create_user(username='existing_email_u', email='UniqueOwner@Example.com', password='Password123!')
+        dup_email_resp = self.client.post('/dang-ky/', {
+            'username': 'another_user_99',
+            'first_name': 'Tester',
+            'email': 'uniqueowner@example.com',
+            'password': 'StrongPassword123!',
+            'confirm_password': 'StrongPassword123!',
+        })
+        self.assertEqual(dup_email_resp.status_code, 200)
+        self.assertFalse(User.objects.filter(username='another_user_99').exists())
+
+        guest_order = Order.objects.create(
+            order_code='HD-20261121-PREHIJAK',
+            user=None,
+            customer_name='Nạn Nhân Đơn Khách',
+            phone='0912999888',
+            email='guest.victim@example.com',
+            shipping_address='99 Lê Lợi, Quận 1, TP.HCM',
+            total_amount=Decimal('65000'),
+        )
+        # Kẻ xấu đăng ký bằng email của đơn khách (chưa xác thực email)
+        prehijack_resp = self.client.post('/dang-ky/', {
+            'username': 'prehijack_attacker',
+            'first_name': 'Attacker',
+            'email': 'guest.victim@example.com',
+            'password': 'StrongPassword123!',
+            'confirm_password': 'StrongPassword123!',
+        }, follow=True)
+        self.assertEqual(prehijack_resp.status_code, 200)
+        track_unverified = self.client.get('/tra-cuu-don-hang/?keyword=HD-20261121-PREHIJAK')
+        self.assertEqual(track_unverified.status_code, 200)
+        self.assertNotContains(track_unverified, '0912999888')
+        self.assertNotContains(track_unverified, '99 Lê Lợi')
+        self.assertContains(track_unverified, guest_order.masked_phone)
+
+        # Chỉ khi email_verified=True (và đơn chưa gắn user khác) mới mở khóa chi tiết
+        attacker_profile = User.objects.get(username='prehijack_attacker').profile
+        attacker_profile.email_verified = True
+        attacker_profile.save(update_fields=['email_verified'])
+        track_verified = self.client.get('/tra-cuu-don-hang/?keyword=HD-20261121-PREHIJAK')
+        self.assertContains(track_verified, '0912999888')
+        self.assertContains(track_verified, '99 Lê Lợi')
+
+        # 4. SEC-03: Chặn seed tài khoản admin/nhanvien/khachhang với mật khẩu yếu trên Render
+        with patch.dict(os.environ, {'RENDER': 'true'}, clear=False):
+            os.environ.pop('ADMIN_PASSWORD', None)
+            os.environ.pop('STAFF_PASSWORD', None)
+            os.environ.pop('DEMO_CUSTOMER_PASSWORD', None)
+            adm, stf, cust = seed_data.sync_seed_users(is_render=True)
+            self.assertIsNone(adm)
+            self.assertIsNone(stf)
+            self.assertIsNone(cust)
+            self.assertFalse(User.objects.filter(username='admin').exists())
+            self.assertFalse(User.objects.filter(username='nhanvien').exists())
+
+        with patch.dict(os.environ, {
+            'RENDER': 'true',
+            'ADMIN_PASSWORD': 'admin123',
+            'STAFF_PASSWORD': 'StrongStaffPassword!2026',
+        }, clear=False):
+            adm2, stf2, _ = seed_data.sync_seed_users(is_render=True)
+            self.assertIsNone(adm2)
+            self.assertIsNotNone(stf2)
+            self.assertTrue(stf2.check_password('StrongStaffPassword!2026'))
+
+    def test_19_p0_ai_quota_atomic_reservation_and_token_across_login(self):
+        """TC19 (P0): INF-03 khóa nguyên tử slot pending + nhả slot khi fail & BIZ-04 giữ token quét AI qua login()"""
+        import base64
+        import json
+        from datetime import timedelta
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from django.test import override_settings
+        from django.utils import timezone
+        from PIL import Image
+        from shop.ai_assistant import finalize_ai_usage_log, reserve_ai_action_slot
+        from shop.models import AIUsageLog
+
+        def make_jpeg_file(name='desk.jpg'):
+            buf = io.BytesIO()
+            Image.new('RGB', (160, 120), color=(95, 145, 115)).save(buf, format='JPEG')
+            return SimpleUploadedFile(name, buf.getvalue(), content_type='image/jpeg')
+
+        mock_scan_payload = {
+            'space_summary': 'Bàn gỗ gọn gàng.',
+            'lighting_assessment': 'Ánh sáng tán xạ nhẹ.',
+            'detected_style': 'Tối giản',
+            'estimated_free_width_cm': 'Khoảng 40 cm',
+            'recommended_tank': {
+                'size_cm': '35x22x26 cm',
+                'shape': 'Rimless',
+                'volume_liters': '20 Lít',
+                'style_name': 'Nature Ráy Nana',
+                'placement_reason': 'Vừa khít góc phải mặt bàn.',
+            },
+            'placement_box': [280, 520, 760, 910],
+            'placement_tips': ['Lót thảm cao su'],
+            'suggested_co2': 'no',
+            'suggested_light': 'low',
+            'recommended_plants': [
+                {'product_id': self.product.id, 'layer_role': 'Trung cảnh', 'reason': 'Dễ sống'},
+            ],
+            'recommended_preset_id': None,
+            'render_scene_prompt': '35cm rimless planted tank',
+        }
+
+        # 1. BIZ-04: Khách vãng lai quét bàn -> nhận token -> 401 khi chưa đăng nhập -> đăng nhập qua /dang-nhap/ (xoay session_key) -> Render thành công với đúng token cũ!
+        guest_user = User.objects.create_user(username='biz04_user', email='biz04@example.com', password='StrongPassword123!')
+        with override_settings(GEMINI_API_KEY='gk'), patch('shop.ai_assistant.genai.Client') as mock_genai:
+            mock_genai.return_value.interactions.create.return_value = SimpleNamespace(
+                output_text=json.dumps(mock_scan_payload, ensure_ascii=False)
+            )
+            scan_resp = self.client.post('/tro-ly-chon-cay/ai-scan/', {'desk_image': make_jpeg_file()})
+            self.assertEqual(scan_resp.status_code, 200)
+            anon_token = scan_resp.json()['render_context_token']
+            self.assertTrue(anon_token)
+
+        old_session_key = self.client.session.session_key
+        anon_render_resp = self.client.post('/tro-ly-chon-cay/ai-render-preview/', {'render_context_token': anon_token})
+        self.assertEqual(anon_render_resp.status_code, 401)
+        self.assertTrue(anon_render_resp.json()['login_required'])
+
+        # Đăng nhập thực tế qua /dang-nhap/ (kích hoạt login() xoay session_key)
+        login_resp = self.client.post('/dang-nhap/', {
+            'username': 'biz04_user',
+            'password': 'StrongPassword123!',
+        })
+        self.assertEqual(login_resp.status_code, 302)
+        self.assertNotEqual(self.client.session.session_key, old_session_key)
+
+        fake_b64 = base64.b64encode(make_jpeg_file('out.jpg').read()).decode('utf-8')
+        with override_settings(
+            GEMINI_API_KEY='gk',
+            AGNES_API_KEY='',
+            AI_IMAGE_PROVIDER='auto',
+            AI_RENDER_PER_USER_DAILY=2,
+        ), patch('shop.ai_assistant.genai.Client') as mock_genai:
+            mock_genai.return_value.interactions.create.return_value = SimpleNamespace(
+                output_image=SimpleNamespace(data=fake_b64, mime_type='image/jpeg')
+            )
+            render_after_login = self.client.post(
+                '/tro-ly-chon-cay/ai-render-preview/',
+                {'render_context_token': anon_token},
+            )
+            self.assertEqual(render_after_login.status_code, 200)
+            self.assertTrue(render_after_login.json()['image_data_url'].startswith('data:image/jpeg;base64,'))
+
+        # Tài khoản khác không thể dùng lại token đã gắn với biz04_user
+        other_client = Client()
+        other_user = User.objects.create_user(username='biz04_other', email='other04@example.com', password='StrongPassword123!')
+        other_client.force_login(other_user)
+        with override_settings(GEMINI_API_KEY='gk', AGNES_API_KEY=''):
+            hijack_render = other_client.post(
+                '/tro-ly-chon-cay/ai-render-preview/',
+                {'render_context_token': anon_token},
+            )
+            self.assertEqual(hijack_render.status_code, 400)
+
+        # 2. INF-03: Giữ chỗ nguyên tử (pending) chặn vượt trần trước khi API xong, và nhả slot khi API fail
+        quota_user = User.objects.create_user(username='inf03_user', email='inf03@example.com', password='StrongPassword123!')
+        with override_settings(AI_RENDER_PER_USER_DAILY=1, AI_RENDER_DAILY_CAP=10, AI_RENDER_MONTHLY_CAP=50):
+            ok1, _, _, slot1 = reserve_ai_action_slot('render', user=quota_user, ip_hash='h1', model_used='m1')
+            self.assertTrue(ok1)
+            self.assertEqual(slot1.status, 'pending')
+
+            # Yêu cầu thứ 2 khi slot1 còn đang pending phải bị chặn ngay!
+            ok2, _, _, slot2 = reserve_ai_action_slot('render', user=quota_user, ip_hash='h1', model_used='m1')
+            self.assertFalse(ok2)
+            self.assertIsNone(slot2)
+
+            # Nếu API ngoài lỗi -> đánh dấu failed -> slot được giải phóng cho lần thử lại
+            finalize_ai_usage_log(slot1, 'failed')
+            ok3, _, _, slot3 = reserve_ai_action_slot('render', user=quota_user, ip_hash='h1', model_used='m1')
+            self.assertTrue(ok3)
+            self.assertIsNotNone(slot3)
+
+            # Pending quá 5 phút (worker crash) không khóa vĩnh viễn user
+            AIUsageLog.objects.filter(pk=slot3.pk).update(created_at=timezone.now() - timedelta(minutes=10))
+            ok4, _, _, slot4 = reserve_ai_action_slot('render', user=quota_user, ip_hash='h1', model_used='m1')
+            self.assertTrue(ok4)
+            self.assertIsNotNone(slot4)
+
+
 
 
 

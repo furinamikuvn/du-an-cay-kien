@@ -52,6 +52,7 @@ class UserProfile(models.Model):
     )
     phone = models.CharField(max_length=20, blank=True, default="", verbose_name="Số điện thoại liên hệ")
     address = models.TextField(blank=True, default="", verbose_name="Địa chỉ nhận hàng mặc định")
+    email_verified = models.BooleanField(default=False, verbose_name="Email đã xác thực")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày đăng ký")
 
     class Meta:

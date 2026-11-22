@@ -61,13 +61,36 @@ if RENDER_EXTERNAL_HOSTNAME:
 # Nhận diện giao thức HTTPS từ Render Reverse Proxy
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# Thiết lập Cache cục bộ phục vụ Rate Limiting
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'aquaplant-security-cache',
+# Cấu hình proxy tin cậy cho trích xuất IP client (chống giả mạo X-Forwarded-For)
+TRUST_CF_CONNECTING_IP = os.environ.get(
+    'TRUST_CF_CONNECTING_IP',
+    'True' if IS_RENDER else 'False'
+).lower() in ('true', '1', 'yes')
+TRUSTED_PROXY_IPS = [
+    ip.strip() for ip in os.environ.get('TRUSTED_PROXY_IPS', '').split(',') if ip.strip()
+]
+NUM_TRUSTED_PROXIES = max(0, int(os.environ.get('NUM_TRUSTED_PROXIES', '0')))
+
+# Thiết lập Cache dùng chung cho đa worker Gunicorn (Redis nếu có REDIS_URL, ngược lại DatabaseCache)
+REDIS_URL = os.environ.get('REDIS_URL', '').strip()
+if REDIS_URL:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.redis.RedisCache',
+            'LOCATION': REDIS_URL,
+        }
     }
-}
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+            'LOCATION': 'aquaplant_cache_table',
+            'OPTIONS': {
+                'MAX_ENTRIES': 2000,
+                'CULL_FREQUENCY': 4,
+            },
+        }
+    }
 
 # Thiết lập Email gửi Token đặt lại mật khẩu (Console ở local/fallback, SMTP khi cấu hình biến môi trường)
 if os.environ.get('EMAIL_HOST'):

@@ -537,11 +537,29 @@
     let selectedFile = null;
     let previewDataUrl = '';
     let activeRenderContextToken = '';
+    let latestScanData = null;
     let activePresetId = null;
     let activePresetData = null;
     let activePlacementPos = 'auto';
     let activeTankScale = 'balanced';
     let latestRenderedDataUrl = '';
+    const PENDING_SCAN_STORAGE_KEY = 'aquaplant_pending_ai_scan';
+    const IS_USER_AUTHENTICATED = {% if user.is_authenticated %}true{% else %}false{% endif %};
+
+    function savePendingScan() {
+        if (!latestScanData || !activeRenderContextToken) return;
+        try {
+            sessionStorage.setItem(PENDING_SCAN_STORAGE_KEY, JSON.stringify({
+                savedAt: Date.now(),
+                scanData: latestScanData,
+                previewDataUrl: previewDataUrl || '',
+            }));
+        } catch (_) {}
+    }
+
+    function clearPendingScan() {
+        try { sessionStorage.removeItem(PENDING_SCAN_STORAGE_KEY); } catch (_) {}
+    }
 
     function bindPillGroup(selector, dataKey, onChange) {
         const btns = Array.from(document.querySelectorAll(selector));
@@ -912,7 +930,9 @@
     function renderScanResult(data) {
         const a = data.analysis || {};
         const tank = a.recommended_tank || {};
+        latestScanData = data;
         activeRenderContextToken = data.render_context_token || '';
+        savePendingScan();
 
         document.getElementById('ai-style-badge').textContent = a.detected_style || 'Không gian bàn';
         document.getElementById('ai-width-est-badge').textContent = a.estimated_free_width_cm || '';
@@ -1078,7 +1098,18 @@
                 });
                 const data = await resp.json();
                 if (!resp.ok || !data.success) {
-                    renderErrBox.textContent = data.message || 'Không thể vẽ phối cảnh lúc này.';
+                    renderErrBox.textContent = '';
+                    const msgSpan = document.createElement('span');
+                    msgSpan.textContent = data.message || 'Không thể vẽ phối cảnh lúc này.';
+                    renderErrBox.appendChild(msgSpan);
+                    if (resp.status === 401 && data.login_required && data.login_url) {
+                        savePendingScan();
+                        const loginLink = document.createElement('a');
+                        loginLink.href = data.login_url;
+                        loginLink.className = 'inline-block ml-2 underline font-bold text-[#2F5C3E] hover:text-slate-900';
+                        loginLink.textContent = 'Đăng nhập ngay →';
+                        renderErrBox.appendChild(loginLink);
+                    }
                     renderErrBox.classList.remove('hidden');
                     updateQuotaBadges(data.quota);
                     return;
@@ -1146,6 +1177,26 @@
                 renderBtn.disabled = false;
             }
         });
+    }
+
+    if (IS_USER_AUTHENTICATED) {
+        try {
+            const rawSaved = sessionStorage.getItem(PENDING_SCAN_STORAGE_KEY);
+            if (rawSaved) {
+                const parsedSaved = JSON.parse(rawSaved);
+                if (
+                    parsedSaved
+                    && parsedSaved.scanData
+                    && parsedSaved.scanData.render_context_token
+                    && parsedSaved.savedAt
+                    && (Date.now() - parsedSaved.savedAt) < 15 * 60 * 1000
+                ) {
+                    previewDataUrl = parsedSaved.previewDataUrl || '';
+                    renderScanResult(parsedSaved.scanData);
+                }
+                clearPendingScan();
+            }
+        } catch (_) {}
     }
 })();
 </script>

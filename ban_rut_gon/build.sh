@@ -9,8 +9,9 @@ pip install -r requirements.txt
 echo "=== [2/4] Thu thap tai nguyen tinh (Collectstatic) ==="
 python manage.py collectstatic --no-input
 
-echo "=== [3/4] Dong bo cau truc Database (Migrate) ==="
+echo "=== [3/4] Dong bo cau truc Database (Migrate & Cache Table) ==="
 python manage.py migrate --no-input
+python manage.py createcachetable
 
 echo "=== [4/4] Khoi tao du lieu mau (Seed Data) ==="
 python seed_data.py

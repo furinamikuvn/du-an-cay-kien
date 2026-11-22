@@ -28,8 +28,8 @@ from .models import (
 # ------------------------------------------------------------------------------
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ('user', 'role', 'phone', 'created_at')
-    list_filter = ('role',)
+    list_display = ('user', 'role', 'email_verified', 'phone', 'created_at')
+    list_filter = ('role', 'email_verified')
     search_fields = ('user__username', 'user__email', 'phone')
 
 

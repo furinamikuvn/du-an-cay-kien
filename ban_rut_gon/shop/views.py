@@ -166,7 +166,7 @@ def get_valid_coupon_from_session(request, subtotal):
 
     try:
         coupon = Coupon.objects.get(id=coupon_id, is_active=True)
-        today = timezone.now().date()
+        today = timezone.localdate()
         if coupon.valid_from and coupon.valid_from > today:
             return None, Decimal('0')
         if coupon.valid_to and coupon.valid_to < today:
@@ -523,7 +523,7 @@ def apply_coupon_view(request):
             return JsonResponse({'success': False, 'message': err_msg}, status=400)
         return redirect(redirect_target)
 
-    today = timezone.now().date()
+    today = timezone.localdate()
     if coupon.valid_from and coupon.valid_from > today:
         err_msg = f"Mã ưu đãi '{coupon.code}' chưa đến ngày có hiệu lực sử dụng."
         messages.error(request, err_msg)
@@ -786,9 +786,21 @@ def order_tracking_view(request):
 
         if request.user.is_authenticated:
             if is_order_code:
+                has_verified_email = bool(
+                    request.user.email
+                    and UserProfile.objects.filter(user=request.user, email_verified=True).exists()
+                )
+                user_email_norm = (request.user.email or '').strip().lower()
                 orders = Order.objects.filter(order_code__iexact=keyword).prefetch_related('items__product')
                 for o in orders:
-                    o.is_owner = (o.user == request.user or (request.user.email and o.email == request.user.email))
+                    o.is_owner = (
+                        o.user_id == request.user.id
+                        or (
+                            o.user_id is None
+                            and has_verified_email
+                            and (o.email or '').strip().lower() == user_email_norm
+                        )
+                    )
                     o.status_step = _get_status_step(o.status)
                     found_orders.append(o)
                 if not orders.exists():

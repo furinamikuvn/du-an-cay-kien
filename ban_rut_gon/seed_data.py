@@ -33,79 +33,110 @@ from shop.models import (
 )
 
 
+WEAK_SEED_PASSWORDS = {'admin123', 'nhanvien123', '123456', '12345678', 'password', 'admin', 'staff'}
+
+
+def _is_weak_seed_password(raw_password):
+    pwd = (raw_password or '').strip()
+    return len(pwd) < 8 or pwd.lower() in WEAK_SEED_PASSWORDS
+
+
+def sync_seed_users(is_render=None):
+    """Đồng bộ tài khoản mẫu an toàn: chặn tạo tài khoản với mật khẩu mặc định yếu khi chạy trên Render."""
+    if is_render is None:
+        is_render = 'RENDER' in os.environ
+
+    env_admin_password = (os.environ.get('ADMIN_PASSWORD') or '').strip()
+    env_staff_password = (os.environ.get('STAFF_PASSWORD') or '').strip()
+    env_customer_password = (os.environ.get('DEMO_CUSTOMER_PASSWORD') or '').strip()
+
+    admin_user = None
+    if is_render and _is_weak_seed_password(env_admin_password):
+        print("⛔ [SECURITY] Chặn tạo/đặt mật khẩu mặc định cho 'admin' trên Render vì thiếu ADMIN_PASSWORD đủ mạnh (>= 8 ký tự).")
+    else:
+        admin_password = env_admin_password or 'admin123'
+        admin_user, admin_created = User.objects.get_or_create(
+            username='admin',
+            defaults={
+                'first_name': 'Quản Trị Viên',
+                'email': 'admin@aquaplant.vn',
+                'is_staff': True,
+                'is_superuser': True,
+            },
+        )
+        if admin_created or env_admin_password:
+            admin_user.set_password(admin_password)
+            admin_user.is_staff = True
+            admin_user.is_superuser = True
+            admin_user.save()
+        else:
+            changed = False
+            if not admin_user.is_staff:
+                admin_user.is_staff = True
+                changed = True
+            if not admin_user.is_superuser:
+                admin_user.is_superuser = True
+                changed = True
+            if changed:
+                admin_user.save(update_fields=['is_staff', 'is_superuser'])
+        UserProfile.objects.get_or_create(
+            user=admin_user,
+            defaults={'role': 'admin', 'phone': '1900000', 'address': '227 Nguyễn Văn Cừ, Quận 5, TP.HCM'},
+        )
+        print("✓ Đã đồng bộ tài khoản Admin (admin)")
+
+    staff_user = None
+    if is_render and _is_weak_seed_password(env_staff_password):
+        print("⛔ [SECURITY] Chặn tạo/đặt mật khẩu mặc định cho 'nhanvien' trên Render vì thiếu STAFF_PASSWORD đủ mạnh (>= 8 ký tự).")
+    else:
+        staff_password = env_staff_password or 'nhanvien123'
+        staff_user, staff_created = User.objects.get_or_create(
+            username='nhanvien',
+            defaults={
+                'first_name': 'Trần Nhân Viên',
+                'email': 'nhanvien@aquaplant.vn',
+                'is_staff': True,
+            },
+        )
+        if staff_created or env_staff_password:
+            staff_user.set_password(staff_password)
+            staff_user.is_staff = True
+            staff_user.save()
+        UserProfile.objects.get_or_create(
+            user=staff_user,
+            defaults={'role': 'staff', 'phone': '0901234567', 'address': 'Kho Vận AquaPlant - Thủ Đức'},
+        )
+        print("✓ Đã đồng bộ tài khoản Nhân viên (nhanvien)")
+
+    customer_user = None
+    if is_render and _is_weak_seed_password(env_customer_password):
+        print("ℹ [SECURITY] Bỏ qua tạo tài khoản demo 'khachhang' trên Render (không cấu hình DEMO_CUSTOMER_PASSWORD mạnh).")
+    else:
+        customer_password = env_customer_password or '123456'
+        customer_user, cust_created = User.objects.get_or_create(
+            username='khachhang',
+            defaults={
+                'first_name': 'Nguyễn Văn Khách',
+                'email': 'khachhang@gmail.com',
+            },
+        )
+        if cust_created or env_customer_password:
+            customer_user.set_password(customer_password)
+            customer_user.save()
+        UserProfile.objects.get_or_create(
+            user=customer_user,
+            defaults={'role': 'customer', 'phone': '0987654321', 'address': 'Phường Linh Trung, TP. Thủ Đức, TP.HCM'},
+        )
+        print("✓ Đã đồng bộ tài khoản Khách hàng (khachhang)")
+
+    return admin_user, staff_user, customer_user
+
+
 def run_seed():
     print("--- ĐANG KHỞI TẠO DỮ LIỆU MẪU HỆ THỐNG AQUAPLANT SHOP ---")
 
     # 1. Tạo tài khoản người dùng & UserProfile (ưu tiên biến môi trường bảo mật trên Production)
-    env_admin_password = os.environ.get('ADMIN_PASSWORD')
-    env_staff_password = os.environ.get('STAFF_PASSWORD')
-    if 'RENDER' in os.environ and (not env_admin_password or not env_staff_password):
-        print("⚠ CẢNH BÁO BẢO MẬT: Chưa thiết lập ADMIN_PASSWORD/STAFF_PASSWORD trong Render Environment!")
-
-    admin_password = env_admin_password or 'admin123'
-    admin_user, admin_created = User.objects.get_or_create(
-        username='admin',
-        defaults={
-            'first_name': 'Quản Trị Viên',
-            'email': 'admin@aquaplant.vn',
-            'is_staff': True,
-            'is_superuser': True,
-        },
-    )
-    if admin_created or env_admin_password:
-        admin_user.set_password(admin_password)
-        admin_user.is_staff = True
-        admin_user.is_superuser = True
-        admin_user.save()
-    else:
-        changed = False
-        if not admin_user.is_staff:
-            admin_user.is_staff = True
-            changed = True
-        if not admin_user.is_superuser:
-            admin_user.is_superuser = True
-            changed = True
-        if changed:
-            admin_user.save(update_fields=['is_staff', 'is_superuser'])
-    UserProfile.objects.get_or_create(
-        user=admin_user,
-        defaults={'role': 'admin', 'phone': '1900000', 'address': '227 Nguyễn Văn Cừ, Quận 5, TP.HCM'},
-    )
-    print("✓ Đã đồng bộ tài khoản Admin (admin)")
-
-    staff_user, staff_created = User.objects.get_or_create(
-        username='nhanvien',
-        defaults={
-            'first_name': 'Trần Nhân Viên',
-            'email': 'nhanvien@aquaplant.vn',
-            'is_staff': True,
-        },
-    )
-    if staff_created or env_staff_password:
-        staff_user.set_password(env_staff_password or 'nhanvien123')
-        staff_user.is_staff = True
-        staff_user.save()
-    UserProfile.objects.get_or_create(
-        user=staff_user,
-        defaults={'role': 'staff', 'phone': '0901234567', 'address': 'Kho Vận AquaPlant - Thủ Đức'},
-    )
-    print("✓ Đã đồng bộ tài khoản Nhân viên (nhanvien)")
-
-    customer_user, cust_created = User.objects.get_or_create(
-        username='khachhang',
-        defaults={
-            'first_name': 'Nguyễn Văn Khách',
-            'email': 'khachhang@gmail.com',
-        },
-    )
-    if cust_created:
-        customer_user.set_password(os.environ.get('DEMO_CUSTOMER_PASSWORD', '123456'))
-        customer_user.save()
-    UserProfile.objects.get_or_create(
-        user=customer_user,
-        defaults={'role': 'customer', 'phone': '0987654321', 'address': 'Phường Linh Trung, TP. Thủ Đức, TP.HCM'},
-    )
-    print("✓ Đã đồng bộ tài khoản Khách hàng (khachhang)")
+    _, _, customer_user = sync_seed_users()
 
     # 2. Tạo danh mục sản phẩm
     categories_data = [
@@ -690,7 +721,7 @@ def run_seed():
     )
 
     order_code = "HD-20261108-8888"
-    if not Order.objects.filter(order_code=order_code).exists():
+    if customer_user is not None and not Order.objects.filter(order_code=order_code).exists():
         demo_order = Order.objects.create(
             order_code=order_code,
             user=customer_user,
