@@ -2,6 +2,7 @@
 {% load static %}
 
 {% block title %}{{ article.title }} - Cẩm Nang Thủy Sinh{% endblock %}
+{% block meta_description %}{{ article.summary|truncatechars:155 }}{% endblock %}
 
 {% block content %}
 <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
@@ -9,14 +10,14 @@
         <div class="space-y-2 pb-4 border-b border-slate-200">
             <span class="inline-block bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] text-[10px] font-bold px-2 py-0.5 uppercase">{{ article.category }}</span>
             <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">{{ article.title }}</h1>
-            <p class="text-[11px] text-slate-400">Ngày đăng: {{ article.published_at|date:"d/m/Y H:i" }} · Ban Biên Tập AquaPlant</p>
+            <p class="text-[11px] text-slate-600">Ngày đăng: {{ article.published_at|date:"d/m/Y H:i" }} · Ban Biên Tập AquaPlant</p>
         </div>
 
-        <div class="p-4 bg-[#EEF5F0] border-l-4 border-[#7AA88B] text-xs text-slate-700 font-medium">
+        <div class="p-4 bg-[#EEF5F0] border-l-4 border-[#3D6B4E] text-xs text-slate-700 font-medium">
             {{ article.summary }}
         </div>
 
-        <img src="{% static article.thumbnail %}" alt="{{ article.title }}" class="w-full max-h-80 object-cover border border-slate-200">
+        <img src="{% static article.thumbnail %}" alt="{{ article.title }}" width="800" height="450" class="w-full max-h-80 object-cover border border-slate-200">
 
         <div class="text-xs sm:text-sm text-slate-700 leading-relaxed whitespace-pre-line">
             {{ article.content }}
@@ -26,19 +27,19 @@
     <aside class="lg:col-span-4 space-y-4">
         {% if related_articles %}
         <div class="bg-white border border-slate-200 p-4 space-y-3">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-900 pb-2 border-b border-slate-100">Bài Viết Liên Quan</h3>
+            <h2 class="text-xs font-bold uppercase tracking-wider text-slate-900 pb-2 border-b border-slate-100">Bài Viết Liên Quan</h2>
             {% for ra in related_articles %}
             <a href="{% url 'article_detail' slug=ra.slug %}" class="flex items-start gap-3 group">
-                <img src="{% static ra.thumbnail %}" alt="{{ ra.title }}" class="w-16 h-12 object-cover border border-slate-200 flex-shrink-0">
+                <img src="{% static ra.thumbnail %}" alt="{{ ra.title }}" width="64" height="48" loading="lazy" class="w-16 h-12 object-cover border border-slate-200 flex-shrink-0">
                 <div class="text-xs">
                     <span class="font-bold text-slate-800 group-hover:text-[#2F5C3E] line-clamp-2">{{ ra.title }}</span>
-                    <span class="text-[10px] text-slate-400 block mt-0.5">{{ ra.published_at|date:"d/m/Y" }}</span>
+                    <span class="text-[10px] text-slate-600 block mt-0.5">{{ ra.published_at|date:"d/m/Y" }}</span>
                 </div>
             </a>
             {% endfor %}
         </div>
         {% endif %}
-        <a href="{% url 'article_list' %}" class="block w-full text-center py-2.5 bg-[#EEF5F0] hover:bg-[#7AA88B] text-[#2F5C3E] hover:text-white border border-[#C5DEC9] text-xs font-bold transition">
+        <a href="{% url 'article_list' %}" class="block w-full text-center py-2.5 bg-[#EEF5F0] hover:bg-[#3D6B4E] text-[#2F5C3E] hover:text-white border border-[#C5DEC9] text-xs font-bold transition">
             ← Quay lại Cẩm Nang Thủy Sinh
         </a>
     </aside>

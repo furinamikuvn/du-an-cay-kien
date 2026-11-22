@@ -1,20 +1,21 @@
 {% extends 'shop/base.html' %}
 
 {% block title %}Đặt Hàng Thành Công - AquaPlant{% endblock %}
+{% block meta_description %}Xác nhận đặt hàng thành công mã vận đơn {{ order.order_code }} tại cửa hàng cây thủy sinh AquaPlant.{% endblock %}
 
 {% block content %}
 <div class="max-w-2xl mx-auto bg-white border border-slate-200 p-8 sm:p-10 text-center space-y-6">
 
     <!-- Icon Thành Công -->
-    <div class="w-14 h-14 bg-[#EEF5F0] text-[#7AA88B] border border-[#C5DEC9] flex items-center justify-center mx-auto text-2xl">
-        <i class="fa-solid fa-check"></i>
+    <div class="w-14 h-14 bg-[#EEF5F0] text-[#3D6B4E] border border-[#C5DEC9] flex items-center justify-center mx-auto text-2xl">
+        <i class="fa-solid fa-check" aria-hidden="true"></i>
     </div>
 
     <div>
         <h1 class="text-xl sm:text-2xl font-bold text-slate-900">
             Đặt Hàng Thành Công!
         </h1>
-        <p class="text-xs text-slate-500 mt-1">
+        <p class="text-xs text-slate-600 mt-1">
             Cảm ơn bạn đã tin tưởng mua cây cảnh tại AquaPlant. Đơn hàng của bạn đã được ghi nhận và trừ kho FIFO tự động.
         </p>
     </div>
@@ -60,7 +61,7 @@
         <a href="{% url 'order_tracking' %}?keyword={{ order.order_code }}" class="w-full sm:w-auto bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs px-6 py-2.5 transition">
             <i class="fa-solid fa-magnifying-glass mr-1"></i> Tra Cứu Đơn Này
         </a>
-        <a href="{% url 'home' %}" class="w-full sm:w-auto bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs px-6 py-2.5 transition uppercase tracking-wide">
+        <a href="{% url 'home' %}" class="w-full sm:w-auto bg-[#3D6B4E] hover:bg-[#2F5C3E] text-white font-bold text-xs px-6 py-2.5 transition uppercase tracking-wide">
             Tiếp Tục Mua Sắm
         </a>
     </div>

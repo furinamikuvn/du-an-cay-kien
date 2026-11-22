@@ -1,25 +1,24 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Phiếu Đóng Gói & Giao Hàng - {{ order.order_code }} - AquaPlant</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-        @page { size: A4 portrait; margin: 10mm; }
-        @media print { .no-print { display: none !important; } }
-    </style>
+    <meta name="description" content="Phiếu đóng gói sinh học và vận đơn giao hàng {{ order.order_code }} tại AquaPlant.">
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+    <script src="{% static 'js/app.js' %}" defer></script>
 </head>
 <body class="bg-slate-50 text-slate-900 p-4 sm:p-8 font-sans">
     <div class="max-w-3xl mx-auto mb-4 bg-white border border-slate-300 p-3 flex items-center justify-between no-print text-xs">
         <span>Chế độ xem trước phiếu đóng gói bọc ẩm cây thủy sinh</span>
         <div class="flex gap-2">
-            <button onclick="window.print()" class="px-4 py-1.5 bg-[#2F5C3E] text-white font-bold">In Phiếu Ngay</button>
-            <button onclick="window.close()" class="px-3 py-1.5 bg-slate-100 border border-slate-300 font-semibold">Đóng</button>
+            <button type="button" data-window-action="print" class="px-4 py-1.5 bg-[#2F5C3E] text-white font-bold">In Phiếu Ngay</button>
+            <button type="button" data-window-action="close" class="px-3 py-1.5 bg-slate-100 border border-slate-300 font-semibold">Đóng</button>
         </div>
     </div>
 
-    <div class="max-w-3xl mx-auto bg-white border-2 border-slate-900 p-6 space-y-5 text-xs">
+    <main id="main-content" class="max-w-3xl mx-auto bg-white border-2 border-slate-900 p-6 space-y-5 text-xs">
         <div class="border-b-2 border-slate-900 pb-3 flex justify-between items-start">
             <div>
                 <h1 class="text-lg font-black uppercase">AQUAPLANT - PHIẾU ĐÓNG GÓI & VẬN ĐƠN</h1>
@@ -27,19 +26,19 @@
             </div>
             <div class="text-right">
                 <span class="font-mono font-black text-base block">#{{ order.order_code }}</span>
-                <span class="text-[11px] text-slate-500">In lúc: {{ print_timestamp|date:"H:i d/m/Y" }}</span>
+                <span class="text-[11px] text-slate-600">In lúc: {{ print_timestamp|date:"H:i d/m/Y" }}</span>
             </div>
         </div>
 
         <div class="grid grid-cols-2 gap-4 border border-slate-900 p-3.5">
             <div>
-                <strong class="uppercase block border-b border-slate-200 pb-1 mb-1">Người Nhận Hàng</strong>
+                <h2 class="uppercase font-bold block border-b border-slate-200 pb-1 mb-1">Người Nhận Hàng</h2>
                 <p>Họ tên: <strong>{{ order.customer_name }}</strong></p>
                 <p>SĐT: <strong class="font-mono">{{ order.phone }}</strong></p>
                 <p>Địa chỉ: {{ order.shipping_address }}</p>
             </div>
             <div class="border-l border-slate-200 pl-4">
-                <strong class="uppercase block border-b border-slate-200 pb-1 mb-1">Thanh Toán & Trạng Thái</strong>
+                <h2 class="uppercase font-bold block border-b border-slate-200 pb-1 mb-1">Thanh Toán & Trạng Thái</h2>
                 <p>Ngày đặt: {{ order.created_at|date:"H:i d/m/Y" }}</p>
                 <p>Trạng thái: <strong>{{ order.get_status_display }}</strong></p>
                 <p class="mt-2 font-black text-base font-mono">Thu hộ COD: {{ order.total_amount|floatformat:0 }}₫</p>
@@ -78,6 +77,6 @@
         <div class="text-[11px] text-slate-600 border-t border-slate-300 pt-3">
             <strong>Checklist đóng gói sinh học:</strong> [ ] Bọc bông ẩm vô trùng &nbsp;&nbsp; [ ] Túi khí chống dập &nbsp;&nbsp; [ ] Thùng xốp cách nhiệt (Bảo hiểm 1 đổi 1 trong 24H)
         </div>
-    </div>
+    </main>
 </body>
 </html>

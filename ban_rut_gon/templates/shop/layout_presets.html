@@ -2,15 +2,16 @@
 {% load static %}
 
 {% block title %}Combo Bố Cục Hồ Mẫu - AquaPlant{% endblock %}
+{% block meta_description %}Mua trọn bộ combo cây thủy sinh phối sẵn theo bố cục hồ Iwagumi, Rừng Lũa và Hà Lan chuẩn nghệ thuật tại AquaPlant.{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
     <div class="bg-white border border-slate-200 p-6">
         <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] text-[11px] font-bold mb-2 uppercase">
-            <i class="fa-solid fa-layer-group text-[#7AA88B]"></i> Trọn Gói Bố Cục Chuẩn Nghệ Thuật
+            <i class="fa-solid fa-layer-group text-[#3D6B4E]" aria-hidden="true"></i> Trọn Gói Bố Cục Chuẩn Nghệ Thuật
         </span>
         <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">Set Cây Phối Sẵn Theo Bố Cục Hồ Mẫu</h1>
-        <p class="text-xs text-slate-500 mt-1">Bạn có thể tick chọn hoặc bỏ bớt từng loài cây trong combo; tổng tiền tự động cập nhật ngay lập tức.</p>
+        <p class="text-xs text-slate-600 mt-1">Bạn có thể tick chọn hoặc bỏ bớt từng loài cây trong combo; tổng tiền tự động cập nhật ngay lập tức.</p>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -19,15 +20,15 @@
             <form method="POST" action="{% url 'add_combo_to_cart' %}" class="flex flex-col h-full justify-between">
                 {% csrf_token %}
                 <div>
-                    <div class="relative aspect-16/9 bg-slate-100 overflow-hidden border-b border-slate-200">
+                    <div class="relative aspect-video bg-slate-100 overflow-hidden border-b border-slate-200">
                         <img src="{{ layout.display_image_url }}"
-                             alt="{{ layout.name }}" class="w-full h-52 object-cover">
-                        <span class="absolute top-3 left-3 bg-[#7AA88B] text-white text-[10px] font-bold px-2.5 py-1 uppercase">
+                             alt="{{ layout.name }}" width="640" height="360" {% if not forloop.first %}loading="lazy"{% endif %} class="w-full h-full object-cover">
+                        <span class="absolute top-3 left-3 bg-[#3D6B4E] text-white text-[10px] font-bold px-2.5 py-1 uppercase">
                             {{ layout.style }}
                         </span>
                         {% if layout.license_name %}
-                        <span class="absolute top-3 right-3 bg-slate-900/80 text-white text-[10px] font-semibold px-2 py-0.5 backdrop-blur-xs">
-                            <i class="fa-regular fa-copyright mr-1 text-[#A7D7B8]"></i>{{ layout.license_name }}
+                        <span class="absolute top-3 right-3 bg-slate-900/80 text-white text-[10px] font-semibold px-2 py-0.5 backdrop-blur-sm">
+                            <i class="fa-regular fa-copyright mr-1 text-[#A7D7B8]" aria-hidden="true"></i>{{ layout.license_name }}
                         </span>
                         {% endif %}
                         <span class="absolute bottom-3 right-3 bg-white/95 text-slate-800 text-xs font-bold px-2.5 py-1 border border-slate-200">
@@ -35,11 +36,11 @@
                         </span>
                     </div>
                     {% if layout.source_attribution %}
-                    <div class="px-5 py-1.5 bg-slate-50 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-500">
+                    <div class="px-5 py-1.5 bg-slate-50 border-b border-slate-100 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-600">
                         <span>Ảnh mẫu ({{ layout.get_recommended_space_display }} · {{ layout.get_co2_required_display }} · {{ layout.get_light_level_display }})</span>
                         {% if layout.source_url %}
                         <a href="{{ layout.source_url }}" target="_blank" rel="noopener noreferrer" class="text-[#2F5C3E] hover:underline font-medium">
-                            Nguồn: {{ layout.source_attribution }} <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+                            Nguồn: {{ layout.source_attribution }} <i class="fa-solid fa-arrow-up-right-from-square text-[9px]" aria-hidden="true"></i>
                         </a>
                         {% else %}
                         <span>Nguồn: {{ layout.source_attribution }}</span>
@@ -50,7 +51,7 @@
                     <div class="p-5 space-y-4">
                         <div>
                             <h2 class="text-base font-bold text-slate-900">{{ layout.name }}</h2>
-                            <p class="text-xs text-slate-500 mt-1">{{ layout.description }}</p>
+                            <p class="text-xs text-slate-600 mt-1">{{ layout.description }}</p>
                         </div>
 
                         <div class="bg-slate-50 border border-slate-200 p-3.5 space-y-2">
@@ -58,7 +59,7 @@
                                 Cây thành phần trong set
                             </div>
                             {% for item in layout.get_combo_items %}
-                            <label class="flex items-center justify-between gap-3 p-2 bg-white border border-slate-200 hover:border-[#7AA88B] cursor-pointer text-xs">
+                            <label class="flex items-center justify-between gap-3 p-2 bg-white border border-slate-200 hover:border-[#3D6B4E] cursor-pointer text-xs">
                                 <div class="flex items-center gap-2.5 min-w-0">
                                     <input type="checkbox"
                                            name="selected_products"
@@ -67,12 +68,11 @@
                                            data-price="{{ item.product.current_price|floatformat:0 }}"
                                            data-qty="{{ item.quantity }}"
                                            checked
-                                           onchange="recalculateComboTotal('{{ layout.id }}')"
-                                           class="combo-checkbox w-4 h-4 accent-[#7AA88B]">
+                                           class="combo-checkbox w-4 h-4 accent-[#3D6B4E]">
                                     <input type="hidden" name="qty_{{ item.product.id }}" value="{{ item.quantity }}">
                                     <div class="truncate">
                                         <span class="font-bold text-slate-900 block truncate">{{ item.product.name }}</span>
-                                        <span class="text-[10px] text-slate-500">{{ item.layer_role }} · x{{ item.quantity }} phần</span>
+                                        <span class="text-[10px] text-slate-600">{{ item.layer_role }} · x{{ item.quantity }} phần</span>
                                     </div>
                                 </div>
                                 <span class="font-mono font-bold text-rose-700 flex-shrink-0">{{ item.subtotal|floatformat:0 }}₫</span>
@@ -84,51 +84,22 @@
 
                 <div class="p-5 pt-3 border-t border-slate-100 flex items-center justify-between gap-3">
                     <div>
-                        <span class="text-[10px] font-bold uppercase text-slate-400 block">Tổng chi phí đã chọn:</span>
+                        <span class="text-[10px] font-bold uppercase text-slate-600 block">Tổng chi phí đã chọn:</span>
                         <span id="combo-total-{{ layout.id }}" class="text-xl font-black font-mono text-rose-700">
                             {{ layout.calculated_total_price|floatformat:0 }}₫
                         </span>
                     </div>
-                    <button type="submit" id="combo-submit-{{ layout.id }}" class="bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs px-4 py-2.5 transition">
-                        <i class="fa-solid fa-cart-plus mr-1"></i> Thêm Các Cây Đã Chọn
+                    <button type="submit" id="combo-submit-{{ layout.id }}" class="bg-[#3D6B4E] hover:bg-[#2F5C3E] text-white font-bold text-xs px-4 py-2.5 transition">
+                        <i class="fa-solid fa-cart-plus mr-1" aria-hidden="true"></i> Thêm Các Cây Đã Chọn
                     </button>
                 </div>
             </form>
         </div>
         {% empty %}
-        <div class="col-span-2 bg-white border border-slate-200 p-8 text-center text-xs text-slate-400">
+        <div class="col-span-2 bg-white border border-slate-200 p-8 text-center text-xs text-slate-600">
             Chưa có bố cục hồ mẫu nào được cấu hình.
         </div>
         {% endfor %}
     </div>
 </div>
-
-<script>
-function recalculateComboTotal(presetId) {
-    const checkboxes = document.querySelectorAll(`.combo-checkbox[data-preset="${presetId}"]`);
-    let total = 0;
-    let checkedCount = 0;
-    checkboxes.forEach(cb => {
-        if (cb.checked) {
-            const price = parseFloat(cb.getAttribute('data-price')) || 0;
-            const qty = parseInt(cb.getAttribute('data-qty')) || 1;
-            total += (price * qty);
-            checkedCount++;
-        }
-    });
-    const totalEl = document.getElementById(`combo-total-${presetId}`);
-    if (totalEl) totalEl.textContent = new Intl.NumberFormat('vi-VN').format(total) + '₫';
-    const submitBtn = document.getElementById(`combo-submit-${presetId}`);
-    if (submitBtn) {
-        submitBtn.disabled = (checkedCount === 0);
-        submitBtn.classList.toggle('opacity-50', checkedCount === 0);
-        submitBtn.classList.toggle('cursor-not-allowed', checkedCount === 0);
-    }
-}
-document.addEventListener('DOMContentLoaded', function () {
-    document.querySelectorAll('.combo-checkbox').forEach(cb => {
-        recalculateComboTotal(cb.getAttribute('data-preset'));
-    });
-});
-</script>
 {% endblock %}

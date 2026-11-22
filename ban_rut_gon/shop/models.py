@@ -137,15 +137,15 @@ class Product(models.Model):
     slug = models.SlugField(max_length=200, unique=True, blank=True, verbose_name="Slug URL")
     scientific_name = models.CharField(max_length=150, blank=True, verbose_name="Tên khoa học")
 
-    regular_price = models.DecimalField(max_digits=10, decimal_places=0, verbose_name="Giá gốc (VNĐ)")
+    regular_price = models.DecimalField(max_digits=10, decimal_places=0, db_index=True, verbose_name="Giá gốc (VNĐ)")
     sale_price = models.DecimalField(max_digits=10, decimal_places=0, null=True, blank=True, verbose_name="Giá khuyến mãi (VNĐ)")
     stock_quantity = models.PositiveIntegerField(default=50, verbose_name="Số lượng tồn kho")
 
     # Hồ sơ sinh học chi tiết (cấp mặc định an toàn để tương thích ngược với dữ liệu/test cũ)
-    co2_requirement = models.CharField(max_length=20, choices=CO2_CHOICES, default='no', verbose_name="Nhu cầu CO2")
-    light_requirement = models.CharField(max_length=20, choices=LIGHT_CHOICES, default='low', verbose_name="Nhu cầu ánh sáng")
-    placement_position = models.CharField(max_length=20, choices=POSITION_CHOICES, default='tien_canh', verbose_name="Vị trí trồng")
-    care_level = models.CharField(max_length=20, choices=CARE_CHOICES, default='easy', verbose_name="Mức độ chăm sóc")
+    co2_requirement = models.CharField(max_length=20, choices=CO2_CHOICES, default='no', db_index=True, verbose_name="Nhu cầu CO2")
+    light_requirement = models.CharField(max_length=20, choices=LIGHT_CHOICES, default='low', db_index=True, verbose_name="Nhu cầu ánh sáng")
+    placement_position = models.CharField(max_length=20, choices=POSITION_CHOICES, default='tien_canh', db_index=True, verbose_name="Vị trí trồng")
+    care_level = models.CharField(max_length=20, choices=CARE_CHOICES, default='easy', db_index=True, verbose_name="Mức độ chăm sóc")
     growth_rate = models.CharField(max_length=30, choices=GROWTH_CHOICES, default='medium', verbose_name="Tốc độ phát triển")
     leaf_state = models.CharField(max_length=30, choices=LEAF_CHOICES, default='submerged', verbose_name="Tình trạng lá")
 
@@ -167,7 +167,7 @@ class Product(models.Model):
         verbose_name="Tải ảnh lên từ máy tính"
     )
 
-    is_active = models.BooleanField(default=True, verbose_name="Đang kinh doanh")
+    is_active = models.BooleanField(default=True, db_index=True, verbose_name="Đang kinh doanh")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày đăng bán")
 
     class Meta:
@@ -209,16 +209,16 @@ class Product(models.Model):
                 if '..' not in url and ':' not in url and not url.startswith('//'):
                     return f"/static/{url.lstrip('/')}"
         if 'Nana' in self.name:
-            return "/static/images/anubias_nana.jpg"
+            return "/static/images/anubias_nana.webp"
         elif 'Trân Châu' in self.name:
-            return "/static/images/monte_carlo.jpg"
+            return "/static/images/monte_carlo.webp"
         elif 'Tiêu Thảo' in self.name:
-            return "/static/images/cryptocoryne_brown.jpg"
+            return "/static/images/cryptocoryne_brown.webp"
         elif 'Vảy Ốc' in self.name:
-            return "/static/images/rotala_hra.jpg"
+            return "/static/images/rotala_hra.webp"
         elif 'Phân Nền' in self.name:
-            return "/static/images/aquasoil.jpg"
-        return "/static/images/anubias_nana.jpg"
+            return "/static/images/aquasoil.webp"
+        return "/static/images/anubias_nana.webp"
 
 
 # ------------------------------------------------------------------------------
@@ -314,12 +314,13 @@ class InventoryLot(models.Model):
     )
     quantity_received = models.PositiveIntegerField(verbose_name="Số lượng nhập kho")
     quantity_available = models.PositiveIntegerField(verbose_name="Số lượng tồn khả dụng")
-    received_date = models.DateField(auto_now_add=True, verbose_name="Ngày nhập kho")
+    received_date = models.DateField(auto_now_add=True, db_index=True, verbose_name="Ngày nhập kho")
     expiry_date = models.DateField(null=True, blank=True, verbose_name="Hạn sử dụng / Kiểm định lại")
     status = models.CharField(
         max_length=30,
         choices=STATUS_CHOICES,
         default='healthy_submerged',
+        db_index=True,
         verbose_name="Tình trạng sinh học lô cây"
     )
     note = models.TextField(blank=True, default="", verbose_name="Ghi chú giám định kỹ thuật")
@@ -469,8 +470,8 @@ class LayoutPreset(models.Model):
             except Exception:
                 return url
         if 'Iwagumi' in self.name:
-            return f"{settings.STATIC_URL}images/iwagumi_60cm.jpg"
-        return f"{settings.STATIC_URL}images/nature_wood_90cm.png"
+            return f"{settings.STATIC_URL}images/iwagumi_60cm.webp"
+        return f"{settings.STATIC_URL}images/nature_wood_90cm.webp"
 
     def get_local_image_bytes(self, max_dim=1024):
         """Đọc và chuẩn hóa ảnh bể mẫu thành bytes JPEG gọn nhẹ phục vụ AI ghép ảnh."""
@@ -484,7 +485,7 @@ class LayoutPreset(models.Model):
                 file_path = os.path.join(settings.MEDIA_ROOT, self.image.name)
 
         if not file_path or not os.path.exists(file_path):
-            fallback_rel = 'images/iwagumi_60cm.jpg' if 'Iwagumi' in self.name else 'images/nature_wood_90cm.png'
+            fallback_rel = 'images/iwagumi_60cm.webp' if 'Iwagumi' in self.name else 'images/nature_wood_90cm.webp'
             candidate_static = os.path.join(settings.BASE_DIR, 'static', fallback_rel)
             if os.path.exists(candidate_static):
                 file_path = candidate_static
@@ -618,7 +619,7 @@ class Order(models.Model):
     )
     customer_name = models.CharField(max_length=150, verbose_name="Họ và tên người nhận")
     email = models.EmailField(verbose_name="Email liên hệ")
-    phone = models.CharField(max_length=20, verbose_name="Số điện thoại")
+    phone = models.CharField(max_length=20, db_index=True, verbose_name="Số điện thoại")
     shipping_address = models.TextField(verbose_name="Địa chỉ giao hàng chi tiết")
     customer_note = models.TextField(blank=True, default="", verbose_name="Ghi chú đơn hàng")
 
@@ -648,14 +649,14 @@ class Order(models.Model):
         verbose_name="Phí đóng gói & vận chuyển"
     )
     total_amount = models.DecimalField(max_digits=12, decimal_places=0, verbose_name="Tổng tiền đơn hàng (VNĐ)")
-    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending', verbose_name="Trạng thái đơn hàng")
+    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending', db_index=True, verbose_name="Trạng thái đơn hàng")
     tracking_note = models.TextField(
         blank=True,
         default="Đơn hàng đã được khởi tạo trên hệ thống.",
         verbose_name="Nhật ký hành trình vận chuyển"
     )
 
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Thời điểm đặt hàng")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name="Thời điểm đặt hàng")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Lần cập nhật gần nhất")
 
     class Meta:
@@ -802,10 +803,10 @@ class Article(models.Model):
     """
     title = models.CharField(max_length=250, verbose_name="Tiêu đề bài viết")
     slug = models.SlugField(max_length=250, unique=True, verbose_name="Slug URL")
-    category = models.CharField(max_length=100, default='Kỹ thuật thủy sinh', verbose_name="Chuyên mục")
+    category = models.CharField(max_length=100, default='Kỹ thuật thủy sinh', db_index=True, verbose_name="Chuyên mục")
     summary = models.TextField(verbose_name="Tóm tắt nội dung")
     content = models.TextField(verbose_name="Nội dung bài viết chi tiết")
-    thumbnail = models.CharField(max_length=255, default='images/anubias_nana.jpg', verbose_name="Ảnh minh họa")
+    thumbnail = models.CharField(max_length=255, default='images/anubias_nana.webp', verbose_name="Ảnh minh họa")
     published_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày đăng bài")
 
     class Meta:

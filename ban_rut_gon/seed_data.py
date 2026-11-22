@@ -189,7 +189,7 @@ def run_seed():
             'temp_min': 22,
             'temp_max': 28,
             'coverage_area_cm2': 100,
-            'image_url': 'images/anubias_nana.jpg',
+            'image_url': 'images/anubias_nana.webp',
             'description': 'Dòng cây ráy quốc dân có sức sống mãnh liệt, không cần bình CO2, thích hợp buộc lên đá hoặc lũa thủy sinh. Lá xanh đậm dày dặn ít bị cá rỉa.',
             'planting_guide': 'Không vùi thân rễ (rhizome) trực tiếp xuống phân nền vì rễ sẽ bị úng thối. Dùng chỉ cotton hoặc keo dán thủy sinh cố định cây lên gốc lũa hoặc đá.',
             'propagation_guide': 'Dùng kéo sắc cắt đoạn thân rễ có từ 3 - 5 lá khỏe mạnh và gắn sang giá thể mới.',
@@ -213,7 +213,7 @@ def run_seed():
             'temp_min': 20,
             'temp_max': 26,
             'coverage_area_cm2': 120,
-            'image_url': 'images/monte_carlo.jpg',
+            'image_url': 'images/monte_carlo.webp',
             'description': 'Cây bò thảm đáy hồ được ưa chuộng nhất thế giới. Tạo thảm xanh mướt mượt mà trong các hồ phong cách Iwagumi. Cần ánh sáng khá và CO2 nhẹ.',
             'planting_guide': 'Tách cốc cây thành từng cụm nhỏ khoảng 4 - 6 ngọn, dùng nhíp cắm sâu vào phân nền nghiêng góc 45 độ, cách nhau 2cm.',
             'propagation_guide': 'Cây tự bò lan thành thảm. Dùng kéo lượn sóng tỉa phẳng định kỳ 2 - 3 tuần/lần để kích rễ bám chắc.',
@@ -237,7 +237,7 @@ def run_seed():
             'temp_min': 22,
             'temp_max': 28,
             'coverage_area_cm2': 140,
-            'image_url': 'images/cryptocoryne_brown.jpg',
+            'image_url': 'images/cryptocoryne_brown.webp',
             'description': 'Lá cây màu nâu đồng sang trọng tạo điểm nhấn tương phản với các loại cây lá xanh. Dễ trồng, chịu bóng tốt, phát triển rễ mạnh trong phân nền.',
             'planting_guide': 'Cắm rễ sâu vào lớp phân nền giàu dinh dưỡng, hạn chế nhổ lên di dời nhiều lần để tránh rữa lá thích nghi.',
             'propagation_guide': 'Cây tự đẻ cây con từ ngó rễ ngầm dưới nền; chờ cây con cao 5cm thì cắt tách khỏi cây mẹ.',
@@ -261,7 +261,7 @@ def run_seed():
             'temp_min': 22,
             'temp_max': 27,
             'coverage_area_cm2': 100,
-            'image_url': 'images/rotala_hra.jpg',
+            'image_url': 'images/rotala_hra.webp',
             'description': 'Cây hậu cảnh cắt cắm thân đốt cực kỳ rực rỡ. Khi đủ ánh sáng mạnh và CO2 sẽ lên sắc đỏ cam tuyệt đẹp, tốc độ mọc nhanh.',
             'planting_guide': 'Tách từng ngọn cắm cách nhau 1 - 2cm ở khu vực hậu cảnh. Cần đèn WRGB và khí CO2 đều để lá lên sắc đỏ cam.',
             'propagation_guide': 'Cắt ngọn dài 7 - 10cm cắm lại xuống nền; phần gốc cũ sẽ nhảy 2 - 3 chồi ngọn mới sum suê.',
@@ -285,7 +285,7 @@ def run_seed():
             'temp_min': 18,
             'temp_max': 30,
             'coverage_area_cm2': 900,
-            'image_url': 'images/aquasoil.jpg',
+            'image_url': 'images/aquasoil.webp',
             'description': 'Hạt đất nền tự nhiên giàu khoáng chất vi lượng, giúp rễ cây bám chắc và phát triển ổn định, không làm đục nước hồ cá.',
             'planting_guide': 'Trải nền dày tối thiểu 4 - 6cm từ trước ra sau tạo độ dốc sâu. Không rửa hạt đất nền trước khi vào nước.',
             'propagation_guide': 'Bền hạt từ 2 - 3 năm, có thể châm thêm phân nhét sau 6 tháng sử dụng.',
@@ -302,9 +302,9 @@ def run_seed():
     # 3.1. Album ảnh chi tiết cho Cây Ráy Nana (nếu tệp ảnh tồn tại trong media/products/gallery/)
     ray_nana = prods['cay-ray-nana-thuy-sinh']
     gallery_specs = [
-        ('products/gallery/ray_nana_detail_1.jpg', 'Bụi ráy xanh mướt rễ trắng khỏe', 1),
-        ('products/gallery/ray_nana_layout_2.jpg', 'Phối gắn lũa & đá trong hồ tự nhiên', 2),
-        ('products/gallery/ray_nana_macro_3.jpg', 'Cận cảnh lá thuần nước sạch ốc hại', 3),
+        ('products/gallery/ray_nana_detail_1.webp', 'Bụi ráy xanh mướt rễ trắng khỏe', 1),
+        ('products/gallery/ray_nana_layout_2.webp', 'Phối gắn lũa & đá trong hồ tự nhiên', 2),
+        ('products/gallery/ray_nana_macro_3.webp', 'Cận cảnh lá thuần nước sạch ốc hại', 3),
     ]
     for rel_path, caption, order_num in gallery_specs:
         abs_path = os.path.join(settings.MEDIA_ROOT, rel_path)
@@ -417,7 +417,7 @@ def run_seed():
             'description': 'Bể kính siêu trong giấu keo gọn gàng cho góc bàn nhỏ, kết hợp ráy thủy sinh, dương xỉ bám lũa và thác sương tạo điểm nhấn thư giãn.',
             'total_price': Decimal('175000'),
             'plant_list_text': '- 2 Chậu Ráy Nana (Gắn lũa & tiền cảnh)\n- 1 Bụi Tiêu Thảo Nâu (Điểm góc lũa)',
-            'image': 'tanks/tank_01_nano_wood.jpg',
+            'image': 'tanks/tank_01_nano_wood.webp',
             'license_name': 'CC0 1.0 Public Domain',
             'source_attribution': 'Dileepkumardr (Wikimedia Commons)',
             'source_url': 'https://commons.wikimedia.org/wiki/File:Nature_Aquarium_Aquascape.jpg',
@@ -437,7 +437,7 @@ def run_seed():
             'description': 'Bể kính không viền phong cách vòm rừng rêu cổ thụ kết hợp đường cát trắng và đàn cá neon, phù hợp bàn học và bàn làm việc.',
             'total_price': Decimal('260000'),
             'plant_list_text': '- 2 Cốc Trân Châu Ngọc Trai (Thảm xanh hai bên)\n- 1 Chậu Ráy Nana (Bám vòm lũa)\n- 1 Bụi Tiêu Thảo Nâu (Góc hốc đá)',
-            'image': 'tanks/tank_02_nano_neon.jpg',
+            'image': 'tanks/tank_02_nano_neon.webp',
             'license_name': 'CC BY-SA 3.0',
             'source_attribution': 'Cho Jin-sun / 조진선 (Wikimedia Commons)',
             'source_url': 'https://commons.wikimedia.org/wiki/File:90x45x45,_KAPS_%EB%8C%80%EC%83%81.jpg',
@@ -458,7 +458,7 @@ def run_seed():
             'description': 'Thiết kế bể kính frameless thanh thoát dáng nằm ngang, bố cục lũa vươn nghiêng cùng thảm cây xanh dịu mắt rất hợp bàn gỗ hoặc tủ văn phòng.',
             'total_price': Decimal('220000'),
             'plant_list_text': '- 2 Chậu Ráy Nana (Gắn thân lũa)\n- 2 Bụi Tiêu Thảo Nâu (Gốc lũa tạo tầng)',
-            'image': 'tanks/tank_03_office_hood_45.jpg',
+            'image': 'tanks/tank_03_office_hood_45.webp',
             'license_name': 'CC BY-SA 3.0',
             'source_attribution': 'Cho Jaesun (Wikimedia Commons)',
             'source_url': 'https://commons.wikimedia.org/wiki/File:Cho_Jaesun_2020_AGA_Top_10.jpg',
@@ -478,7 +478,7 @@ def run_seed():
             'description': 'Bố cục thảm cỏ xanh mướt kết hợp đá tạo chiều sâu thảo nguyên tĩnh tại.',
             'total_price': Decimal('400000'),
             'plant_list_text': '- 3 Cốc Trân Châu Ngọc Trai (Tiền cảnh)\n- 2 Chậu Ráy Nana (Kẽ đá)\n- 1 Bụi Tiêu Thảo Nâu (Hậu cảnh)',
-            'image': 'tanks/tank_04_iwagumi_60.jpg',
+            'image': 'tanks/tank_04_iwagumi_60.webp',
             'license_name': 'CC BY-SA 3.0',
             'source_attribution': 'Moritz Holzinger (Wikimedia Commons)',
             'source_url': 'https://commons.wikimedia.org/wiki/File:Iwagumi_Scape.jpg',
@@ -499,7 +499,7 @@ def run_seed():
             'description': 'Khối lũa tập trung 2/3 góc trái vươn cành lá vượt mặt nước dưới thanh LED siêu mảnh, chừa bãi cỏ mở khoáng đạt bên phải.',
             'total_price': Decimal('370000'),
             'plant_list_text': '- 2 Cốc Trân Châu Ngọc Trai (Bãi cỏ phải)\n- 2 Chậu Ráy Nana (Gốc lũa)\n- 2 Bụi Tiêu Thảo Nâu (Cụm trung cảnh)',
-            'image': 'tanks/tank_05_triangle_60.jpg',
+            'image': 'tanks/tank_05_triangle_60.webp',
             'license_name': 'CC BY-SA 4.0',
             'source_attribution': 'Brudinho5 (Wikimedia Commons)',
             'source_url': 'https://commons.wikimedia.org/wiki/File:Aquascape_im_Triangel_Design.jpg',
@@ -520,7 +520,7 @@ def run_seed():
             'description': 'Hai khối đá vươn đỉnh bất đối xứng phủ thảm Trân Châu Ngọc Trai dày mượt, mang nét hùng vĩ mà vẫn gọn trên mặt bàn dài.',
             'total_price': Decimal('455000'),
             'plant_list_text': '- 4 Cốc Trân Châu Ngọc Trai (Phủ sườn đồi)\n- 1 Chậu Ráy Nana (Chân hẻm đá)\n- 2 Bụi Tiêu Thảo Nâu (Kẽ núi)',
-            'image': 'tanks/tank_06_minilandschaft_60.jpg',
+            'image': 'tanks/tank_06_minilandschaft_60.webp',
             'license_name': 'CC BY-SA 4.0',
             'source_attribution': 'Lennart Jöhnk (Wikimedia Commons)',
             'source_url': 'https://commons.wikimedia.org/wiki/File:Aquascaping-minilandschaft-lennart.jpg',
@@ -541,7 +541,7 @@ def run_seed():
             'description': 'Dãy đá tai mèo dựng vách hẻm núi dẫn điểm hút mắt ở trung tâm, bao quanh bởi thảm xanh mịn cho bàn lớn hoặc tủ phòng khách.',
             'total_price': Decimal('505000'),
             'plant_list_text': '- 5 Cốc Trân Châu Ngọc Trai (Thảm hai sườn núi)\n- 2 Chậu Ráy Nana (Khe đá hẻm núi)',
-            'image': 'tanks/tank_07_mountain_90.jpg',
+            'image': 'tanks/tank_07_mountain_90.webp',
             'license_name': 'CC BY-SA 3.0',
             'source_attribution': 'Peter Kirwan (Wikimedia Commons)',
             'source_url': 'https://commons.wikimedia.org/wiki/File:Peter_Kirwan_Mountainscape.jpg',
@@ -561,7 +561,7 @@ def run_seed():
             'description': 'Bố cục lũa tự nhiên kết hợp cây ráy, tiêu thảo và vảy ốc đỏ rực rỡ.',
             'total_price': Decimal('325000'),
             'plant_list_text': '- 2 Chậu Ráy Nana (Gắn thân lũa)\n- 3 Bó Vảy Ốc Siêu Đỏ (Hậu cảnh)\n- 2 Bụi Tiêu Thảo Nâu (Gốc lũa)',
-            'image': 'tanks/tank_08_jungle_wood_90.jpg',
+            'image': 'tanks/tank_08_jungle_wood_90.webp',
             'license_name': 'CC BY-SA 4.0',
             'source_attribution': 'George Farmer (Wikimedia Commons)',
             'source_url': 'https://commons.wikimedia.org/wiki/File:Jungle_style_aquascape.jpg',
@@ -582,7 +582,7 @@ def run_seed():
             'description': 'Bố cục đảo cây hai bên chừa khoảng sáng xanh dịu ở giữa, hợp tường sáng màu và văn phòng hiện đại cần chiều sâu thị giác.',
             'total_price': Decimal('335000'),
             'plant_list_text': '- 2 Chậu Ráy Nana (Bám nhánh lũa)\n- 3 Bụi Tiêu Thảo Nâu (Chân cụm đảo)\n- 2 Bó Vảy Ốc Siêu Đỏ (Điểm sắc hậu cảnh)',
-            'image': 'tanks/tank_09_forest_backlight_90.jpg',
+            'image': 'tanks/tank_09_forest_backlight_90.webp',
             'license_name': 'CC BY 3.0',
             'source_attribution': 'Georg Pirrung (Wikimedia Commons)',
             'source_url': 'https://commons.wikimedia.org/wiki/File:Forests_Underwater_(122868199).jpeg',
@@ -603,7 +603,7 @@ def run_seed():
             'description': 'Tầng tán cắt cắm nhiều màu sắc tương phản rực rỡ với bụi Vảy Ốc Siêu Đỏ, phù hợp quầy lễ tân hoặc tủ kệ rộng chịu tải tốt.',
             'total_price': Decimal('535000'),
             'plant_list_text': '- 5 Bó Vảy Ốc Siêu Đỏ (Cụm đỏ rực trung-hậu cảnh)\n- 3 Cốc Trân Châu Ngọc Trai (Thảm tiền cảnh)\n- 3 Bụi Tiêu Thảo Nâu (Chân tầng bụi)',
-            'image': 'tanks/tank_10_dutch_red_120.jpg',
+            'image': 'tanks/tank_10_dutch_red_120.webp',
             'license_name': 'CC BY-SA 3.0',
             'source_attribution': 'Shay Fertig (Wikimedia Commons)',
             'source_url': 'https://commons.wikimedia.org/wiki/File:The_Enchanted_Garden_by_Shay_Fertig.jpg',
@@ -618,9 +618,8 @@ def run_seed():
     for spec in preset_catalog:
         computed_total = sum((item_prod.current_price * qty for item_prod, qty, _ in spec['items']), Decimal('0'))
         preset_obj, _ = LayoutPreset.objects.update_or_create(
-            image=spec['image'],
+            name=spec['name'],
             defaults={
-                'name': spec['name'],
                 'tank_size': spec['tank_size'],
                 'tank_width_cm': spec['tank_width_cm'],
                 'recommended_space': spec['recommended_space'],
@@ -630,6 +629,7 @@ def run_seed():
                 'description': spec['description'],
                 'total_price': computed_total,
                 'plant_list_text': spec['plant_list_text'],
+                'image': spec['image'],
                 'license_name': spec['license_name'],
                 'source_attribution': spec['source_attribution'],
                 'source_url': spec['source_url'],
@@ -645,13 +645,13 @@ def run_seed():
     print(f"✓ Đã đồng bộ {len(preset_catalog)} Bố cục hồ mẫu kèm ảnh bản quyền mở")
 
     # 6. Cẩm nang thủy sinh & Hỏi đáp FAQ
-    Article.objects.get_or_create(
+    Article.objects.update_or_create(
         slug='huong-dan-setup-be-iwagumi-cho-nguoi-moi',
         defaults={
             'title': 'Cẩm Nang Setup Bố Cục Thảo Nguyên Đá Iwagumi Chuẩn Tỉ Lệ Vàng',
             'category': 'Kỹ thuật bố cục',
             'summary': 'Chi tiết các bước xếp đá Oyaishi, Fukuishi và kỹ thuật cắm cây tiền cảnh Trân Châu Ngọc Trai giúp thảm bò xanh mượt chỉ sau 20 ngày.',
-            'thumbnail': 'images/iwagumi_60cm.jpg',
+            'thumbnail': 'images/iwagumi_60cm.webp',
             'content': (
                 "Bố cục Iwagumi là một trong những phong cách thủy sinh kinh điển lấy đá làm xương sống và thảm thực vật xanh làm linh hồn.\n\n"
                 "1. Lựa chọn đá chính (Oyaishi): Viên đá lớn nhất nghiêng theo hướng dòng chảy tạo điểm nhấn.\n"
@@ -661,13 +661,13 @@ def run_seed():
             ),
         },
     )
-    Article.objects.get_or_create(
+    Article.objects.update_or_create(
         slug='cach-phong-ngua-reu-hai-khi-moi-lam-be',
         defaults={
             'title': 'Bí Quyết Kiểm Soát Nước & Phòng Ngừa Rêu Hại Tuần Đầu Tiên',
             'category': 'Kinh nghiệm dưỡng hồ',
             'summary': 'Hướng dẫn thay nước ngắt quãng, châm vi sinh và kiểm soát rêu tóc, tảo nâu, rêu chùm đen cho bể mới setup.',
-            'thumbnail': 'images/anubias_nana.jpg',
+            'thumbnail': 'images/anubias_nana.webp',
             'content': (
                 "Trong 14 ngày đầu tiên sau khi cắm cây, dinh dưỡng dư thừa từ phân nền mới dễ làm bùng phát rêu hại.\n\n"
                 "Quy tắc thay nước chuẩn:\n"

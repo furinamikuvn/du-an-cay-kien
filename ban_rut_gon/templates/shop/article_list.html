@@ -2,24 +2,25 @@
 {% load static %}
 
 {% block title %}Cẩm Nang Thủy Sinh - AquaPlant{% endblock %}
+{% block meta_description %}Cẩm nang hướng dẫn trồng cây thủy sinh, cân bằng CO2, ánh sáng và phòng trừ rêu hại cho bể thủy sinh đẹp bền vững.{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
     <div class="bg-white border border-slate-200 p-6 space-y-4">
         <div>
             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] text-[11px] font-bold mb-2 uppercase">
-                <i class="fa-solid fa-book-bookmark text-[#7AA88B]"></i> Tài Liệu Kỹ Thuật Thủy Sinh
+                <i class="fa-solid fa-book-bookmark text-[#3D6B4E]" aria-hidden="true"></i> Tài Liệu Kỹ Thuật Thủy Sinh
             </span>
             <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">Cẩm Nang Trồng Cây & Chăm Sóc Bể Cá</h1>
         </div>
 
         <div class="pt-3 border-t border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
             <div class="flex items-center gap-1.5 overflow-x-auto text-xs">
-                <a href="{% url 'article_list' %}" class="px-3 py-1.5 font-bold whitespace-nowrap {% if not selected_category %}bg-[#7AA88B] text-white{% else %}bg-slate-50 border border-slate-200 text-slate-700{% endif %}">
+                <a href="{% url 'article_list' %}" class="px-3 py-1.5 font-bold whitespace-nowrap {% if not selected_category %}bg-[#3D6B4E] text-white{% else %}bg-slate-50 border border-slate-200 text-slate-700{% endif %}">
                     Tất Cả
                 </a>
                 {% for cat in categories %}
-                <a href="{% url 'article_list' %}?category={{ cat }}" class="px-3 py-1.5 font-bold whitespace-nowrap {% if selected_category == cat %}bg-[#7AA88B] text-white{% else %}bg-slate-50 border border-slate-200 text-slate-700{% endif %}">
+                <a href="{% url 'article_list' %}?category={{ cat }}" class="px-3 py-1.5 font-bold whitespace-nowrap {% if selected_category == cat %}bg-[#3D6B4E] text-white{% else %}bg-slate-50 border border-slate-200 text-slate-700{% endif %}">
                     {{ cat }}
                 </a>
                 {% endfor %}
@@ -27,8 +28,9 @@
 
             <form method="GET" action="{% url 'article_list' %}" class="flex w-full md:w-72 text-xs">
                 {% if selected_category %}<input type="hidden" name="category" value="{{ selected_category }}">{% endif %}
-                <input type="text" name="q" value="{{ search_query|default:'' }}" placeholder="Tìm bài viết..." class="w-full bg-slate-50 border border-slate-300 px-3 py-1.5 focus:outline-none focus:border-[#7AA88B]">
-                <button type="submit" class="bg-[#7AA88B] text-white font-bold px-3.5 py-1.5">Tìm</button>
+                <label for="article-search" class="sr-only">Tìm bài viết cẩm nang</label>
+                <input id="article-search" type="text" name="q" value="{{ search_query|default:'' }}" placeholder="Tìm bài viết..." class="w-full bg-slate-50 border border-slate-300 px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]">
+                <button type="submit" class="bg-[#3D6B4E] hover:bg-[#2F5C3E] text-white font-bold px-3.5 py-1.5">Tìm</button>
             </form>
         </div>
     </div>
@@ -36,7 +38,7 @@
     {% if featured_article and not search_query and not selected_category %}
     <div class="bg-white border border-slate-200 grid grid-cols-1 lg:grid-cols-12 overflow-hidden">
         <div class="lg:col-span-6 bg-slate-100">
-            <img src="{% static featured_article.thumbnail %}" alt="{{ featured_article.title }}" class="w-full h-64 lg:h-full object-cover">
+            <img src="{% static featured_article.thumbnail %}" alt="{{ featured_article.title }}" width="640" height="400" class="w-full h-64 lg:h-full object-cover">
         </div>
         <div class="lg:col-span-6 p-6 flex flex-col justify-between space-y-4">
             <div class="space-y-2">
@@ -47,7 +49,7 @@
                 <p class="text-xs text-slate-600 leading-relaxed">{{ featured_article.summary }}</p>
             </div>
             <div>
-                <a href="{% url 'article_detail' slug=featured_article.slug %}" class="inline-block bg-[#7AA88B] hover:bg-[#6B997C] text-white text-xs font-bold px-4 py-2 transition">
+                <a href="{% url 'article_detail' slug=featured_article.slug %}" class="inline-block bg-[#3D6B4E] hover:bg-[#2F5C3E] text-white text-xs font-bold px-4 py-2 transition">
                     Đọc Chi Tiết →
                 </a>
             </div>
@@ -60,23 +62,23 @@
         <div class="bg-white border border-slate-200 overflow-hidden flex flex-col justify-between">
             <div>
                 <a href="{% url 'article_detail' slug=art.slug %}">
-                    <img src="{% static art.thumbnail %}" alt="{{ art.title }}" class="w-full h-44 object-cover border-b border-slate-100">
+                    <img src="{% static art.thumbnail %}" alt="{{ art.title }}" width="400" height="250" loading="lazy" class="w-full h-44 object-cover border-b border-slate-100">
                 </a>
                 <div class="p-4 space-y-2 text-xs">
                     <span class="text-[10px] font-bold text-[#2F5C3E] bg-[#EEF5F0] border border-[#C5DEC9] px-1.5 py-0.5 uppercase">{{ art.category }}</span>
                     <h3 class="font-bold text-sm text-slate-900 leading-snug">
                         <a href="{% url 'article_detail' slug=art.slug %}" class="hover:text-[#2F5C3E]">{{ art.title }}</a>
                     </h3>
-                    <p class="text-slate-500 line-clamp-3">{{ art.summary }}</p>
+                    <p class="text-slate-600 line-clamp-3">{{ art.summary }}</p>
                 </div>
             </div>
             <div class="px-4 pb-4 pt-2 border-t border-slate-100 flex items-center justify-between text-[11px]">
-                <span class="text-slate-400">{{ art.published_at|date:"d/m/Y" }}</span>
+                <span class="text-slate-600">{{ art.published_at|date:"d/m/Y" }}</span>
                 <a href="{% url 'article_detail' slug=art.slug %}" class="font-bold text-[#2F5C3E] hover:underline">Xem bài viết →</a>
             </div>
         </div>
         {% empty %}
-        <div class="col-span-3 bg-white border border-slate-200 p-8 text-center text-xs text-slate-400">
+        <div class="col-span-3 bg-white border border-slate-200 p-8 text-center text-xs text-slate-600">
             Không tìm thấy bài viết nào phù hợp.
         </div>
         {% endfor %}

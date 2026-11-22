@@ -31,7 +31,7 @@ class CheckoutForm(forms.Form):
         required=True,
         label="Họ và tên người nhận",
         widget=forms.TextInput(attrs={
-            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
+            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]',
             'placeholder': 'Ví dụ: Nguyễn Văn A'
         })
     )
@@ -39,7 +39,7 @@ class CheckoutForm(forms.Form):
         required=True,
         label="Hộp thư điện tử (Email)",
         widget=forms.EmailInput(attrs={
-            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
+            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]',
             'placeholder': 'nguyenvana@gmail.com'
         })
     )
@@ -48,7 +48,7 @@ class CheckoutForm(forms.Form):
         required=True,
         label="Số điện thoại nhận hàng",
         widget=forms.TextInput(attrs={
-            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
+            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]',
             'placeholder': '0901234567'
         })
     )
@@ -57,7 +57,7 @@ class CheckoutForm(forms.Form):
         label="Địa chỉ giao hàng chi tiết",
         widget=forms.Textarea(attrs={
             'rows': 3,
-            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
+            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]',
             'placeholder': 'Số nhà, tên đường, phường/xã, quận/huyện, tỉnh/thành phố...'
         })
     )
@@ -65,7 +65,7 @@ class CheckoutForm(forms.Form):
         required=False,
         label="Ghi chú thêm cho người bán (nếu có)",
         widget=forms.TextInput(attrs={
-            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
+            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]',
             'placeholder': 'Ví dụ: Giao hàng vào giờ hành chính, bọc thêm lớp giữ ẩm...'
         })
     )
@@ -82,14 +82,14 @@ class RegisterForm(forms.ModelForm):
         label="Mật khẩu",
         min_length=8,
         widget=forms.PasswordInput(attrs={
-            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
+            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]',
             'placeholder': 'Tối thiểu 8 ký tự (có chữ & số)'
         })
     )
     confirm_password = forms.CharField(
         label="Xác nhận mật khẩu",
         widget=forms.PasswordInput(attrs={
-            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
+            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]',
             'placeholder': 'Nhập lại mật khẩu ở trên'
         })
     )
@@ -98,7 +98,7 @@ class RegisterForm(forms.ModelForm):
         required=True,
         label="Email liên hệ",
         widget=forms.EmailInput(attrs={
-            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
+            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]',
             'placeholder': 'email@example.com'
         })
     )
@@ -113,11 +113,11 @@ class RegisterForm(forms.ModelForm):
         }
         widgets = {
             'username': forms.TextInput(attrs={
-                'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
+                'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]',
                 'placeholder': 'Nhập tên đăng nhập viết liền không dấu'
             }),
             'first_name': forms.TextInput(attrs={
-                'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
+                'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]',
                 'placeholder': 'Nhập họ và tên của bạn'
             }),
         }
@@ -170,14 +170,14 @@ class LoginForm(forms.Form):
     username = forms.CharField(
         label="Tên đăng nhập",
         widget=forms.TextInput(attrs={
-            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
+            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]',
             'placeholder': 'Nhập tên đăng nhập của bạn'
         })
     )
     password = forms.CharField(
         label="Mật khẩu",
         widget=forms.PasswordInput(attrs={
-            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
+            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]',
             'placeholder': 'Nhập mật khẩu'
         })
     )
@@ -197,7 +197,7 @@ class ReviewForm(forms.ModelForm):
         }
         widgets = {
             'reviewer_name': forms.TextInput(attrs={
-                'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
+                'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]',
                 'placeholder': 'Ví dụ: Anh Tuấn'
             }),
             'rating': forms.Select(
@@ -208,11 +208,11 @@ class ReviewForm(forms.ModelForm):
                     (2, '2 Sao - Cần cải thiện'),
                     (1, '1 Sao - Kém'),
                 ],
-                attrs={'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]'}
+                attrs={'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]'}
             ),
             'comment': forms.Textarea(attrs={
                 'rows': 3,
-                'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
+                'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]',
                 'placeholder': 'Chia sẻ cảm nhận thực tế khi nhận cây...'
             }),
         }
@@ -231,7 +231,7 @@ class OrderTrackingForm(forms.Form):
     keyword = forms.CharField(
         label="Mã đơn hàng hoặc Số điện thoại",
         widget=forms.TextInput(attrs={
-            'class': 'w-full px-4 py-2.5 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
+            'class': 'w-full px-4 py-2.5 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]',
             'placeholder': 'Nhập mã đơn (vd: HD-...) hoặc số điện thoại đặt hàng'
         })
     )
@@ -250,7 +250,7 @@ class ForgotPasswordRequestForm(forms.Form):
         required=True,
         label="Tên đăng nhập",
         widget=forms.TextInput(attrs={
-            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
+            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]',
             'placeholder': 'Nhập tên đăng nhập của bạn'
         })
     )
@@ -258,7 +258,7 @@ class ForgotPasswordRequestForm(forms.Form):
         required=True,
         label="Email đã đăng ký",
         widget=forms.EmailInput(attrs={
-            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
+            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]',
             'placeholder': 'Nhập email đã dùng khi tạo tài khoản'
         })
     )
@@ -273,7 +273,7 @@ class SetNewPasswordForm(forms.Form):
         required=True,
         label="Mật khẩu mới",
         widget=forms.PasswordInput(attrs={
-            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
+            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]',
             'placeholder': 'Tối thiểu 8 ký tự (có chữ & số)'
         })
     )
@@ -282,7 +282,7 @@ class SetNewPasswordForm(forms.Form):
         required=True,
         label="Xác nhận mật khẩu mới",
         widget=forms.PasswordInput(attrs={
-            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:border-[#7AA88B]',
+            'class': 'w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]',
             'placeholder': 'Nhập lại mật khẩu mới'
         })
     )
@@ -318,7 +318,7 @@ class CouponApplyForm(forms.Form):
         label="Mã giảm giá",
         widget=forms.TextInput(attrs={
             'placeholder': 'Nhập mã ưu đãi (vd: AQUA2026, FREESHIP)...',
-            'class': 'w-full bg-white border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-[#7AA88B] uppercase tracking-wider font-semibold placeholder:normal-case placeholder:font-normal placeholder:text-slate-400 transition',
+            'class': 'w-full bg-white border border-slate-300 px-3 py-2 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E] uppercase tracking-wider font-semibold placeholder:normal-case placeholder:font-normal placeholder:text-slate-500 transition',
             'autocomplete': 'off',
         })
     )
@@ -333,7 +333,7 @@ class ProfileUpdateForm(forms.Form):
         required=True,
         label="Họ và tên đầy đủ",
         widget=forms.TextInput(attrs={
-            'class': 'w-full px-3 py-2 bg-white border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#7AA88B] transition',
+            'class': 'w-full px-3 py-2 bg-white border border-slate-300 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E] transition',
             'placeholder': 'Họ và tên'
         })
     )
@@ -341,7 +341,7 @@ class ProfileUpdateForm(forms.Form):
         required=True,
         label="Địa chỉ Email",
         widget=forms.EmailInput(attrs={
-            'class': 'w-full px-3 py-2 bg-white border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#7AA88B] transition',
+            'class': 'w-full px-3 py-2 bg-white border border-slate-300 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E] transition',
             'placeholder': 'name@example.com'
         })
     )
@@ -350,7 +350,7 @@ class ProfileUpdateForm(forms.Form):
         required=False,
         label="Số điện thoại liên hệ",
         widget=forms.TextInput(attrs={
-            'class': 'w-full px-3 py-2 bg-white border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#7AA88B] transition',
+            'class': 'w-full px-3 py-2 bg-white border border-slate-300 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E] transition',
             'placeholder': 'Ví dụ: 0912345678'
         })
     )
@@ -358,7 +358,7 @@ class ProfileUpdateForm(forms.Form):
         required=False,
         label="Địa chỉ giao hàng mặc định",
         widget=forms.Textarea(attrs={
-            'class': 'w-full px-3 py-2 bg-white border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#7AA88B] transition resize-none',
+            'class': 'w-full px-3 py-2 bg-white border border-slate-300 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E] transition resize-none',
             'rows': 3,
             'placeholder': 'Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố...'
         })
@@ -403,7 +403,7 @@ class CustomPasswordChangeForm(forms.Form):
     old_password = forms.CharField(
         label="Mật khẩu hiện tại",
         widget=forms.PasswordInput(attrs={
-            'class': 'w-full px-3 py-2 bg-white border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#7AA88B] transition',
+            'class': 'w-full px-3 py-2 bg-white border border-slate-300 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E] transition',
             'placeholder': 'Nhập mật khẩu đang sử dụng...'
         })
     )
@@ -411,7 +411,7 @@ class CustomPasswordChangeForm(forms.Form):
         min_length=8,
         label="Mật khẩu mới",
         widget=forms.PasswordInput(attrs={
-            'class': 'w-full px-3 py-2 bg-white border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#7AA88B] transition',
+            'class': 'w-full px-3 py-2 bg-white border border-slate-300 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E] transition',
             'placeholder': 'Tối thiểu 8 ký tự (có chữ & số)...'
         })
     )
@@ -419,7 +419,7 @@ class CustomPasswordChangeForm(forms.Form):
         min_length=8,
         label="Xác nhận mật khẩu mới",
         widget=forms.PasswordInput(attrs={
-            'class': 'w-full px-3 py-2 bg-white border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-[#7AA88B] transition',
+            'class': 'w-full px-3 py-2 bg-white border border-slate-300 text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E] transition',
             'placeholder': 'Nhập lại chính xác mật khẩu mới...'
         })
     )

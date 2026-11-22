@@ -1,13 +1,14 @@
 {% extends 'shop/base.html' %}
 
 {% block title %}Giỏ Hàng Mua Sắm - AquaPlant{% endblock %}
+{% block meta_description %}Xem và điều chỉnh số lượng cây thủy sinh trong giỏ hàng, áp dụng mã giảm giá AQUA2026 hoặc FREESHIP trước khi thanh toán.{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
 
     <div class="border-b border-slate-200 pb-3 flex items-center justify-between">
         <h1 class="text-xl font-bold text-slate-900 flex items-center gap-2">
-            <i class="fa-solid fa-cart-shopping text-[#7AA88B]"></i> Giỏ Hàng Mua Sắm
+            <i class="fa-solid fa-cart-shopping text-[#3D6B4E]" aria-hidden="true"></i> Giỏ Hàng Mua Sắm
         </h1>
         <a href="{% url 'home' %}" class="text-xs text-[#2F5C3E] hover:underline font-semibold">
             ← Tiếp tục chọn cây
@@ -21,7 +22,7 @@
         <div class="lg:col-span-2 space-y-4">
             <div class="bg-white border border-slate-200 overflow-x-auto">
                 <table class="w-full text-left text-xs">
-                    <thead class="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
+                    <thead class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase text-[11px]">
                         <tr>
                             <th class="p-3.5">Cây Cảnh</th>
                             <th class="p-3.5 text-right">Đơn Giá</th>
@@ -34,7 +35,7 @@
                         {% for item in cart_items %}
                         <tr class="hover:bg-slate-50/80 transition">
                             <td class="p-3.5 flex items-center gap-3">
-                                <img src="{{ item.product.display_image_url }}" alt="{{ item.product.name }}" class="w-12 h-12 object-cover border border-slate-200 flex-shrink-0">
+                                <img src="{{ item.product.display_image_url }}" alt="{{ item.product.name }}" width="48" height="48" loading="lazy" class="w-12 h-12 object-cover border border-slate-200 flex-shrink-0">
                                 <div>
                                     <a href="{% url 'product_detail' slug=item.product.slug %}" class="font-bold text-slate-900 hover:text-[#2F5C3E] block">
                                         {{ item.product.name }}
@@ -44,7 +45,7 @@
                                         {{ item.variant_name }}
                                     </span>
                                     {% else %}
-                                    <span class="text-[10px] text-slate-400">{{ item.product.category.name }}</span>
+                                    <span class="text-[10px] text-slate-600">{{ item.product.category.name }}</span>
                                     {% endif %}
                                 </div>
                             </td>
@@ -72,10 +73,10 @@
                             </td>
 
                             <td class="p-3.5 text-center">
-                                <form method="POST" action="{% url 'remove_from_cart' item_key=item.key %}" onsubmit="return confirm('Bạn có chắc muốn xóa cây này khỏi giỏ hàng?');" class="inline m-0">
+                                <form method="POST" action="{% url 'remove_from_cart' item_key=item.key %}" data-confirm-message="Bạn có chắc muốn xóa cây này khỏi giỏ hàng?" class="inline m-0">
                                     {% csrf_token %}
-                                    <button type="submit" class="text-slate-400 hover:text-rose-600 transition" title="Xóa món này" aria-label="Xóa sản phẩm khỏi giỏ hàng">
-                                        <i class="fa-solid fa-trash-can"></i>
+                                    <button type="submit" class="text-slate-600 hover:text-rose-700 transition" title="Xóa món này" aria-label="Xóa sản phẩm khỏi giỏ hàng">
+                                        <i class="fa-solid fa-trash-can" aria-hidden="true"></i>
                                     </button>
                                 </form>
                             </td>
@@ -87,9 +88,9 @@
 
             <!-- Khối Nhập Mã Giảm Giá Voucher -->
             <div class="bg-white border border-slate-200 p-4 space-y-3">
-                <h3 class="font-bold text-xs text-slate-900 uppercase tracking-wider flex items-center gap-2">
-                    <i class="fa-solid fa-ticket text-[#7AA88B]"></i> Mã Khuyến Mãi / Voucher Ưu Đãi
-                </h3>
+                <h2 class="font-bold text-xs text-slate-900 uppercase tracking-wider flex items-center gap-2">
+                    <i class="fa-solid fa-ticket text-[#3D6B4E]" aria-hidden="true"></i> Mã Khuyến Mãi / Voucher Ưu Đãi
+                </h2>
                 {% if coupon %}
                 <div class="bg-[#EEF5F0] border border-[#C5DEC9] p-3 flex items-center justify-between gap-3 text-xs">
                     <div>
@@ -106,17 +107,18 @@
                 {% else %}
                 <form method="POST" action="{% url 'apply_coupon' %}" class="flex flex-col sm:flex-row gap-2">
                     {% csrf_token %}
+                    <label for="{{ coupon_form.coupon_code.id_for_label }}" class="sr-only">Nhập mã khuyến mãi</label>
                     <div class="flex-grow">{{ coupon_form.coupon_code }}</div>
-                    <button type="submit" class="bg-[#7AA88B] hover:bg-[#6B997C] text-white px-4 py-2 font-bold text-xs uppercase transition flex-shrink-0">
+                    <button type="submit" class="bg-[#3D6B4E] hover:bg-[#2F5C3E] text-white px-4 py-2 font-bold text-xs uppercase transition flex-shrink-0">
                         Áp Dụng Mã
                     </button>
                 </form>
-                <div class="flex flex-wrap items-center gap-2 text-[11px] text-slate-500">
+                <div class="flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
                     <span>Gợi ý:</span>
-                    <button type="button" onclick="let el=document.getElementById('id_coupon_code'); if(el) el.value='AQUA2026';" class="px-2 py-0.5 bg-slate-50 hover:bg-[#EEF5F0] border border-dashed border-slate-300 font-mono text-[10px]">
+                    <button type="button" data-fill-target="id_coupon_code" data-fill-value="AQUA2026" class="px-2 py-0.5 bg-slate-50 hover:bg-[#EEF5F0] border border-dashed border-slate-300 font-mono text-[10px]">
                         <strong>AQUA2026</strong> (Giảm 10% từ 100k)
                     </button>
-                    <button type="button" onclick="let el=document.getElementById('id_coupon_code'); if(el) el.value='FREESHIP';" class="px-2 py-0.5 bg-slate-50 hover:bg-[#EEF5F0] border border-dashed border-slate-300 font-mono text-[10px]">
+                    <button type="button" data-fill-target="id_coupon_code" data-fill-value="FREESHIP" class="px-2 py-0.5 bg-slate-50 hover:bg-[#EEF5F0] border border-dashed border-slate-300 font-mono text-[10px]">
                         <strong>FREESHIP</strong> (Giảm 30k từ 200k)
                     </button>
                 </div>
@@ -126,9 +128,9 @@
 
         <!-- Khối Tóm Tắt Thanh Toán (1 Cột) -->
         <div class="bg-white border border-slate-200 p-5 space-y-4">
-            <h3 class="font-bold text-xs uppercase tracking-wider text-slate-900 pb-2 border-b border-slate-100">
+            <h2 class="font-bold text-xs uppercase tracking-wider text-slate-900 pb-2 border-b border-slate-100">
                 Tóm Tắt Đơn Hàng
-            </h3>
+            </h2>
 
             <div class="space-y-2 text-xs">
                 <div class="flex justify-between text-slate-600">
@@ -142,7 +144,7 @@
                 </div>
                 {% endif %}
                 {% if savings > 0 %}
-                <div class="flex justify-between text-slate-500">
+                <div class="flex justify-between text-slate-600">
                     <span>Tiết kiệm khuyến mãi:</span>
                     <span class="font-mono text-[#2F5C3E] font-semibold">-{{ savings|floatformat:0 }}₫</span>
                 </div>
@@ -157,26 +159,26 @@
                 </div>
             </div>
 
-            <a href="{% url 'checkout' %}" class="w-full bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs py-3 transition flex items-center justify-center gap-2 uppercase tracking-wider text-center">
-                Tiến Hành Đặt Hàng <i class="fa-solid fa-arrow-right"></i>
+            <a href="{% url 'checkout' %}" class="w-full bg-[#3D6B4E] hover:bg-[#2F5C3E] text-white font-bold text-xs py-3 transition flex items-center justify-center gap-2 uppercase tracking-wider text-center">
+                Tiến Hành Đặt Hàng <i class="fa-solid fa-arrow-right" aria-hidden="true"></i>
             </a>
 
-            <p class="text-[11px] text-slate-400 text-center">
-                <i class="fa-solid fa-shield-halved text-[#7AA88B] mr-1"></i> Tự động trừ kho FIFO & bảo hiểm 24H
+            <p class="text-[11px] text-slate-600 text-center">
+                <i class="fa-solid fa-shield-halved text-[#3D6B4E] mr-1" aria-hidden="true"></i> Tự động trừ kho FIFO & bảo hiểm 24H
             </p>
         </div>
 
     </div>
     {% else %}
     <div class="bg-white border border-slate-200 p-12 text-center space-y-4 max-w-lg mx-auto">
-        <div class="w-16 h-16 bg-[#EEF5F0] text-[#7AA88B] mx-auto flex items-center justify-center text-2xl border border-[#C5DEC9]">
-            <i class="fa-solid fa-basket-shopping"></i>
+        <div class="w-16 h-16 bg-[#EEF5F0] text-[#3D6B4E] mx-auto flex items-center justify-center text-2xl border border-[#C5DEC9]">
+            <i class="fa-solid fa-basket-shopping" aria-hidden="true"></i>
         </div>
         <h2 class="text-base font-bold text-slate-800">Giỏ hàng của bạn đang trống</h2>
-        <p class="text-xs text-slate-500 leading-relaxed">
+        <p class="text-xs text-slate-600 leading-relaxed">
             Hãy khám phá các loại cây cảnh thủy sinh tươi đẹp của chúng tôi để bổ sung cho hồ cá của bạn.
         </p>
-        <a href="{% url 'home' %}" class="inline-block bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs px-6 py-2.5 transition uppercase tracking-wide">
+        <a href="{% url 'home' %}" class="inline-block bg-[#3D6B4E] hover:bg-[#2F5C3E] text-white font-bold text-xs px-6 py-2.5 transition uppercase tracking-wide">
             Xem Sản Phẩm Ngay
         </a>
     </div>

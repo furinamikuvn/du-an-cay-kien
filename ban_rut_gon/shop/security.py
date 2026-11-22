@@ -191,13 +191,26 @@ def validate_image_file(file_obj):
 class SecurityHeadersMiddleware:
     """Bổ sung Content-Security-Policy và các header phòng thủ trình duyệt hiện đại."""
 
-    DEFAULT_CSP = "; ".join([
+    STOREFRONT_CSP = "; ".join([
         "default-src 'self'",
-        "script-src 'self' 'unsafe-inline' https://cdn.tailwindcss.com",
-        "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com",
+        "script-src 'self'",
+        "style-src 'self' https://cdnjs.cloudflare.com https://fonts.googleapis.com",
         "font-src 'self' data: https://cdnjs.cloudflare.com https://fonts.gstatic.com",
         "img-src 'self' data: blob: https:",
-        "connect-src 'self' https://cdn.tailwindcss.com",
+        "connect-src 'self'",
+        "object-src 'none'",
+        "frame-ancestors 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+    ])
+    DEFAULT_CSP = STOREFRONT_CSP
+    ADMIN_CSP = "; ".join([
+        "default-src 'self'",
+        "script-src 'self' 'unsafe-inline'",
+        "style-src 'self' 'unsafe-inline'",
+        "font-src 'self' data:",
+        "img-src 'self' data: blob: https:",
+        "connect-src 'self'",
         "object-src 'none'",
         "frame-ancestors 'none'",
         "base-uri 'self'",
@@ -209,7 +222,8 @@ class SecurityHeadersMiddleware:
 
     def __call__(self, request):
         response = self.get_response(request)
-        csp = getattr(settings, 'CONTENT_SECURITY_POLICY', self.DEFAULT_CSP)
+        default_csp = self.ADMIN_CSP if request.path.startswith('/admin/') else self.STOREFRONT_CSP
+        csp = getattr(settings, 'CONTENT_SECURITY_POLICY', default_csp)
         response.setdefault('Content-Security-Policy', csp)
         response.setdefault('X-Content-Type-Options', 'nosniff')
         response.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')

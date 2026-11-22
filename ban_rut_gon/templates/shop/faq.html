@@ -1,53 +1,45 @@
 {% extends 'shop/base.html' %}
 
 {% block title %}Hỏi Đáp Thường Gặp (FAQ) - AquaPlant{% endblock %}
+{% block meta_description %}Giải đáp thắc mắc về vận chuyển bọc ẩm, dưỡng cây thủy sinh thuần lá nước và chính sách bảo hiểm 1 đổi 1 tại AquaPlant.{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
     <div class="bg-white border border-slate-200 p-6 space-y-4">
         <div>
             <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] text-[11px] font-bold mb-2 uppercase">
-                <i class="fa-solid fa-circle-question text-[#7AA88B]"></i> Trung Tâm Giải Đáp Thắc Mắc
+                <i class="fa-solid fa-circle-question text-[#3D6B4E]" aria-hidden="true"></i> Trung Tâm Giải Đáp Thắc Mắc
             </span>
             <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">Câu Hỏi Thường Gặp (FAQ)</h1>
-            <p class="text-xs text-slate-500 mt-1">Giải đáp về vận chuyển bọc ẩm, cách dưỡng cây thuần nước và chính sách bảo hiểm 1 đổi 1.</p>
+            <p class="text-xs text-slate-600 mt-1">Giải đáp về vận chuyển bọc ẩm, cách dưỡng cây thuần nước và chính sách bảo hiểm 1 đổi 1.</p>
         </div>
 
         <form method="GET" action="{% url 'faq' %}" class="flex max-w-md text-xs">
-            <input type="text" name="q" value="{{ search_query|default:'' }}" placeholder="Tìm câu hỏi, CO2, lá nước..." class="w-full bg-slate-50 border border-slate-300 px-3 py-2 focus:outline-none focus:border-[#7AA88B]">
-            <button type="submit" class="bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold px-4 py-2 flex-shrink-0">Tìm Kiếm</button>
+            <label for="faq-search" class="sr-only">Tìm kiếm câu hỏi thường gặp</label>
+            <input id="faq-search" type="text" name="q" value="{{ search_query|default:'' }}" placeholder="Tìm câu hỏi, CO2, lá nước..." class="w-full bg-slate-50 border border-slate-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]">
+            <button type="submit" class="bg-[#3D6B4E] hover:bg-[#2F5C3E] text-white font-bold px-4 py-2 flex-shrink-0">Tìm Kiếm</button>
         </form>
     </div>
 
     <div class="space-y-3">
         {% for faq in faqs %}
         <div class="bg-white border border-slate-200">
-            <button type="button" onclick="toggleFaq({{ forloop.counter }})" class="w-full text-left p-4 flex items-center justify-between gap-4 font-bold text-xs sm:text-sm text-slate-900 hover:text-[#2F5C3E] transition">
+            <button type="button" data-faq-toggle="faq-body-{{ forloop.counter }}" data-faq-icon="faq-icon-{{ forloop.counter }}" aria-expanded="{% if forloop.first and not search_query %}true{% else %}false{% endif %}" aria-controls="faq-body-{{ forloop.counter }}" class="w-full text-left p-4 flex items-center justify-between gap-4 font-bold text-xs sm:text-sm text-slate-900 hover:text-[#2F5C3E] focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 transition">
                 <div class="flex items-center gap-3">
                     <span class="w-6 h-6 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] flex items-center justify-center text-xs font-bold flex-shrink-0">{{ forloop.counter }}</span>
                     <span>{{ faq.question }}</span>
                 </div>
-                <i id="faq-icon-{{ forloop.counter }}" class="fa-solid fa-chevron-down text-xs text-slate-400 transition-transform"></i>
+                <i id="faq-icon-{{ forloop.counter }}" class="fa-solid fa-chevron-down text-xs text-slate-500 transition-transform" aria-hidden="true"></i>
             </button>
             <div id="faq-body-{{ forloop.counter }}" class="{% if not forloop.first or search_query %}hidden{% endif %} px-5 pb-4 pt-2 text-xs text-slate-600 leading-relaxed border-t border-slate-100 bg-slate-50/50">
                 {{ faq.answer|linebreaks }}
             </div>
         </div>
         {% empty %}
-        <div class="bg-white border border-slate-200 p-8 text-center text-xs text-slate-400">
+        <div class="bg-white border border-slate-200 p-8 text-center text-xs text-slate-600">
             Không tìm thấy câu hỏi phù hợp.
         </div>
         {% endfor %}
     </div>
 </div>
-
-<script>
-function toggleFaq(idx) {
-    const body = document.getElementById('faq-body-' + idx);
-    const icon = document.getElementById('faq-icon-' + idx);
-    if (!body) return;
-    body.classList.toggle('hidden');
-    if (icon) icon.classList.toggle('rotate-180');
-}
-</script>
 {% endblock %}

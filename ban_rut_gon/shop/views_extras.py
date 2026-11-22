@@ -594,10 +594,24 @@ def add_combo_to_cart_view(request):
         cart = {}
     added_count = 0
 
+    parsed_pids = []
     for pid_str in product_ids:
         try:
-            pid = int(pid_str)
-            product = Product.objects.get(id=pid, is_active=True)
+            parsed_pids.append(int(pid_str))
+        except (ValueError, TypeError):
+            continue
+
+    products_map = (
+        Product.objects.filter(id__in=parsed_pids, is_active=True).in_bulk()
+        if parsed_pids
+        else {}
+    )
+
+    for pid in parsed_pids:
+        product = products_map.get(pid)
+        if product is None:
+            continue
+        try:
             qty = int(source.get(f"qty_{pid}", 1))
             if qty < 1:
                 qty = 1
@@ -612,7 +626,7 @@ def add_combo_to_cart_view(request):
                 allowed = min(qty, product.stock_quantity - total_prod_qty)
                 cart[key] = current_qty + allowed
                 added_count += 1
-        except (ValueError, TypeError, Product.DoesNotExist):
+        except (ValueError, TypeError):
             continue
 
     if added_count > 0:
@@ -839,27 +853,29 @@ def change_password_view(request):
 def my_orders_view(request):
     """Lịch sử toàn bộ đơn đặt hàng của tài khoản đang đăng nhập kèm tab lọc trạng thái."""
     status_filter = request.GET.get('status', '').strip()
-    orders_qs = Order.objects.filter(user=request.user).prefetch_related('items__product').order_by('-created_at')
+    base_qs = Order.objects.filter(user=request.user)
+    counts = base_qs.aggregate(
+        total=Count('id'),
+        pending=Count('id', filter=Q(status='pending')),
+        confirmed=Count('id', filter=Q(status='confirmed')),
+        shipping=Count('id', filter=Q(status='shipping')),
+        completed=Count('id', filter=Q(status='completed')),
+        cancelled=Count('id', filter=Q(status='cancelled')),
+    )
 
-    total_orders = orders_qs.count()
-    pending_count = orders_qs.filter(status='pending').count()
-    confirmed_count = orders_qs.filter(status='confirmed').count()
-    shipping_count = orders_qs.filter(status='shipping').count()
-    completed_count = orders_qs.filter(status='completed').count()
-    cancelled_count = orders_qs.filter(status='cancelled').count()
-
+    orders_qs = base_qs.prefetch_related('items__product').order_by('-created_at')
     if status_filter:
         orders_qs = orders_qs.filter(status=status_filter)
 
     context = {
         'orders': orders_qs,
         'status_filter': status_filter,
-        'total_orders': total_orders,
-        'pending_count': pending_count,
-        'confirmed_count': confirmed_count,
-        'shipping_count': shipping_count,
-        'completed_count': completed_count,
-        'cancelled_count': cancelled_count,
+        'total_orders': counts['total'] or 0,
+        'pending_count': counts['pending'] or 0,
+        'confirmed_count': counts['confirmed'] or 0,
+        'shipping_count': counts['shipping'] or 0,
+        'completed_count': counts['completed'] or 0,
+        'cancelled_count': counts['cancelled'] or 0,
     }
     return render(request, 'shop/my_orders.html', context)
 
@@ -880,31 +896,45 @@ def staff_dashboard_view(request):
         return redirect('home')
 
     revenue_statuses = ['confirmed', 'shipping', 'completed']
-    total_revenue = Order.objects.filter(status__in=revenue_statuses).aggregate(total_rev=Sum('total_amount'))['total_rev'] or Decimal('0')
-    pending_revenue = Order.objects.filter(status='pending').aggregate(total_rev=Sum('total_amount'))['total_rev'] or Decimal('0')
+    order_summary = Order.objects.aggregate(
+        total_rev=Sum('total_amount', filter=Q(status__in=revenue_statuses)),
+        pending_rev=Sum('total_amount', filter=Q(status='pending')),
+        all_count=Count('id'),
+        pending_count=Count('id', filter=Q(status='pending')),
+        confirmed_count=Count('id', filter=Q(status='confirmed')),
+        shipping_count=Count('id', filter=Q(status='shipping')),
+        completed_count=Count('id', filter=Q(status='completed')),
+        cancelled_count=Count('id', filter=Q(status='cancelled')),
+    )
+    total_revenue = order_summary['total_rev'] or Decimal('0')
+    pending_revenue = order_summary['pending_rev'] or Decimal('0')
 
     orders_by_status = {
-        'all': Order.objects.count(),
-        'pending': Order.objects.filter(status='pending').count(),
-        'confirmed': Order.objects.filter(status='confirmed').count(),
-        'shipping': Order.objects.filter(status='shipping').count(),
-        'completed': Order.objects.filter(status='completed').count(),
-        'cancelled': Order.objects.filter(status='cancelled').count(),
+        'all': order_summary['all_count'] or 0,
+        'pending': order_summary['pending_count'] or 0,
+        'confirmed': order_summary['confirmed_count'] or 0,
+        'shipping': order_summary['shipping_count'] or 0,
+        'completed': order_summary['completed_count'] or 0,
+        'cancelled': order_summary['cancelled_count'] or 0,
     }
 
-    quarantined_lots = InventoryLot.objects.filter(
-        status='quarantined'
-    ).select_related('product').order_by('-received_date')
-    quarantined_count = quarantined_lots.count()
-    quarantined_total_units = quarantined_lots.aggregate(total_units=Sum('quantity_available'))['total_units'] or 0
+    quarantined_lots = list(
+        InventoryLot.objects.filter(status='quarantined')
+        .select_related('product')
+        .order_by('-received_date')
+    )
+    quarantined_count = len(quarantined_lots)
+    quarantined_total_units = sum(lot.quantity_available for lot in quarantined_lots)
 
     active_order_filter = Q(orderitem__order__isnull=False) & ~Q(orderitem__order__status='cancelled')
-    top_plants = Product.objects.annotate(
-        total_sold=Sum('orderitem__quantity', filter=active_order_filter),
-        total_orders_count=Count('orderitem__order', filter=active_order_filter, distinct=True),
-    ).filter(total_sold__gt=0).order_by('-total_sold')[:5]
-    if not top_plants.exists():
-        top_plants = Product.objects.filter(is_active=True)[:5]
+    top_plants = list(
+        Product.objects.annotate(
+            total_sold=Sum('orderitem__quantity', filter=active_order_filter),
+            total_orders_count=Count('orderitem__order', filter=active_order_filter, distinct=True),
+        ).filter(total_sold__gt=0).order_by('-total_sold')[:5]
+    )
+    if not top_plants:
+        top_plants = list(Product.objects.filter(is_active=True)[:5])
 
     recent_orders = Order.objects.all().order_by('-created_at')[:15].prefetch_related('items__product')
 

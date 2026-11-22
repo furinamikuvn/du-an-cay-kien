@@ -22,7 +22,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.db import transaction
-from django.db.models import Avg, Case, DecimalField, F, Q, Sum, When
+from django.db.models import Avg, Case, Count, DecimalField, F, Q, Sum, When
 from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
 from django.utils import timezone
@@ -140,6 +140,9 @@ def get_cart_items(request):
     subtotal = Decimal('0')
     savings = Decimal('0')
     stale_keys = []
+    parsed_entries = []
+    prod_ids = set()
+    var_ids = set()
 
     for cart_key, raw_qty in list(cart.items()):
         cart_key_str = str(cart_key)
@@ -170,17 +173,38 @@ def get_cart_items(request):
                 stale_keys.append(cart_key)
                 continue
 
-        try:
-            prod = Product.objects.select_related('category').get(id=prod_id, is_active=True)
-        except Product.DoesNotExist:
+        prod_ids.add(prod_id)
+        if var_id is not None:
+            var_ids.add(var_id)
+        parsed_entries.append((cart_key, cart_key_str, prod_id, var_id, qty))
+
+    products_map = (
+        Product.objects.select_related('category')
+        .filter(id__in=prod_ids, is_active=True)
+        .in_bulk()
+        if prod_ids
+        else {}
+    )
+    variants_map = (
+        ProductVariant.objects.filter(
+            id__in=var_ids,
+            product_id__in=products_map.keys(),
+            is_active=True,
+        ).in_bulk()
+        if var_ids and products_map
+        else {}
+    )
+
+    for cart_key, cart_key_str, prod_id, var_id, qty in parsed_entries:
+        prod = products_map.get(prod_id)
+        if prod is None:
             stale_keys.append(cart_key)
             continue
 
         variant = None
         if var_id is not None:
-            try:
-                variant = ProductVariant.objects.get(id=var_id, product=prod, is_active=True)
-            except ProductVariant.DoesNotExist:
+            variant = variants_map.get(var_id)
+            if variant is None or variant.product_id != prod.id:
                 # Chặn lỗi biến thể đã tắt âm thầm rơi về giá sản phẩm cha
                 stale_keys.append(cart_key)
                 continue
@@ -269,8 +293,10 @@ def home_view(request):
     - Lọc theo danh mục ('category') và thông số sinh thái ('position', 'co2', 'care').
     - Sắp xếp theo giá tăng dần, giảm dần hoặc mới nhất ('sort').
     """
-    categories = Category.objects.all()
-    products = Product.objects.filter(is_active=True)
+    categories = Category.objects.annotate(
+        active_product_count=Count('products', filter=Q(products__is_active=True))
+    ).order_by('id')
+    products = Product.objects.select_related('category').filter(is_active=True)
 
     keyword = request.GET.get('q', '').strip()
     if keyword:
@@ -354,23 +380,37 @@ def product_detail_view(request, slug):
         initial_name = request.user.get_full_name() or request.user.username if request.user.is_authenticated else ""
         review_form = ReviewForm(initial={'reviewer_name': initial_name})
 
-    reviews = product.reviews.all().order_by('-created_at')
-    reviews_count = reviews.count()
-    avg_rating_agg = reviews.aggregate(Avg('rating'))['rating__avg']
+    reviews_qs = product.reviews.all().order_by('-created_at')
+    review_stats = reviews_qs.aggregate(
+        total_count=Count('id'),
+        avg_rating=Avg('rating'),
+        star_5=Count('id', filter=Q(rating=5)),
+        star_4=Count('id', filter=Q(rating=4)),
+        star_3=Count('id', filter=Q(rating=3)),
+        star_2=Count('id', filter=Q(rating=2)),
+        star_1=Count('id', filter=Q(rating=1)),
+    )
+    reviews = list(reviews_qs)
+    reviews_count = review_stats['total_count'] or 0
+    avg_rating_agg = review_stats['avg_rating']
     avg_rating = round(avg_rating_agg, 1) if avg_rating_agg is not None else 5.0
 
     rating_distribution = {}
     for star in range(5, 0, -1):
-        count_star = reviews.filter(rating=star).count()
+        count_star = review_stats.get(f'star_{star}') or 0
         percent = round((count_star / reviews_count * 100), 0) if reviews_count > 0 else 0
         rating_distribution[star] = {
             'count': count_star,
             'percent': percent,
         }
 
-    variants = product.variants.filter(is_active=True)
-    gallery_images = product.images.all()
-    related_products = Product.objects.filter(category=product.category, is_active=True).exclude(id=product.id)[:4]
+    variants = list(product.variants.filter(is_active=True))
+    gallery_images = list(product.images.all())
+    related_products = list(
+        Product.objects.select_related('category')
+        .filter(category=product.category, is_active=True)
+        .exclude(id=product.id)[:4]
+    )
 
     context = {
         'product': product,
@@ -1053,21 +1093,26 @@ def profile_view(request):
         }
         form = ProfileUpdateForm(initial=initial_data, user=user)
 
-    my_orders = Order.objects.filter(user=user).prefetch_related('items__product').order_by('-created_at')
-    recent_orders = my_orders[:5]
-    total_orders_count = my_orders.count()
-    completed_orders = my_orders.filter(status='completed')
-    total_spent = completed_orders.aggregate(total=Sum('total_amount'))['total'] or 0
+    my_orders_qs = Order.objects.filter(user=user).prefetch_related('items__product').order_by('-created_at')
+    recent_orders = list(my_orders_qs[:5])
+    order_stats = Order.objects.filter(user=user).aggregate(
+        total_orders=Count('id'),
+        completed_orders=Count('id', filter=Q(status='completed')),
+        total_spent=Sum('total_amount', filter=Q(status='completed')),
+    )
+    total_orders_count = order_stats['total_orders'] or 0
+    completed_orders_count = order_stats['completed_orders'] or 0
+    total_spent = order_stats['total_spent'] or 0
     password_form = CustomPasswordChangeForm(user=user)
 
     context = {
         'form': form,
         'password_form': password_form,
         'profile': profile,
-        'my_orders': my_orders,
+        'my_orders': recent_orders,
         'recent_orders': recent_orders,
         'total_orders_count': total_orders_count,
-        'completed_orders_count': completed_orders.count(),
+        'completed_orders_count': completed_orders_count,
         'total_spent': total_spent,
     }
     return render(request, 'shop/profile.html', context)

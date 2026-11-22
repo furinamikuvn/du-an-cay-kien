@@ -1396,6 +1396,172 @@ class AquaPlantShopTest(TestCase):
         self.assertContains(sorted_asc, 'id="subnav-scroll-hint"')
         self.assertContains(sorted_asc, 'min-h-[44px]')
 
+    def test_22_p2_csp_static_tailwind_webp_and_seo_a11y(self):
+        """Kiểm thử Phase P2: Tailwind tĩnh, CSP không 'unsafe-inline', ảnh WebP, SEO & WCAG AA."""
+        from django.conf import settings as dj_settings
+        from pathlib import Path
+
+        base_dir = Path(dj_settings.BASE_DIR)
+        self.assertTrue((base_dir / 'static' / 'css' / 'tailwind.css').is_file())
+        self.assertTrue((base_dir / 'static' / 'js' / 'app.js').is_file())
+        self.assertTrue((base_dir / 'static' / 'js' / 'plant_assistant.js').is_file())
+
+        css_text = (base_dir / 'static' / 'css' / 'tailwind.css').read_text(encoding='utf-8')
+        self.assertIn('aspect-video', css_text)
+        self.assertIn('backdrop-blur-sm', css_text)
+
+        # Mọi ảnh sản phẩm & tank WebP đều tồn tại và gọn (< 250 KB/ảnh)
+        webp_files = list((base_dir / 'static' / 'images').rglob('*.webp')) + list((base_dir / 'media').rglob('*.webp'))
+        self.assertGreaterEqual(len(webp_files), 5)
+        for wf in webp_files:
+            self.assertLess(wf.stat().st_size, 250 * 1024, msg=f"Ảnh WebP quá lớn: {wf}")
+
+        # Kiểm tra Product default fallback dùng .webp
+        self.assertTrue(self.product.display_image_url.endswith('.webp'))
+
+        # Kiểm tra CSP & HTML trên các route chính
+        for url in ['/', f'/san-pham/{self.product.slug}/', '/tro-ly-chon-cay/', '/cam-nang/', '/faq/', '/cart/']:
+            resp = self.client.get(url)
+            self.assertEqual(resp.status_code, 200, msg=f"Lỗi tải {url}")
+            csp = resp.get('Content-Security-Policy', '')
+            self.assertNotIn("'unsafe-inline'", csp, msg=f"CSP còn unsafe-inline tại {url}")
+            self.assertNotIn('cdn.tailwindcss.com', csp, msg=f"CSP còn Play CDN tại {url}")
+
+            html = resp.content.decode('utf-8')
+            self.assertNotIn('cdn.tailwindcss.com', html)
+            self.assertNotRegex(html, r'<script(?![^>]*\bsrc=)[^>]*>')
+            self.assertNotRegex(html, r'\son(?:click|change|submit|input)=')
+            self.assertNotIn('<style', html)
+            self.assertNotIn('aspect-4/3', html)
+            self.assertNotIn('aspect-16/9', html)
+            self.assertNotIn('backdrop-blur-xs', html)
+            self.assertNotIn('shadow-2xs', html)
+            self.assertNotIn('#7AA88B', html)
+            self.assertNotIn('text-slate-400', html)
+            self.assertIn('<meta name="description"', html)
+            self.assertIn('href="#main-content"', html)
+            self.assertIn('id="main-content"', html)
+            self.assertIn('<h1', html)
+            self.assertRegex(html, r'/static/css/tailwind(?:\.[0-9a-f]+)?\.css')
+            self.assertRegex(html, r'/static/js/app(?:\.[0-9a-f]+)?\.js')
+
+        # Trang /admin/login/ vẫn giữ 'unsafe-inline' cho Django Admin widgets
+        admin_login = self.client.get('/admin/login/')
+        self.assertEqual(admin_login.status_code, 200)
+        self.assertIn("'unsafe-inline'", admin_login.get('Content-Security-Policy', ''))
+
+    def test_23_p2_query_optimization_and_indexes(self):
+        """Kiểm thử Phase P2: Chỉ mục DB (CODE-02) và chặn suy thoái truy vấn N+1 (CODE-01)."""
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        # 1. Xác minh db_index=True trên các cột trọng yếu (CODE-02)
+        expected_indexes = {
+            Product: ['regular_price', 'co2_requirement', 'light_requirement', 'placement_position', 'care_level', 'is_active'],
+            InventoryLot: ['received_date', 'status'],
+            Order: ['phone', 'status', 'created_at'],
+            Article: ['category'],
+        }
+        for model_cls, fields in expected_indexes.items():
+            for fname in fields:
+                self.assertTrue(
+                    model_cls._meta.get_field(fname).db_index,
+                    msg=f"{model_cls.__name__}.{fname} thiếu db_index=True",
+                )
+
+        # 2. Tạo thêm dữ liệu nhiều danh mục, sản phẩm, biến thể, đánh giá, đơn hàng để đo truy vấn thực tế
+        extra_cats = [
+            Category.objects.create(name=f"Nhóm {i}", slug=f"nhom-{i}")
+            for i in range(1, 5)
+        ]
+        extra_products = []
+        for i in range(1, 9):
+            cat = extra_cats[i % len(extra_cats)]
+            p = Product.objects.create(
+                name=f"Cây Test N1 {i}",
+                slug=f"cay-test-n1-{i}",
+                category=cat,
+                regular_price=Decimal('50000') + Decimal(i * 5000),
+                stock_quantity=20,
+                is_active=True,
+            )
+            extra_products.append(p)
+            ProductReview.objects.create(
+                product=p,
+                reviewer_name=f"Khách {i}",
+                rating=(i % 5) + 1,
+                comment="Cây rất khỏe.",
+            )
+
+        for star in range(1, 6):
+            ProductReview.objects.create(
+                product=self.product,
+                reviewer_name=f"Tester {star}",
+                rating=star,
+                comment=f"Đánh giá {star} sao",
+            )
+
+        # home_view: bất chấp 5 danh mục + 9 sản phẩm, không phát sinh N+1 query (<= 8 queries)
+        with CaptureQueriesContext(connection) as home_ctx:
+            r_home = self.client.get('/')
+        self.assertEqual(r_home.status_code, 200)
+        self.assertLessEqual(len(home_ctx), 8)
+
+        # product_detail_view: 1 aggregate sao thay vì 7 query count/avg (<= 10 queries)
+        with CaptureQueriesContext(connection) as detail_ctx:
+            r_detail = self.client.get(f'/san-pham/{self.product.slug}/')
+        self.assertEqual(r_detail.status_code, 200)
+        self.assertLessEqual(len(detail_ctx), 10)
+
+        # get_cart_items trên /cart/: với 6 sản phẩm trong giỏ, chỉ dùng in_bulk thay vì N query (<= 10 queries)
+        for ep in extra_products[:6]:
+            self.client.post(f'/add-to-cart/{ep.id}/', {'quantity': 1})
+        with CaptureQueriesContext(connection) as cart_ctx:
+            r_cart = self.client.get('/cart/')
+        self.assertEqual(r_cart.status_code, 200)
+        self.assertLessEqual(len(cart_ctx), 10)
+
+        # my_orders_view & staff_dashboard_view: gộp status counts bằng 1 aggregate
+        staff_user = User.objects.create_user(username='p2staff', password='StrongPassword123', is_staff=True)
+        for i in range(4):
+            ord_obj = Order.objects.create(
+                user=staff_user,
+                order_code=f"HD-P2TEST-{i}",
+                customer_name="Khách P2",
+                phone="0909123456",
+                email="p2@example.com",
+                shipping_address="227 Nguyễn Văn Cừ",
+                total_amount=Decimal('100000'),
+                status=['pending', 'confirmed', 'shipping', 'completed'][i],
+            )
+            OrderItem.objects.create(
+                order=ord_obj,
+                product=self.product,
+                quantity=1,
+                unit_price=Decimal('100000'),
+            )
+
+        self.client.force_login(staff_user)
+        with CaptureQueriesContext(connection) as my_ord_ctx:
+            r_my = self.client.get('/my-orders/')
+        self.assertEqual(r_my.status_code, 200)
+        self.assertLessEqual(len(my_ord_ctx), 10)
+
+        with CaptureQueriesContext(connection) as staff_ctx:
+            r_staff = self.client.get('/staff/dashboard/')
+        self.assertEqual(r_staff.status_code, 200)
+        self.assertLessEqual(len(staff_ctx), 14)
+
+        r_slip = self.client.get(f'/staff/order/{ord_obj.id}/print-slip/')
+        self.assertEqual(r_slip.status_code, 200)
+        slip_html = r_slip.content.decode('utf-8')
+        self.assertIn('<main id="main-content"', slip_html)
+        self.assertNotIn('cdn.tailwindcss.com', slip_html)
+        self.assertNotRegex(slip_html, r'\son(?:click|change|submit|input)=')
+        self.assertNotIn('<style', slip_html)
+
+
+
 
 
 

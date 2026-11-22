@@ -5,71 +5,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Cửa Hàng Cây Cảnh & Thủy Sinh AquaPlant{% endblock %}</title>
+    <meta name="description" content="{% block meta_description %}Cửa hàng cây cảnh và thực vật thủy sinh AquaPlant - Cây thuần lá nước, ráy nana, trân châu, rêu thủy sinh, bảo hiểm sống sót 100%.{% endblock %}">
     <!-- Inline SVG Favicon (Tránh lỗi 404 /favicon.ico) -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%237AA88B'/%3E%3Cpath d='M32 14c-8 8-12 16-12 24a12 12 0 0024 0c0-8-4-16-12-24z' fill='%23ffffff'/%3E%3C/svg%3E">
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%233D6B4E'/%3E%3Cpath d='M32 14c-8 8-12 16-12 24a12 12 0 0024 0c0-8-4-16-12-24z' fill='%23ffffff'/%3E%3C/svg%3E">
+    <!-- Compiled Tailwind CSS -->
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
     <!-- Font Awesome Icons (Verified SRI Hash) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" integrity="sha384-iw3OoTErCYJJB9mCa8LNS2hbsQ7M3C0EpIsO/H5+EGAkPGc6rk+V8i04oW/K5xq0" crossorigin="anonymous" referrerpolicy="no-referrer">
     <!-- Google Fonts: Plus Jakarta Sans -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: {
-                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
-                    },
-                    colors: {
-                        sage: {
-                            50: '#F5F8F5',
-                            100: '#EEF5F0',
-                            200: '#C5DEC9',
-                            300: '#9FC7A8',
-                            400: '#7AA88B',
-                            500: '#6B997C',
-                            600: '#447653',
-                            700: '#2F5C3E',
-                            800: '#23442E',
-                            900: '#172C1E',
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        body {
-            font-family: 'Plus Jakarta Sans', sans-serif;
-            background-color: #F8FAFC;
-            color: #0F172A;
-            -webkit-font-smoothing: antialiased;
-        }
-        .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
-        .no-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-    </style>
+    <script src="{% static 'js/app.js' %}" defer></script>
 </head>
 <body class="bg-[#F8FAFC] text-slate-800 font-sans flex flex-col min-h-screen">
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[60] focus:px-4 focus:py-2 focus:bg-[#2F5C3E] focus:text-white focus:text-xs focus:font-bold focus:outline-none focus:ring-2 focus:ring-white">
+        Chuyển đến nội dung chính
+    </a>
 
     <!-- 0. THANH THÔNG BÁO TRÊN CÙNG -->
     <div class="bg-[#F5F8F5] text-slate-600 text-[11px] py-1.5 px-4 border-b border-[#E3EDE5]">
         <div class="max-w-6xl mx-auto flex justify-between items-center text-[10px] sm:text-[11px]">
             <div class="flex items-center gap-1.5 truncate">
-                <span class="inline-flex items-center gap-1 font-bold text-[#447653] uppercase tracking-wide flex-shrink-0">
-                    <i class="fa-solid fa-seedling text-[#7AA88B]"></i> AquaPlant:
+                <span class="inline-flex items-center gap-1 font-bold text-[#2F5C3E] uppercase tracking-wide flex-shrink-0">
+                    <i class="fa-solid fa-seedling text-[#3D6B4E]" aria-hidden="true"></i> AquaPlant:
                 </span>
                 <span class="hidden sm:inline truncate">Cây thủy sinh thuần dưỡng lá nước · Mã giảm 10%: <strong class="text-[#2F5C3E]">AQUA2026</strong> · Bảo hiểm sống sót 100%</span>
                 <span class="sm:hidden truncate">Cây thuần dưỡng bảo đảm 100% sống khỏe</span>
             </div>
-            <div class="flex items-center gap-3 text-slate-500 flex-shrink-0 ml-2">
-                <span><i class="fa-solid fa-phone text-[#7AA88B]"></i> 1900-xxxx</span>
+            <div class="flex items-center gap-3 text-slate-600 flex-shrink-0 ml-2">
+                <span><i class="fa-solid fa-phone text-[#3D6B4E]" aria-hidden="true"></i> 1900-xxxx</span>
             </div>
         </div>
     </div>
@@ -81,25 +46,26 @@
 
                 <!-- Logo & Tên Cửa Hàng -->
                 <a href="{% url 'home' %}" class="min-h-[44px] flex items-center gap-1.5 sm:gap-2 flex-shrink-0 group">
-                    <div class="w-8 h-8 sm:w-9 sm:h-9 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] flex items-center justify-center font-bold text-sm sm:text-base group-hover:bg-[#7AA88B] group-hover:text-white transition">
-                        <i class="fa-solid fa-seedling text-xs sm:text-sm"></i>
+                    <div class="w-8 h-8 sm:w-9 sm:h-9 bg-[#EEF5F0] text-[#2F5C3E] border border-[#C5DEC9] flex items-center justify-center font-bold text-sm sm:text-base group-hover:bg-[#3D6B4E] group-hover:text-white transition">
+                        <i class="fa-solid fa-seedling text-xs sm:text-sm" aria-hidden="true"></i>
                     </div>
                     <div>
                         <span class="text-sm sm:text-base font-extrabold tracking-tight text-slate-900 block leading-tight">
-                            Aqua<span class="text-[#7AA88B]">Plant</span>
+                            Aqua<span class="text-[#3D6B4E]">Plant</span>
                         </span>
-                        <span class="text-[9px] sm:text-[10px] font-semibold text-slate-400 uppercase tracking-wider hidden sm:block">Cửa Hàng Cây Cảnh & Thủy Sinh</span>
+                        <span class="text-[9px] sm:text-[10px] font-semibold text-slate-600 uppercase tracking-wider hidden sm:block">Cửa Hàng Cây Cảnh & Thủy Sinh</span>
                     </div>
                 </a>
 
                 <!-- Thanh Tìm Kiếm Cây Cảnh (Desktop) -->
-                <form action="{% url 'home' %}" method="GET" class="hidden md:flex flex-grow max-w-md mx-4">
+                <form action="{% url 'home' %}" method="GET" class="hidden md:flex flex-grow max-w-md mx-4" role="search">
                     <div class="relative w-full">
-                        <input type="text" name="q" value="{{ request.GET.q|default:'' }}"
+                        <label for="header-search-desktop" class="sr-only">Tìm kiếm cây thủy sinh</label>
+                        <input id="header-search-desktop" type="text" name="q" value="{{ request.GET.q|default:'' }}"
                                placeholder="Tìm tên cây cảnh, trân châu, ráy nana..."
-                               class="w-full min-h-[42px] pl-9 pr-16 py-2.5 text-xs bg-slate-50 border border-slate-300 focus:outline-none focus:border-[#7AA88B] focus:bg-white transition">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-xs"></i>
-                        <button type="submit" class="absolute right-0 top-0 bottom-0 min-h-[42px] bg-[#7AA88B] hover:bg-[#6B997C] text-white text-xs font-bold px-4 transition">
+                               class="w-full min-h-[42px] pl-9 pr-16 py-2.5 text-xs bg-slate-50 border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E] focus:bg-white transition">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-500 text-xs" aria-hidden="true"></i>
+                        <button type="submit" class="absolute right-0 top-0 bottom-0 min-h-[42px] bg-[#3D6B4E] hover:bg-[#2F5C3E] text-white text-xs font-bold px-4 transition">
                             Tìm
                         </button>
                     </div>
@@ -107,15 +73,15 @@
 
                 <!-- Menu Phải: Tra Cứu, Giỏ Hàng & Dropdown Tài Khoản -->
                 <div class="flex items-center gap-1 sm:gap-2.5 text-xs font-medium flex-shrink-0">
-                    <a href="{% url 'order_tracking' %}" class="min-h-[44px] min-w-[40px] sm:min-w-[44px] inline-flex items-center justify-center gap-1 text-slate-600 hover:text-[#2F5C3E] px-2 sm:px-2.5 transition text-xs" title="Tra cứu đơn hàng" aria-label="Tra cứu đơn hàng">
-                        <i class="fa-solid fa-truck-fast text-[#7AA88B]"></i>
+                    <a href="{% url 'order_tracking' %}" class="min-h-[44px] min-w-[40px] sm:min-w-[44px] inline-flex items-center justify-center gap-1 text-slate-700 hover:text-[#2F5C3E] px-2 sm:px-2.5 transition text-xs" title="Tra cứu đơn hàng" aria-label="Tra cứu đơn hàng">
+                        <i class="fa-solid fa-truck-fast text-[#3D6B4E]" aria-hidden="true"></i>
                         <span class="hidden md:inline">Tra cứu đơn</span>
                     </a>
 
                     <a href="{% url 'cart' %}" class="min-h-[44px] min-w-[44px] inline-flex items-center justify-center gap-1.5 bg-[#EEF5F0] hover:bg-[#E3EDE5] text-[#2F5C3E] border border-[#C5DEC9] px-2 sm:px-3 transition font-bold text-xs" aria-label="Giỏ hàng ({{ cart_count }})">
-                        <i class="fa-solid fa-cart-shopping text-[#7AA88B]"></i>
+                        <i class="fa-solid fa-cart-shopping text-[#3D6B4E]" aria-hidden="true"></i>
                         <span class="hidden sm:inline">Giỏ hàng</span>
-                        <span class="bg-[#7AA88B] text-white text-[10px] px-1.5 py-0.5 rounded-full font-mono leading-none">{{ cart_count }}</span>
+                        <span class="bg-[#3D6B4E] text-white text-[10px] px-1.5 py-0.5 rounded-full font-mono leading-none">{{ cart_count }}</span>
                     </a>
 
                     {% if user.is_authenticated %}
@@ -125,10 +91,10 @@
                                 type="button"
                                 aria-expanded="false"
                                 aria-haspopup="true"
-                                class="min-h-[44px] inline-flex items-center gap-1.5 border border-slate-300 hover:border-[#7AA88B] bg-white px-2.5 sm:px-3 text-xs font-bold text-slate-700 hover:text-[#2F5C3E] transition cursor-pointer">
-                            <i class="fa-regular fa-user text-[#7AA88B]"></i>
+                                class="min-h-[44px] inline-flex items-center gap-1.5 border border-slate-300 hover:border-[#3D6B4E] bg-white px-2.5 sm:px-3 text-xs font-bold text-slate-700 hover:text-[#2F5C3E] focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 transition cursor-pointer">
+                            <i class="fa-regular fa-user text-[#3D6B4E]" aria-hidden="true"></i>
                             <span class="max-w-[78px] sm:max-w-[120px] truncate">{{ user.first_name|default:user.username }}</span>
-                            <i id="account-dropdown-chevron" class="fa-solid fa-chevron-down text-[9px] text-slate-400 transition-transform duration-150"></i>
+                            <i id="account-dropdown-chevron" class="fa-solid fa-chevron-down text-[9px] text-slate-500 transition-transform duration-150" aria-hidden="true"></i>
                         </button>
 
                         <div id="account-dropdown-menu"
@@ -144,7 +110,7 @@
                                     {% endif %}
                                 </div>
                                 {% if user.email %}
-                                <p class="text-[10px] text-slate-500 truncate mt-0.5">{{ user.email }}</p>
+                                <p class="text-[10px] text-slate-600 truncate mt-0.5">{{ user.email }}</p>
                                 {% endif %}
                             </div>
 
@@ -167,7 +133,7 @@
                             <!-- Khu vực riêng cho Admin / Staff -->
                             {% if is_admin_or_staff %}
                             <div class="border-t border-slate-200 py-1 bg-slate-50/70">
-                                <div class="px-3.5 pt-1 pb-0.5 text-[9px] font-extrabold uppercase tracking-wider text-slate-400">
+                                <div class="px-3.5 pt-1 pb-0.5 text-[9px] font-extrabold uppercase tracking-wider text-slate-600">
                                     Quản trị hệ thống
                                 </div>
                                 <a href="{% url 'staff_dashboard' %}" class="min-h-[44px] flex items-center px-3.5 py-2 text-xs font-semibold text-[#2F5C3E] hover:bg-[#EEF5F0] transition">
@@ -184,7 +150,7 @@
                             <!-- Nút Đăng xuất bằng POST chống CSRF -->
                             <form method="POST" action="{% url 'logout' %}" class="border-t border-slate-200">
                                 {% csrf_token %}
-                                <button type="submit" class="w-full min-h-[44px] text-left flex items-center px-3.5 py-2.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition cursor-pointer">
+                                <button type="submit" class="w-full min-h-[44px] text-left flex items-center px-3.5 py-2.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 transition cursor-pointer">
                                     Đăng xuất
                                 </button>
                             </form>
@@ -194,7 +160,7 @@
                     <a href="{% url 'login' %}" class="min-h-[44px] inline-flex items-center justify-center text-slate-700 hover:text-[#2F5C3E] font-semibold text-[11px] sm:text-xs px-1.5 sm:px-2.5 whitespace-nowrap">
                         Đăng nhập
                     </a>
-                    <a href="{% url 'register' %}" class="min-h-[44px] inline-flex items-center justify-center bg-[#7AA88B] hover:bg-[#6B997C] text-white px-2 sm:px-3 font-bold transition text-[11px] sm:text-xs whitespace-nowrap">
+                    <a href="{% url 'register' %}" class="min-h-[44px] inline-flex items-center justify-center bg-[#3D6B4E] hover:bg-[#2F5C3E] text-white px-2 sm:px-3 font-bold transition text-[11px] sm:text-xs whitespace-nowrap">
                         Đăng ký
                     </a>
                     {% endif %}
@@ -203,12 +169,13 @@
 
             <!-- Thanh Tìm Kiếm Cây Cảnh Trên Mobile -->
             <div class="md:hidden pb-2.5 pt-1">
-                <form action="{% url 'home' %}" method="GET" class="relative w-full">
-                    <input type="text" name="q" value="{{ request.GET.q|default:'' }}"
+                <form action="{% url 'home' %}" method="GET" class="relative w-full" role="search">
+                    <label for="header-search-mobile" class="sr-only">Tìm kiếm cây thủy sinh trên điện thoại</label>
+                    <input id="header-search-mobile" type="text" name="q" value="{{ request.GET.q|default:'' }}"
                            placeholder="Tìm cây cảnh, ráy, trân châu..."
-                           class="w-full min-h-[44px] pl-9 pr-16 py-2.5 text-xs bg-slate-50 border border-slate-300 focus:outline-none focus:border-[#7AA88B] focus:bg-white transition rounded-none">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-400 text-xs"></i>
-                    <button type="submit" class="absolute right-0 top-0 bottom-0 min-h-[44px] min-w-[56px] bg-[#7AA88B] hover:bg-[#6B997C] text-white text-xs font-bold px-3.5 transition">
+                           class="w-full min-h-[44px] pl-9 pr-16 py-2.5 text-xs bg-slate-50 border border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E] focus:bg-white transition rounded-none">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-3.5 text-slate-500 text-xs" aria-hidden="true"></i>
+                    <button type="submit" class="absolute right-0 top-0 bottom-0 min-h-[44px] min-w-[56px] bg-[#3D6B4E] hover:bg-[#2F5C3E] text-white text-xs font-bold px-3.5 transition">
                         Tìm
                     </button>
                 </form>
@@ -219,30 +186,30 @@
         <div class="bg-slate-50 border-t border-slate-200 relative">
             <div class="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 relative">
                 <div id="subnav-scroller" class="flex items-center justify-between overflow-x-auto no-scrollbar pr-8 md:pr-0">
-                    <nav class="flex items-center text-xs font-semibold whitespace-nowrap">
-                        <a href="{% url 'home' %}" class="min-h-[44px] inline-flex items-center px-3.5 sm:px-4 py-2.5 transition border-b-2 {% if request.resolver_match.url_name == 'home' %}text-[#2F5C3E] font-bold bg-white border-[#7AA88B]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-transparent{% endif %}">
+                    <nav aria-label="Điều hướng chính" class="flex items-center text-xs font-semibold whitespace-nowrap">
+                        <a href="{% url 'home' %}" class="min-h-[44px] inline-flex items-center px-3.5 sm:px-4 py-2.5 transition border-b-2 {% if request.resolver_match.url_name == 'home' %}text-[#2F5C3E] font-bold bg-white border-[#3D6B4E]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-transparent{% endif %}">
                             Cửa Hàng
                         </a>
-                        <a href="{% url 'plant_assistant' %}" class="min-h-[44px] inline-flex items-center px-3.5 sm:px-4 py-2.5 transition border-b-2 {% if request.resolver_match.url_name == 'plant_assistant' %}text-[#2F5C3E] font-bold bg-white border-[#7AA88B]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-transparent{% endif %}">
+                        <a href="{% url 'plant_assistant' %}" class="min-h-[44px] inline-flex items-center px-3.5 sm:px-4 py-2.5 transition border-b-2 {% if request.resolver_match.url_name == 'plant_assistant' %}text-[#2F5C3E] font-bold bg-white border-[#3D6B4E]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-transparent{% endif %}">
                             Trợ Lý Chọn Cây
                         </a>
-                        <a href="{% url 'plant_quantity' %}" class="min-h-[44px] inline-flex items-center px-3.5 sm:px-4 py-2.5 transition border-b-2 {% if request.resolver_match.url_name == 'plant_quantity' %}text-[#2F5C3E] font-bold bg-white border-[#7AA88B]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-transparent{% endif %}">
+                        <a href="{% url 'plant_quantity' %}" class="min-h-[44px] inline-flex items-center px-3.5 sm:px-4 py-2.5 transition border-b-2 {% if request.resolver_match.url_name == 'plant_quantity' %}text-[#2F5C3E] font-bold bg-white border-[#3D6B4E]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-transparent{% endif %}">
                             Tính Số Lượng Cây
                         </a>
-                        <a href="{% url 'layout_presets' %}" class="min-h-[44px] inline-flex items-center px-3.5 sm:px-4 py-2.5 transition border-b-2 {% if request.resolver_match.url_name == 'layout_presets' %}text-[#2F5C3E] font-bold bg-white border-[#7AA88B]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-transparent{% endif %}">
+                        <a href="{% url 'layout_presets' %}" class="min-h-[44px] inline-flex items-center px-3.5 sm:px-4 py-2.5 transition border-b-2 {% if request.resolver_match.url_name == 'layout_presets' %}text-[#2F5C3E] font-bold bg-white border-[#3D6B4E]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-transparent{% endif %}">
                             Combo Bố Cục Mẫu
                         </a>
-                        <a href="{% url 'article_list' %}" class="min-h-[44px] inline-flex items-center px-3.5 sm:px-4 py-2.5 transition border-b-2 {% if request.resolver_match.url_name == 'article_list' or request.resolver_match.url_name == 'article_detail' %}text-[#2F5C3E] font-bold bg-white border-[#7AA88B]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-transparent{% endif %}">
+                        <a href="{% url 'article_list' %}" class="min-h-[44px] inline-flex items-center px-3.5 sm:px-4 py-2.5 transition border-b-2 {% if request.resolver_match.url_name == 'article_list' or request.resolver_match.url_name == 'article_detail' %}text-[#2F5C3E] font-bold bg-white border-[#3D6B4E]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-transparent{% endif %}">
                             Cẩm Nang Thủy Sinh
                         </a>
-                        <a href="{% url 'faq' %}" class="min-h-[44px] inline-flex items-center px-3.5 sm:px-4 py-2.5 transition border-b-2 {% if request.resolver_match.url_name == 'faq' %}text-[#2F5C3E] font-bold bg-white border-[#7AA88B]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-transparent{% endif %}">
+                        <a href="{% url 'faq' %}" class="min-h-[44px] inline-flex items-center px-3.5 sm:px-4 py-2.5 transition border-b-2 {% if request.resolver_match.url_name == 'faq' %}text-[#2F5C3E] font-bold bg-white border-[#3D6B4E]{% else %}text-slate-600 hover:text-[#2F5C3E] hover:bg-white border-transparent{% endif %}">
                             Hỏi Đáp FAQ
                         </a>
                     </nav>
                 </div>
                 <button type="button" id="subnav-scroll-hint" aria-label="Cuộn xem thêm danh mục"
                         class="hidden md:hidden absolute right-0 top-0 bottom-0 min-w-[40px] min-h-[44px] pl-3 pr-2 items-center justify-end bg-gradient-to-l from-slate-50 via-slate-50/95 to-transparent text-[#2F5C3E] cursor-pointer">
-                    <i class="fa-solid fa-chevron-right text-xs"></i>
+                    <i class="fa-solid fa-chevron-right text-xs" aria-hidden="true"></i>
                 </button>
             </div>
         </div>
@@ -252,35 +219,35 @@
     <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 w-full mt-4">
         {% if messages %}
             {% for message in messages %}
-            <div class="mb-3 p-3 text-xs font-semibold flex items-center justify-between {% if message.tags == 'error' %}bg-rose-50 border border-rose-200 text-rose-800{% elif message.tags == 'warning' %}bg-amber-50 border border-amber-200 text-amber-800{% else %}bg-[#EEF5F0] border border-[#C5DEC9] text-[#2F5C3E]{% endif %}">
+            <div data-alert-item class="mb-3 p-3 text-xs font-semibold flex items-center justify-between {% if message.tags == 'error' %}bg-rose-50 border border-rose-200 text-rose-800{% elif message.tags == 'warning' %}bg-amber-50 border border-amber-200 text-amber-800{% else %}bg-[#EEF5F0] border border-[#C5DEC9] text-[#2F5C3E]{% endif %}">
                 <div class="flex items-center gap-2">
-                    <i class="fa-solid {% if message.tags == 'error' %}fa-circle-exclamation text-rose-600{% elif message.tags == 'warning' %}fa-triangle-exclamation text-amber-600{% else %}fa-circle-check text-[#7AA88B]{% endif %}"></i>
+                    <i class="fa-solid {% if message.tags == 'error' %}fa-circle-exclamation text-rose-700{% elif message.tags == 'warning' %}fa-triangle-exclamation text-amber-700{% else %}fa-circle-check text-[#3D6B4E]{% endif %}" aria-hidden="true"></i>
                     <span>{{ message }}</span>
                 </div>
-                <button type="button" onclick="this.parentElement.remove();" class="text-slate-400 hover:text-slate-700">✕</button>
+                <button type="button" data-dismiss-alert aria-label="Đóng thông báo" class="text-slate-600 hover:text-slate-900 px-1.5 py-0.5">✕</button>
             </div>
             {% endfor %}
         {% endif %}
     </div>
 
     <!-- 3. NỘI DUNG CHÍNH (MAIN CONTENT) -->
-    <main class="flex-grow max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-6">
+    <main id="main-content" tabindex="-1" class="flex-grow max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 w-full py-6 focus:outline-none">
         {% block content %}{% endblock %}
     </main>
 
     <!-- 4. CHÂN TRANG (FOOTER) -->
-    <footer class="bg-white border-t border-slate-200 text-slate-500 text-xs mt-12 py-8">
+    <footer class="bg-white border-t border-slate-200 text-slate-600 text-xs mt-12 py-8">
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <div>
-                <h4 class="font-bold text-slate-800 text-sm mb-2 flex items-center gap-2">
-                    <i class="fa-solid fa-leaf text-[#7AA88B]"></i> AquaPlant Shop
-                </h4>
-                <p class="leading-relaxed text-[11px] text-slate-500">
+                <h2 class="font-bold text-slate-800 text-sm mb-2 flex items-center gap-2">
+                    <i class="fa-solid fa-leaf text-[#3D6B4E]" aria-hidden="true"></i> AquaPlant Shop
+                </h2>
+                <p class="leading-relaxed text-[11px] text-slate-600">
                     Hệ thống bán cây cảnh & thực vật thủy sinh phục vụ trang trí bể cá cảnh, hồ thủy sinh tự nhiên.
                 </p>
             </div>
             <div>
-                <h4 class="font-bold text-slate-800 text-sm mb-2">Chính Sách & Hỗ Trợ</h4>
+                <h2 class="font-bold text-slate-800 text-sm mb-2">Chính Sách & Hỗ Trợ</h2>
                 <ul class="space-y-1.5 text-[11px]">
                     <li><a href="{% url 'policy_detail' 'huong-dan-dat-hang-va-thanh-toan' %}" class="hover:text-[#2F5C3E] transition">Hướng dẫn đặt hàng & thanh toán</a></li>
                     <li><a href="{% url 'policy_detail' 'chinh-sach-bao-hiem-dap-nat-1-doi-1' %}" class="hover:text-[#2F5C3E] transition">Bảo hiểm dập nát 1 đổi 1 (24H)</a></li>
@@ -289,80 +256,19 @@
                 </ul>
             </div>
             <div>
-                <h4 class="font-bold text-slate-800 text-sm mb-2">Đồ Án Môn Học</h4>
+                <h2 class="font-bold text-slate-800 text-sm mb-2">Đồ Án Môn Học</h2>
                 <p class="text-[11px]">Môn: Nhập Môn CNTT Thực Hành</p>
                 <p class="mt-1 text-[11px]">Lớp: 26CTT2 - Trường ĐH Khoa Học Tự Nhiên, ĐHQG-HCM</p>
             </div>
             <div>
-                <h4 class="font-bold text-slate-800 text-sm mb-2">Hỗ Trợ Khách Hàng</h4>
-                <p class="text-[11px]"><i class="fa-solid fa-phone text-[#7AA88B] mr-1"></i> Hotline: 1900-xxxx</p>
-                <p class="mt-1 text-[11px]"><i class="fa-solid fa-location-dot text-[#7AA88B] mr-1"></i> Địa chỉ: 227 Nguyễn Văn Cừ, Quận 5, TP.HCM</p>
+                <h2 class="font-bold text-slate-800 text-sm mb-2">Hỗ Trợ Khách Hàng</h2>
+                <p class="text-[11px]"><i class="fa-solid fa-phone text-[#3D6B4E] mr-1" aria-hidden="true"></i> Hotline: 1900-xxxx</p>
+                <p class="mt-1 text-[11px]"><i class="fa-solid fa-location-dot text-[#3D6B4E] mr-1" aria-hidden="true"></i> Địa chỉ: 227 Nguyễn Văn Cừ, Quận 5, TP.HCM</p>
             </div>
         </div>
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 pt-4 border-t border-slate-100 text-center text-slate-400 text-[11px]">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 pt-4 border-t border-slate-100 text-center text-slate-600 text-[11px]">
             &copy; 2026 AquaPlant &middot; Hệ Thống Website Thương Mại Điện Tử Cây Thủy Sinh &middot; ĐHQG-HCM
         </div>
     </footer>
-
-    <!-- Script Điều Khiển Dropdown Tài Khoản -->
-    <script>
-    (function () {
-        const btn = document.getElementById('account-dropdown-btn');
-        const menu = document.getElementById('account-dropdown-menu');
-        const chevron = document.getElementById('account-dropdown-chevron');
-        const wrapper = document.getElementById('account-dropdown-wrapper');
-        if (!btn || !menu || !wrapper) return;
-
-        function setOpen(open) {
-            menu.classList.toggle('hidden', !open);
-            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-            if (chevron) {
-                chevron.classList.toggle('rotate-180', open);
-            }
-        }
-
-        btn.addEventListener('click', function (e) {
-            e.stopPropagation();
-            const isCurrentlyHidden = menu.classList.contains('hidden');
-            setOpen(isCurrentlyHidden);
-        });
-
-        document.addEventListener('click', function (e) {
-            if (!wrapper.contains(e.target)) {
-                setOpen(false);
-            }
-        });
-
-        document.addEventListener('keydown', function (e) {
-            if (e.key === 'Escape') {
-                setOpen(false);
-            }
-        });
-    })();
-
-    (function () {
-        const scroller = document.getElementById('subnav-scroller');
-        const hintBtn = document.getElementById('subnav-scroll-hint');
-        if (!scroller || !hintBtn) return;
-
-        function syncScrollHint() {
-            const canScrollRight = (scroller.scrollWidth - scroller.scrollLeft - scroller.clientWidth) > 8;
-            if (canScrollRight) {
-                hintBtn.classList.remove('hidden');
-                hintBtn.classList.add('flex');
-            } else {
-                hintBtn.classList.add('hidden');
-                hintBtn.classList.remove('flex');
-            }
-        }
-
-        hintBtn.addEventListener('click', function () {
-            scroller.scrollBy({ left: 160, behavior: 'smooth' });
-        });
-        scroller.addEventListener('scroll', syncScrollHint, { passive: true });
-        window.addEventListener('resize', syncScrollHint);
-        syncScrollHint();
-    })();
-    </script>
 </body>
 </html>

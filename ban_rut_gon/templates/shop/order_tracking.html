@@ -1,15 +1,16 @@
 {% extends 'shop/base.html' %}
 
 {% block title %}Tra Cứu Đơn Hàng - AquaPlant{% endblock %}
+{% block meta_description %}Tra cứu tiến độ đóng gói bọc ẩm và giao hàng đơn cây thủy sinh theo mã vận đơn tại AquaPlant.{% endblock %}
 
 {% block content %}
 <div class="max-w-3xl mx-auto space-y-6">
 
     <div class="border-b border-slate-200 pb-3 text-center sm:text-left">
         <h1 class="text-xl font-bold text-slate-900 flex items-center justify-center sm:justify-start gap-2">
-            <i class="fa-solid fa-truck-fast text-[#7AA88B]"></i> Tra Cứu Đơn Hàng
+            <i class="fa-solid fa-truck-fast text-[#3D6B4E]" aria-hidden="true"></i> Tra Cứu Đơn Hàng
         </h1>
-        <p class="text-xs text-slate-500 mt-1">
+        <p class="text-xs text-slate-600 mt-1">
             Nhập mã đơn hàng (ví dụ: HD-20261108-8888) để kiểm tra tiến độ giao cây. Thông tin người nhận được bảo vệ quyền riêng tư tự động.
         </p>
     </div>
@@ -17,11 +18,12 @@
     <!-- Form Tra Cứu -->
     <div class="bg-white border border-slate-200 p-6">
         <form method="GET" class="flex flex-col sm:flex-row gap-3">
+            <label for="{{ form.keyword.id_for_label }}" class="sr-only">Mã đơn hàng cần tra cứu</label>
             <div class="flex-grow">
                 {{ form.keyword }}
             </div>
-            <button type="submit" class="bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs px-6 py-2.5 transition flex-shrink-0">
-                <i class="fa-solid fa-magnifying-glass mr-1"></i> Tra Cứu Ngay
+            <button type="submit" class="bg-[#3D6B4E] hover:bg-[#2F5C3E] text-white font-bold text-xs px-6 py-2.5 transition flex-shrink-0">
+                <i class="fa-solid fa-magnifying-glass mr-1" aria-hidden="true"></i> Tra Cứu Ngay
             </button>
         </form>
     </div>
@@ -30,9 +32,9 @@
     {% if keyword %}
     <div class="space-y-4">
         {% if found_orders %}
-        <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wide">
+        <h2 class="text-xs font-bold text-slate-700 uppercase tracking-wide">
             Kết quả tra cứu cho: "<span class="text-[#2F5C3E]">{{ keyword }}</span>" ({{ found_orders|length }} đơn)
-        </h3>
+        </h2>
         {% endif %}
 
         {% for order in found_orders %}
@@ -40,7 +42,7 @@
             <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2">
                 <div>
                     <span class="font-mono font-bold text-slate-900 text-sm">{{ order.order_code }}</span>
-                    <span class="text-xs text-slate-400 ml-2">{{ order.created_at|date:"d/m/Y H:i" }}</span>
+                    <span class="text-xs text-slate-600 ml-2">{{ order.created_at|date:"d/m/Y H:i" }}</span>
                 </div>
                 <div>
                     {% if order.status == 'pending' %}
@@ -60,16 +62,16 @@
             <!-- Thanh Tiến Trình Vận Đơn 4 Bước -->
             {% if order.status != 'cancelled' %}
             <div class="grid grid-cols-4 gap-2 text-center text-[10px] pt-1">
-                <div class="p-2 border {% if order.status_step >= 1 %}bg-[#EEF5F0] border-[#7AA88B] text-[#2F5C3E] font-bold{% else %}bg-slate-50 border-slate-200 text-slate-400{% endif %}">
+                <div class="p-2 border {% if order.status_step >= 1 %}bg-[#EEF5F0] border-[#3D6B4E] text-[#2F5C3E] font-bold{% else %}bg-slate-50 border-slate-200 text-slate-600{% endif %}">
                     1. Tiếp nhận
                 </div>
-                <div class="p-2 border {% if order.status_step >= 2 %}bg-[#EEF5F0] border-[#7AA88B] text-[#2F5C3E] font-bold{% else %}bg-slate-50 border-slate-200 text-slate-400{% endif %}">
+                <div class="p-2 border {% if order.status_step >= 2 %}bg-[#EEF5F0] border-[#3D6B4E] text-[#2F5C3E] font-bold{% else %}bg-slate-50 border-slate-200 text-slate-600{% endif %}">
                     2. Bọc ẩm cây
                 </div>
-                <div class="p-2 border {% if order.status_step >= 3 %}bg-[#EEF5F0] border-[#7AA88B] text-[#2F5C3E] font-bold{% else %}bg-slate-50 border-slate-200 text-slate-400{% endif %}">
+                <div class="p-2 border {% if order.status_step >= 3 %}bg-[#EEF5F0] border-[#3D6B4E] text-[#2F5C3E] font-bold{% else %}bg-slate-50 border-slate-200 text-slate-600{% endif %}">
                     3. Vận chuyển
                 </div>
-                <div class="p-2 border {% if order.status_step >= 4 %}bg-[#EEF5F0] border-[#7AA88B] text-[#2F5C3E] font-bold{% else %}bg-slate-50 border-slate-200 text-slate-400{% endif %}">
+                <div class="p-2 border {% if order.status_step >= 4 %}bg-[#EEF5F0] border-[#3D6B4E] text-[#2F5C3E] font-bold{% else %}bg-slate-50 border-slate-200 text-slate-600{% endif %}">
                     4. Hoàn tất
                 </div>
             </div>
@@ -82,17 +84,17 @@
                         <p class="mt-1"><strong>Số điện thoại:</strong> {{ order.phone }}</p>
                         <p class="mt-1"><strong>Địa chỉ giao:</strong> {{ order.shipping_address }}</p>
                     {% else %}
-                        <p><strong>Người nhận:</strong> {{ order.masked_customer_name }} <span class="text-[10px] text-slate-400 font-normal">(Đã bảo mật)</span></p>
+                        <p><strong>Người nhận:</strong> {{ order.masked_customer_name }} <span class="text-[10px] text-slate-600 font-normal">(Đã bảo mật)</span></p>
                         <p class="mt-1"><strong>Số điện thoại:</strong> {{ order.masked_phone }}</p>
                         <p class="mt-1"><strong>Địa chỉ giao:</strong> {{ order.masked_address }}</p>
                         <div class="mt-2 text-[11px] text-amber-800 bg-amber-50 border border-amber-200 px-2.5 py-1.5 inline-flex items-center gap-1.5">
-                            <i class="fa-solid fa-shield-halved text-amber-600"></i> Thông tin cá nhân đã được che tự động để bảo vệ quyền riêng tư.
+                            <i class="fa-solid fa-shield-halved text-amber-700" aria-hidden="true"></i> Thông tin cá nhân đã được che tự động để bảo vệ quyền riêng tư.
                         </div>
                     {% endif %}
                 </div>
                 <div class="sm:text-right">
                     <p><strong>Tổng tiền:</strong> <span class="text-rose-700 font-mono font-bold text-sm">{{ order.total_amount|floatformat:0 }}₫</span></p>
-                    <p class="mt-1 text-slate-400">Hình thức: Thanh toán khi nhận hàng (COD)</p>
+                    <p class="mt-1 text-slate-600">Hình thức: Thanh toán khi nhận hàng (COD)</p>
                 </div>
             </div>
 
@@ -117,7 +119,7 @@
             </div>
         </div>
         {% empty %}
-        <div class="bg-white border border-slate-200 p-8 text-center text-slate-400 text-xs">
+        <div class="bg-white border border-slate-200 p-8 text-center text-slate-600 text-xs">
             Không tìm thấy đơn hàng nào khớp với mã hoặc số điện thoại bạn vừa nhập.
         </div>
         {% endfor %}
