@@ -11,7 +11,7 @@
             <i class="fa-solid fa-truck-fast text-[#3D6B4E]" aria-hidden="true"></i> Tra Cứu Đơn Hàng
         </h1>
         <p class="text-xs text-slate-600 mt-1">
-            Nhập mã đơn hàng (ví dụ: HD-20261108-8888) để kiểm tra tiến độ giao cây. Thông tin người nhận được bảo vệ quyền riêng tư tự động.
+            Chỉ quản trị viên và tài khoản đã đặt đơn mới có quyền xem thông tin đơn hàng. Vui lòng đăng nhập đúng tài khoản để tra cứu theo mã đơn hoặc số điện thoại.
         </p>
     </div>
 
@@ -119,8 +119,13 @@
             </div>
         </div>
         {% empty %}
-        <div class="bg-white border border-slate-200 p-8 text-center text-slate-600 text-xs">
-            Không tìm thấy đơn hàng nào khớp với mã hoặc số điện thoại bạn vừa nhập.
+        <div class="bg-white border border-slate-200 p-8 text-center text-slate-600 text-xs space-y-2">
+            <p>Không tìm thấy đơn hàng thuộc quyền truy cập của bạn.</p>
+            {% if not user.is_authenticated %}
+            <p>
+                <a href="{% url 'login' %}?next={{ request.get_full_path|urlencode }}" class="text-[#2F5C3E] font-bold hover:underline">Đăng nhập tài khoản đặt đơn</a> để xem chi tiết đơn hàng của bạn.
+            </p>
+            {% endif %}
         </div>
         {% endfor %}
     </div>

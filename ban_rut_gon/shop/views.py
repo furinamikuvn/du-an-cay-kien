@@ -865,6 +865,11 @@ def checkout_view(request):
                 for key in ('cart', 'applied_coupon_id', 'applied_coupon_code', 'coupon_discount'):
                     if key in request.session:
                         del request.session[key]
+                if not request.user.is_authenticated:
+                    recent_codes = list(request.session.get('recent_order_codes') or [])
+                    if order.order_code not in recent_codes:
+                        recent_codes.append(order.order_code)
+                    request.session['recent_order_codes'] = recent_codes[-10:]
                 request.session.modified = True
 
                 messages.success(request, f"Chúc mừng bạn! Đơn hàng {order.order_code} đã được đặt thành công.")
@@ -922,11 +927,31 @@ def _get_status_step(status):
     }.get(status, 1)
 
 
+def _can_view_order_in_tracking(request, order, is_privileged=False, has_verified_email=False, user_email_norm=''):
+    """Chỉ Admin/Staff hoặc chính chủ đơn hàng mới có quyền xem thông tin đơn."""
+    if is_privileged:
+        return True
+    if request.user.is_authenticated:
+        if order.user_id == request.user.id:
+            return True
+        if (
+            order.user_id is None
+            and has_verified_email
+            and (order.email or '').strip().lower() == user_email_norm
+        ):
+            return True
+        return False
+    recent_codes = request.session.get('recent_order_codes') or []
+    return order.user_id is None and order.order_code in recent_codes
+
+
 def order_tracking_view(request):
     """
-    Tra cứu trạng thái đơn hàng bảo vệ quyền riêng tư (Privacy-First):
-    - Khách vãng lai: chỉ tra cứu theo mã đơn (HD-... / AQ-...) và che thông tin cá nhân.
-    - Người dùng đã đăng nhập: xem đầy đủ đơn của chính mình; chặn dò SĐT người khác.
+    Tra cứu trạng thái đơn hàng theo phân quyền nghiêm ngặt:
+    - Chỉ Admin/Staff hoặc chính chủ đơn hàng (đã đăng nhập đúng tài khoản, email đã xác thực với đơn khách,
+      hoặc đúng phiên trình duyệt vừa đặt đơn khách) mới được phép xem.
+    - Tài khoản thường khác hoặc người dùng ngoài phiên gửi link trực tiếp đều không thấy dữ liệu đơn
+      và nhận thông báo trung lập chống dò mã đơn (anti-enumeration).
     """
     found_orders = []
     keyword = (request.GET.get('keyword') or request.GET.get('q') or '').strip()
@@ -949,53 +974,64 @@ def order_tracking_view(request):
             or keyword.upper().startswith('AQ-')
             or '-' in keyword
         )
+        is_privileged = is_staff_or_admin(request.user)
 
         if request.user.is_authenticated:
+            has_verified_email = bool(
+                request.user.email
+                and UserProfile.objects.filter(user=request.user, email_verified=True).exists()
+            )
+            user_email_norm = (request.user.email or '').strip().lower()
+
             if is_order_code:
-                has_verified_email = bool(
-                    request.user.email
-                    and UserProfile.objects.filter(user=request.user, email_verified=True).exists()
-                )
-                user_email_norm = (request.user.email or '').strip().lower()
                 orders = Order.objects.filter(order_code__iexact=keyword).prefetch_related('items__product')
                 for o in orders:
-                    o.is_owner = (
-                        o.user_id == request.user.id
-                        or (
-                            o.user_id is None
-                            and has_verified_email
-                            and (o.email or '').strip().lower() == user_email_norm
-                        )
-                    )
-                    o.status_step = _get_status_step(o.status)
-                    found_orders.append(o)
-                if not orders.exists():
-                    messages.info(request, f"Không tìm thấy đơn hàng nào có mã \"{keyword}\".")
-            else:
-                orders = Order.objects.filter(user=request.user, phone__icontains=keyword).prefetch_related('items__product')
-                if orders.exists():
-                    for o in orders:
+                    if _can_view_order_in_tracking(
+                        request,
+                        o,
+                        is_privileged=is_privileged,
+                        has_verified_email=has_verified_email,
+                        user_email_norm=user_email_norm,
+                    ):
                         o.is_owner = True
                         o.status_step = _get_status_step(o.status)
                         found_orders.append(o)
-                else:
+                if not found_orders:
                     messages.info(
                         request,
-                        "Không tìm thấy đơn hàng thuộc tài khoản của bạn khớp với thông tin đã nhập."
+                        "Không tìm thấy đơn hàng thuộc tài khoản của bạn hoặc bạn không có quyền xem đơn hàng này."
+                    )
+            else:
+                if is_privileged:
+                    orders = Order.objects.filter(phone__icontains=keyword).prefetch_related('items__product').order_by('-created_at')[:20]
+                else:
+                    orders = Order.objects.filter(user=request.user, phone__icontains=keyword).prefetch_related('items__product')
+                for o in orders:
+                    o.is_owner = True
+                    o.status_step = _get_status_step(o.status)
+                    found_orders.append(o)
+                if not found_orders:
+                    messages.info(
+                        request,
+                        "Không tìm thấy đơn hàng thuộc tài khoản của bạn hoặc bạn không có quyền xem đơn hàng này."
                     )
         else:
             if is_order_code:
                 orders = Order.objects.filter(order_code__iexact=keyword).prefetch_related('items__product')
                 for o in orders:
-                    o.is_owner = False
-                    o.status_step = _get_status_step(o.status)
-                    found_orders.append(o)
-                if not orders.exists():
-                    messages.info(request, f"Không tìm thấy đơn hàng nào có mã \"{keyword}\". Vui lòng kiểm tra lại mã trên hóa đơn.")
+                    if _can_view_order_in_tracking(request, o):
+                        o.is_owner = True
+                        o.status_step = _get_status_step(o.status)
+                        found_orders.append(o)
+                if not found_orders:
+                    messages.info(
+                        request,
+                        "Không tìm thấy đơn hàng thuộc quyền truy cập của bạn. Vui lòng đăng nhập tài khoản đã đặt đơn để xem chi tiết đơn hàng."
+                    )
             else:
                 messages.warning(
                     request,
-                    "Để bảo vệ quyền riêng tư và tránh lộ thông tin đơn hàng của người khác, tra cứu công khai yêu cầu nhập chính xác Mã đơn hàng (bắt đầu bằng HD-...). Hoặc vui lòng đăng nhập tài khoản để xem các đơn hàng của bạn."
+                    "Để bảo vệ quyền riêng tư, chỉ quản trị viên và chủ đơn hàng mới được xem đơn hàng. Vui lòng đăng nhập tài khoản của bạn để tra cứu."
                 )
 
     form = OrderTrackingForm(initial={'keyword': keyword})

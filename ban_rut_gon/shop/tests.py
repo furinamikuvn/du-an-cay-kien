@@ -149,7 +149,7 @@ class AquaPlantShopTest(TestCase):
         self.assertEqual(self.product.stock_quantity, 18)
 
     def test_06_order_tracking(self):
-        """TC06: Tra cứu thông tin đơn hàng theo mã đơn, chống quét SĐT vãng lai & phân quyền chủ đơn"""
+        """TC06: Tra cứu đơn hàng phân quyền nghiêm ngặt — chỉ Admin/Staff và người đặt đơn được xem"""
         owner = User.objects.create_user(username='order_owner_06', password='Password123!')
         order = Order.objects.create(
             order_code="HD-TEST-1234",
@@ -168,32 +168,93 @@ class AquaPlantShopTest(TestCase):
             quantity=1
         )
 
-        # 1. Tra cứu bằng mã đơn (Khách vãng lai -> masked thông tin cá nhân)
+        # 1. Khách vãng lai dùng link trực tiếp / nhập mã đơn -> KHÔNG được xem thông tin đơn của người khác
         track_resp = self.client.get('/tra-cuu-don-hang/?keyword=HD-TEST-1234')
         self.assertEqual(track_resp.status_code, 200)
-        self.assertContains(track_resp, "HD-TEST-1234")
-        self.assertContains(track_resp, order.masked_customer_name)
-        self.assertContains(track_resp, order.masked_phone)
+        self.assertEqual(track_resp.context['found_orders'], [])
+        self.assertNotContains(track_resp, order.masked_customer_name)
+        self.assertNotContains(track_resp, order.masked_phone)
+        self.assertNotContains(track_resp, "65000₫")
+        self.assertContains(track_resp, "Không tìm thấy đơn hàng thuộc quyền truy cập của bạn")
 
-        # 2. Khách vãng lai gõ chỉ số điện thoại -> Bị chặn chống quét dữ liệu
+        # 2. Khách vãng lai gõ số điện thoại -> Bị chặn
         guest_phone_resp = self.client.get('/tra-cuu-don-hang/?keyword=0911222333')
         self.assertEqual(guest_phone_resp.status_code, 200)
+        self.assertEqual(guest_phone_resp.context['found_orders'], [])
         self.assertContains(guest_phone_resp, "Để bảo vệ quyền riêng tư")
 
-        # 3. Chính chủ đăng nhập -> Xem được đầy đủ thông tin đơn của mình
+        # 3. Tài khoản người thường khác truy cập thẳng bằng link mã đơn hoặc SĐT -> KHÔNG được xem
+        other_user = User.objects.create_user(username='other_user_06', password='Password123!')
+        self.client.force_login(other_user)
+        spy_code_resp = self.client.get('/tra-cuu-don-hang/?keyword=HD-TEST-1234')
+        self.assertEqual(spy_code_resp.status_code, 200)
+        self.assertEqual(spy_code_resp.context['found_orders'], [])
+        self.assertNotContains(spy_code_resp, "Trần Thử Nghiệm")
+        self.assertNotContains(spy_code_resp, order.masked_customer_name)
+        self.assertNotContains(spy_code_resp, "65000₫")
+        self.assertContains(spy_code_resp, "Không tìm thấy đơn hàng thuộc tài khoản của bạn")
+
+        spy_alias_resp = self.client.get('/tra-cuu-don/?keyword=HD-TEST-1234')
+        self.assertEqual(spy_alias_resp.status_code, 200)
+        self.assertEqual(spy_alias_resp.context['found_orders'], [])
+
+        spy_phone_resp = self.client.get('/tra-cuu-don-hang/?keyword=0911222333')
+        self.assertEqual(spy_phone_resp.status_code, 200)
+        self.assertEqual(spy_phone_resp.context['found_orders'], [])
+        self.assertNotContains(spy_phone_resp, "số điện thoại khác")
+        self.assertContains(spy_phone_resp, "Không tìm thấy đơn hàng thuộc tài khoản của bạn")
+
+        # 4. Chính chủ đơn hàng đăng nhập -> Xem được đầy đủ đơn của mình
         self.client.force_login(owner)
         owner_resp = self.client.get('/tra-cuu-don-hang/?keyword=HD-TEST-1234')
         self.assertEqual(owner_resp.status_code, 200)
+        self.assertEqual(len(owner_resp.context['found_orders']), 1)
         self.assertContains(owner_resp, "Trần Thử Nghiệm")
         self.assertContains(owner_resp, "0911222333")
 
-        # 4. Người dùng khác đăng nhập tra cứu SĐT người khác -> Trả thông báo trung lập
-        other_user = User.objects.create_user(username='other_user_06', password='Password123!')
-        self.client.force_login(other_user)
-        spy_resp = self.client.get('/tra-cuu-don-hang/?keyword=0911222333')
-        self.assertEqual(spy_resp.status_code, 200)
-        self.assertNotContains(spy_resp, "số điện thoại khác")
-        self.assertContains(spy_resp, "Không tìm thấy đơn hàng thuộc tài khoản của bạn")
+        # 5. Admin & Staff -> Có quyền xem đơn bất kỳ theo mã đơn hoặc SĐT
+        admin_user = User.objects.create_superuser(username='admin_06', email='adm06@test.vn', password='Password123!')
+        self.client.force_login(admin_user)
+        admin_resp = self.client.get('/tra-cuu-don-hang/?keyword=HD-TEST-1234')
+        self.assertEqual(admin_resp.status_code, 200)
+        self.assertEqual(len(admin_resp.context['found_orders']), 1)
+        self.assertContains(admin_resp, "Trần Thử Nghiệm")
+
+        staff_user = User.objects.create_user(username='staff_06', password='Password123!')
+        UserProfile.objects.create(user=staff_user, role='staff')
+        self.client.force_login(staff_user)
+        staff_phone_resp = self.client.get('/tra-cuu-don-hang/?keyword=0911222333')
+        self.assertEqual(staff_phone_resp.status_code, 200)
+        self.assertEqual(len(staff_phone_resp.context['found_orders']), 1)
+        self.assertContains(staff_phone_resp, "HD-TEST-1234")
+
+        # 6. Khách đặt đơn không đăng nhập chỉ xem được đơn vừa đặt trong đúng phiên trình duyệt đó
+        guest_client = Client()
+        guest_client.post(f'/add-to-cart/{self.product.id}/', {'quantity': 1})
+        chk_resp = guest_client.post('/checkout/', {
+            'customer_name': 'Khách Vãng Lai 06',
+            'phone': '0933444555',
+            'email': 'guest06@example.com',
+            'shipping_address': '227 Nguyễn Văn Cừ, Quận 5',
+        })
+        self.assertEqual(chk_resp.status_code, 200)
+        guest_order = Order.objects.get(email='guest06@example.com')
+
+        same_session_resp = guest_client.get(f'/tra-cuu-don-hang/?keyword={guest_order.order_code}')
+        self.assertEqual(same_session_resp.status_code, 200)
+        self.assertEqual(len(same_session_resp.context['found_orders']), 1)
+        self.assertContains(same_session_resp, 'Khách Vãng Lai 06')
+
+        stranger_client = Client()
+        stranger_resp = stranger_client.get(f'/tra-cuu-don-hang/?keyword={guest_order.order_code}')
+        self.assertEqual(stranger_resp.status_code, 200)
+        self.assertEqual(stranger_resp.context['found_orders'], [])
+        self.assertNotContains(stranger_resp, 'Khách Vãng Lai 06')
+
+        stranger_client.force_login(other_user)
+        other_acc_resp = stranger_client.get(f'/tra-cuu-don-hang/?keyword={guest_order.order_code}')
+        self.assertEqual(other_acc_resp.status_code, 200)
+        self.assertEqual(other_acc_resp.context['found_orders'], [])
 
     def test_07_forgot_password(self):
         """TC07: Khôi phục mật khẩu 2 bước qua token email, chống liệt kê & chặn tài khoản Admin/Staff"""
@@ -976,9 +1037,10 @@ class AquaPlantShopTest(TestCase):
         self.assertEqual(prehijack_resp.status_code, 200)
         track_unverified = self.client.get('/tra-cuu-don-hang/?keyword=HD-20261121-PREHIJAK')
         self.assertEqual(track_unverified.status_code, 200)
+        self.assertEqual(track_unverified.context['found_orders'], [])
         self.assertNotContains(track_unverified, '0912999888')
         self.assertNotContains(track_unverified, '99 Lê Lợi')
-        self.assertContains(track_unverified, guest_order.masked_phone)
+        self.assertNotContains(track_unverified, guest_order.masked_phone)
 
         # Chỉ khi email_verified=True (và đơn chưa gắn user khác) mới mở khóa chi tiết
         attacker_profile = User.objects.get(username='prehijack_attacker').profile
