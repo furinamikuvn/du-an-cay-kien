@@ -528,7 +528,7 @@
         clearScanError();
 
         if (!selectedFile) {
-            showScanError('Sensei vui lòng chụp hoặc chọn ảnh góc bàn trước khi bấm quét nhé!');
+            showScanError('Vui lòng chụp hoặc chọn ảnh góc bàn trước khi bấm quét nhé!');
             return;
         }
 

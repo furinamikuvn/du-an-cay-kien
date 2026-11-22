@@ -1,0 +1,49 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sự Cố Hệ Thống (500) - AquaPlant</title>
+    <meta name="description" content="Hệ thống AquaPlant đang xử lý sự cố kỹ thuật tạm thời. Vui lòng thử lại sau ít phút.">
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+</head>
+<body class="bg-[#F8FAFC] text-slate-800 font-sans flex flex-col min-h-screen">
+    <header class="bg-white border-b border-slate-200 py-3 px-4">
+        <div class="max-w-6xl mx-auto flex items-center justify-between">
+            <a href="/" class="inline-flex items-center gap-2 font-extrabold text-base text-slate-900">
+                Aqua<span class="text-[#3D6B4E]">Plant</span>
+            </a>
+            <span class="text-xs text-slate-600">Hotline: 1900-6868</span>
+        </div>
+    </header>
+
+    <main id="main-content" class="flex-grow flex items-center justify-center p-4">
+        <div class="max-w-lg w-full bg-white border border-slate-200 p-6 sm:p-10 text-center space-y-5">
+            <div class="w-16 h-16 bg-rose-50 text-rose-700 border border-rose-200 flex items-center justify-center mx-auto text-2xl font-mono font-black">
+                500
+            </div>
+            <div class="space-y-2">
+                <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">
+                    Hệ Thống Đang Bảo Trì Tạm Thời
+                </h1>
+                <p class="text-xs text-slate-600 leading-relaxed">
+                    Máy chủ vừa gặp sự cố ngoài ý muốn trong quá trình xử lý yêu cầu. Vui lòng tải lại trang hoặc quay về trang chủ AquaPlant.
+                </p>
+            </div>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-2.5 pt-2 text-xs">
+                <a href="/" class="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center bg-[#3D6B4E] hover:bg-[#2F5C3E] text-white font-bold px-5 py-2.5 transition">
+                    Về Trang Chủ
+                </a>
+                <a href="/hoi-dap-faq/" class="w-full sm:w-auto min-h-[44px] inline-flex items-center justify-center bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 font-semibold px-5 py-2.5 transition">
+                    Trung Tâm Hỏi Đáp
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-white border-t border-slate-200 py-4 text-center text-[11px] text-slate-600">
+        &copy; 2026 AquaPlant &middot; Hệ Thống Website Thương Mại Điện Tử Cây Thủy Sinh
+    </footer>
+</body>
+</html>

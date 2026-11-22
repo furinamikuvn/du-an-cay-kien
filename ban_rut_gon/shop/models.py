@@ -22,7 +22,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.utils.text import slugify
-from PIL import Image, ImageOps
+from PIL import Image, ImageOps, UnidentifiedImageError
 
 from .security import validate_image_file
 
@@ -467,7 +467,7 @@ class LayoutPreset(models.Model):
             try:
                 st = os.stat(self.image.path)
                 return f"{url}?v={st.st_size}-{int(st.st_mtime)}"
-            except Exception:
+            except (OSError, ValueError, NotImplementedError):
                 return url
         if 'Iwagumi' in self.name:
             return f"{settings.STATIC_URL}images/iwagumi_60cm.webp"
@@ -481,7 +481,7 @@ class LayoutPreset(models.Model):
                 candidate = self.image.path
                 if os.path.exists(candidate):
                     file_path = candidate
-            except Exception:
+            except (ValueError, NotImplementedError):
                 file_path = os.path.join(settings.MEDIA_ROOT, self.image.name)
 
         if not file_path or not os.path.exists(file_path):
@@ -502,7 +502,7 @@ class LayoutPreset(models.Model):
                 buf = io.BytesIO()
                 img.save(buf, format='JPEG', quality=84, optimize=True)
                 return buf.getvalue()
-        except Exception:
+        except (UnidentifiedImageError, OSError, ValueError):
             return None
 
     @property
@@ -669,8 +669,7 @@ class Order(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.order_code:
-            import datetime
-            now_str = datetime.datetime.now().strftime("%Y%m%d")
+            now_str = timezone.localtime().strftime("%Y%m%d")
             self.order_code = f"HD-{now_str}-{secrets.token_hex(4).upper()}"
         if not self.subtotal_amount and self.total_amount:
             self.subtotal_amount = self.total_amount

@@ -10,7 +10,7 @@
             <i class="fa-solid fa-calculator text-[#3D6B4E]" aria-hidden="true"></i> Tiện Ích Dự Toán Mua Sắm
         </span>
         <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900">Tính Số Lượng Cây & Chi Phí Theo Diện Tích Hồ</h1>
-        <p class="text-xs text-slate-600 mt-1">Nhập chiều dài x chiều rộng vùng cần trồng (cm) để tính chuẩn số cốc cây cần mua dựa trên độ phủ tán thực tế.</p>
+        <p class="text-xs text-slate-600 mt-1">Nhập chiều dài x chiều rộng vùng cần trồng (cm) để tính chuẩn số lượng (cốc hoặc bao) cần mua dựa trên độ phủ thực tế.</p>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
@@ -43,7 +43,7 @@
                 </div>
 
                 <button type="submit" class="w-full bg-[#3D6B4E] hover:bg-[#2F5C3E] text-white font-bold py-3 transition">
-                    <i class="fa-solid fa-calculator mr-1" aria-hidden="true"></i> Tính Số Cốc Cây Cần Mua
+                    <i class="fa-solid fa-calculator mr-1" aria-hidden="true"></i> Tính Số Lượng Cần Mua
                 </button>
             </form>
         </div>
@@ -65,7 +65,7 @@
                     </div>
                     <div class="p-3.5 bg-[#EEF5F0] border border-[#C5DEC9]">
                         <span class="text-[#2F5C3E] font-bold block">Số lượng khuyên dùng:</span>
-                        <strong class="text-xl font-black font-mono text-[#2F5C3E]">{{ result.estimated_cups }} cốc</strong>
+                        <strong class="text-xl font-black font-mono text-[#2F5C3E]">{{ result.estimated_cups }} {{ result.unit_label }}</strong>
                     </div>
                 </div>
                 <div class="p-4 bg-[#EEF5F0] border border-[#C5DEC9] flex items-center justify-between gap-3">
@@ -77,14 +77,14 @@
                         {% csrf_token %}
                         <input type="hidden" name="quantity" value="{{ result.estimated_cups }}">
                         <button type="submit" class="bg-[#3D6B4E] hover:bg-[#2F5C3E] text-white font-bold px-4 py-2.5 transition">
-                            <i class="fa-solid fa-cart-plus mr-1" aria-hidden="true"></i> Thêm {{ result.estimated_cups }} Cốc Vào Giỏ
+                            <i class="fa-solid fa-cart-plus mr-1" aria-hidden="true"></i> Thêm {{ result.estimated_cups }} {{ result.unit_label|capfirst }} Vào Giỏ
                         </button>
                     </form>
                 </div>
             </div>
             {% else %}
             <div class="py-10 text-center text-xs text-slate-600">
-                Nhập kích thước chiều dài và chiều rộng ở cột bên trái để tính số lượng cốc cây cần thiết.
+                Nhập kích thước chiều dài và chiều rộng tại biểu mẫu nhập kích thước để tính số lượng cần thiết.
             </div>
             {% endif %}
         </div>

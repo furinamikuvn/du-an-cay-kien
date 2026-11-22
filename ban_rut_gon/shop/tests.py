@@ -149,9 +149,11 @@ class AquaPlantShopTest(TestCase):
         self.assertEqual(self.product.stock_quantity, 18)
 
     def test_06_order_tracking(self):
-        """TC06: Tra cứu thông tin đơn hàng theo mã đơn hoặc số điện thoại"""
+        """TC06: Tra cứu thông tin đơn hàng theo mã đơn, chống quét SĐT vãng lai & phân quyền chủ đơn"""
+        owner = User.objects.create_user(username='order_owner_06', password='Password123!')
         order = Order.objects.create(
             order_code="HD-TEST-1234",
+            user=owner,
             customer_name="Trần Thử Nghiệm",
             phone="0911222333",
             email="test@example.com",
@@ -166,11 +168,32 @@ class AquaPlantShopTest(TestCase):
             quantity=1
         )
 
-        # Tra cứu bằng mã đơn (Khách vãng lai -> masked thông tin cá nhân)
+        # 1. Tra cứu bằng mã đơn (Khách vãng lai -> masked thông tin cá nhân)
         track_resp = self.client.get('/tra-cuu-don-hang/?keyword=HD-TEST-1234')
         self.assertEqual(track_resp.status_code, 200)
         self.assertContains(track_resp, "HD-TEST-1234")
         self.assertContains(track_resp, order.masked_customer_name)
+        self.assertContains(track_resp, order.masked_phone)
+
+        # 2. Khách vãng lai gõ chỉ số điện thoại -> Bị chặn chống quét dữ liệu
+        guest_phone_resp = self.client.get('/tra-cuu-don-hang/?keyword=0911222333')
+        self.assertEqual(guest_phone_resp.status_code, 200)
+        self.assertContains(guest_phone_resp, "Để bảo vệ quyền riêng tư")
+
+        # 3. Chính chủ đăng nhập -> Xem được đầy đủ thông tin đơn của mình
+        self.client.force_login(owner)
+        owner_resp = self.client.get('/tra-cuu-don-hang/?keyword=HD-TEST-1234')
+        self.assertEqual(owner_resp.status_code, 200)
+        self.assertContains(owner_resp, "Trần Thử Nghiệm")
+        self.assertContains(owner_resp, "0911222333")
+
+        # 4. Người dùng khác đăng nhập tra cứu SĐT người khác -> Trả thông báo trung lập
+        other_user = User.objects.create_user(username='other_user_06', password='Password123!')
+        self.client.force_login(other_user)
+        spy_resp = self.client.get('/tra-cuu-don-hang/?keyword=0911222333')
+        self.assertEqual(spy_resp.status_code, 200)
+        self.assertNotContains(spy_resp, "số điện thoại khác")
+        self.assertContains(spy_resp, "Không tìm thấy đơn hàng thuộc tài khoản của bạn")
 
     def test_07_forgot_password(self):
         """TC07: Khôi phục mật khẩu 2 bước qua token email, chống liệt kê & chặn tài khoản Admin/Staff"""
@@ -1560,10 +1583,325 @@ class AquaPlantShopTest(TestCase):
         self.assertNotRegex(slip_html, r'\son(?:click|change|submit|input)=')
         self.assertNotIn('<style', slip_html)
 
+    def test_24_p3_timezone_copy_routes_and_errors(self):
+        """TC24 (P3): BIZ-07 múi giờ VN (localtime), BIZ-08 copy/đơn vị bao/hotline, UI-04..07 routes/404/500/no-empty-img, A11Y-05 noopener"""
+        import os
+        from datetime import datetime as dt, timezone as dt_timezone
+        from unittest.mock import patch
+        from django.conf import settings as dj_settings
+        from django.template.loader import render_to_string
+        from django.test import override_settings
+        from django.utils import timezone
 
+        # 1. BIZ-07: Boundary UTC 18:30 = 01:30 ngày hôm sau ở Asia/Ho_Chi_Minh (UTC+7)
+        staff_user = User.objects.create_user(username='p3_staff_tz', password='StrongPassword123!')
+        UserProfile.objects.create(user=staff_user, role='staff')
+        self.client.force_login(staff_user)
 
+        utc_boundary = dt(2026, 11, 22, 18, 30, 0, tzinfo=dt_timezone.utc)
+        with patch.object(timezone, 'now', return_value=utc_boundary):
+            tz_order = Order.objects.create(
+                customer_name="Khách Múi Giờ",
+                phone="0909888777",
+                email="tz@example.com",
+                shipping_address="Quận 5, TP.HCM",
+                total_amount=Decimal('65000'),
+                status='confirmed',
+            )
+            self.assertTrue(tz_order.order_code.startswith('HD-20261123-'))
 
+            slip_resp = self.client.get(f'/staff/order/{tz_order.id}/print-slip/')
+            self.assertEqual(slip_resp.status_code, 200)
+            slip_html = slip_resp.content.decode('utf-8')
+            self.assertEqual(
+                timezone.localtime(slip_resp.context['print_timestamp']).strftime('%Y-%m-%d %H:%M'),
+                '2026-11-23 01:30',
+            )
+            self.assertIn('23/11/2026', slip_html)
+            self.assertIn('01:30', slip_html)
+            self.assertIn('1900-6868', slip_html)
 
+        self.client.logout()
 
+        # 2. BIZ-08 & UI-05: Không còn chữ "Sensei" ở trang trợ lý / JS; không có <img src=""> trên /tro-ly-chon-cay/
+        pa_resp = self.client.get('/tro-ly-chon-cay/')
+        self.assertEqual(pa_resp.status_code, 200)
+        pa_html = pa_resp.content.decode('utf-8')
+        self.assertNotIn('Sensei', pa_html)
+        self.assertNotRegex(pa_html, r'<img\b[^>]*\bsrc=["\']\s*["\']')
+        self.assertIn('placeholder_blank.', pa_html)
+        self.assertNotIn('ở cột bên trái', pa_html)
 
+        js_path = os.path.join(dj_settings.BASE_DIR, 'static', 'js', 'plant_assistant.js')
+        with open(js_path, 'r', encoding='utf-8') as f:
+            self.assertNotIn('Sensei', f.read())
+
+        # BIZ-08: Đơn vị "bao" cho danh mục phan-nen-phu-kien
+        substrate_cat = Category.objects.create(
+            name="Phân Nền & Phụ Kiện",
+            slug="phan-nen-phu-kien",
+        )
+        substrate_prod = Product.objects.create(
+            name="Phân Nền Thủy Sinh Cao Cấp Bao 9L",
+            slug="phan-nen-cao-cap-9l",
+            category=substrate_cat,
+            regular_price=Decimal('450000'),
+            stock_quantity=10,
+            is_active=True,
+        )
+        qty_resp = self.client.post('/tinh-so-luong-cay/', {
+            'product_id': substrate_prod.id,
+            'length': 60,
+            'width': 30,
+        })
+        self.assertEqual(qty_resp.status_code, 200)
+        self.assertEqual(qty_resp.context['result']['unit_label'], 'bao')
+        self.assertContains(qty_resp, 'bao')
+
+        # BIZ-08 & UI-07: Copy đồng bộ hotline, freeship ở header/cart/checkout & placeholder order tracking
+        home_html = self.client.get('/').content.decode('utf-8')
+        self.assertIn('1900-6868', home_html)
+        self.assertNotIn('1900.xxx.xxx', home_html)
+
+        track_html = self.client.get('/tra-cuu-don-hang/').content.decode('utf-8')
+        self.assertIn('Nhập mã đơn HD-... hoặc SĐT', track_html)
+
+        # 3. UI-04 & A11Y-05: Breadcrumb/Tab wrapping & rel="noopener noreferrer" trên target="_blank"
+        detail_html = self.client.get(f'/san-pham/{self.product.slug}/').content.decode('utf-8')
+        self.assertIn('flex-wrap sm:flex-nowrap', detail_html)
+
+        self.client.force_login(staff_user)
+        staff_dash_html = self.client.get('/staff/dashboard/').content.decode('utf-8')
+        self.assertRegex(staff_dash_html, r'target="_blank"[^>]*rel="noopener noreferrer"')
+        for tag in re.findall(r'<a\b[^>]*target=["\']_blank["\'][^>]*>', staff_dash_html):
+            self.assertIn('noopener noreferrer', tag)
+        self.client.logout()
+
+        # 4. UI-06: Alias routes, policy redirect & 404/500 templates
+        FAQ.objects.create(question="Hỏi đáp P3", answer="Trả lời P3", order_num=1)
+        self.assertEqual(self.client.get('/hoi-dap/').status_code, 200)
+        self.assertEqual(self.client.get('/tra-cuu-don/').status_code, 200)
+
+        alias_policy = self.client.get('/chinh-sach/bao-hanh-24h/')
+        self.assertEqual(alias_policy.status_code, 301)
+        self.assertIn('/chinh-sach/chinh-sach-bao-hiem-dap-nat-1-doi-1/', alias_policy['Location'])
+
+        with override_settings(DEBUG=False):
+            unknown_policy = self.client.get('/chinh-sach/slug-khong-ton-tai-p3/')
+            self.assertEqual(unknown_policy.status_code, 404)
+            not_found_resp = self.client.get('/duong-dan-khong-ton-tai-p3/')
+            self.assertEqual(not_found_resp.status_code, 404)
+            nf_html = not_found_resp.content.decode('utf-8')
+            self.assertIn('404', nf_html)
+            self.assertIn('AquaPlant', nf_html)
+
+        err500_html = render_to_string('500.html', {})
+        self.assertIn('500', err500_html)
+        self.assertNotIn('cdn.tailwindcss.com', err500_html)
+
+    def test_25_p3_edge_cases_staff_fifo_ai_and_security(self):
+        """TC25 (P3): INF-05 DJANGO_ENV, SEC-06 RBAC reset, SEC-07 sanitizer & CODE-04 coupon/cart/FIFO/quantity/AI edge cases"""
+        import os
+        import subprocess
+        import sys
+        from datetime import timedelta
+        from django.conf import settings as dj_settings
+        from django.contrib.auth.tokens import default_token_generator
+        from django.test import override_settings
+        from django.utils import timezone
+        from django.utils.encoding import force_bytes
+        from django.utils.http import urlsafe_base64_encode
+        from shop.security import sanitize_policy_html
+
+        # 1. INF-05: DJANGO_ENV=production bắt buộc SECRET_KEY và đặt DEBUG=False
+        env_no_key = os.environ.copy()
+        env_no_key['DJANGO_ENV'] = 'production'
+        env_no_key.pop('SECRET_KEY', None)
+        env_no_key.pop('RENDER', None)
+        proc_fail = subprocess.run(
+            [sys.executable, '-c', 'import config.settings'],
+            cwd=dj_settings.BASE_DIR,
+            env=env_no_key,
+            capture_output=True,
+            text=True,
+        )
+        self.assertNotEqual(proc_fail.returncode, 0)
+
+        env_with_key = os.environ.copy()
+        env_with_key['DJANGO_ENV'] = 'production'
+        env_with_key['SECRET_KEY'] = 'p3-prod-test-secret-key-at-least-32-chars'
+        env_with_key.pop('DEBUG', None)
+        proc_ok = subprocess.run(
+            [sys.executable, '-c', 'import config.settings as s; print(s.IS_PRODUCTION, s.DEBUG)'],
+            cwd=dj_settings.BASE_DIR,
+            env=env_with_key,
+            capture_output=True,
+            text=True,
+        )
+        self.assertEqual(proc_ok.returncode, 0, proc_ok.stderr)
+        self.assertEqual(proc_ok.stdout.strip(), 'True False')
+
+        # 2. SEC-06: User có UserProfile(role='staff') dù is_staff=False vẫn bị chặn forgot_password & reset_password_confirm
+        role_staff = User.objects.create_user(
+            username='p3_role_staff',
+            email='rolestaff@aquaplant.vn',
+            password='StrongPassword123!',
+            is_staff=False,
+        )
+        UserProfile.objects.create(user=role_staff, role='staff')
+
+        mail.outbox.clear()
+        forgot_resp = self.client.post('/quen-mat-khau/', {
+            'username': 'p3_role_staff',
+            'email': 'rolestaff@aquaplant.vn',
+        })
+        self.assertEqual(forgot_resp.status_code, 200)
+        self.assertEqual(len(mail.outbox), 0)
+
+        uidb64 = urlsafe_base64_encode(force_bytes(role_staff.pk))
+        token = default_token_generator.make_token(role_staff)
+        reset_get = self.client.get(f'/quen-mat-khau/xac-nhan/{uidb64}/{token}/')
+        self.assertContains(reset_get, 'Liên kết không hợp lệ hoặc đã hết hạn')
+
+        # SEC-07: sanitize_policy_html gọt thẻ script và attribute độc hại, giữ tag hợp lệ
+        dirty_html = '<p>An toàn</p><strong onclick="alert(1)">Đậm</strong><script>alert(1)</script><img src=x onerror=alert(2)><code>CO2</code>'
+        clean_html = sanitize_policy_html(dirty_html)
+        self.assertIn('<strong>Đậm</strong>', clean_html)
+        self.assertIn('<code>CO2</code>', clean_html)
+        self.assertNotIn('<script', clean_html)
+        self.assertNotIn('onclick', clean_html)
+        self.assertNotIn('onerror', clean_html)
+
+        # 3. CODE-04: Coupon hết hạn & AJAX JSON 200/400
+        self.product.stock_quantity = 3
+        self.product.save(update_fields=['stock_quantity'])
+        self.client.post(f'/add-to-cart/{self.product.id}/', {'quantity': 2})
+
+        Coupon.objects.create(
+            code='EXPIRED_P3',
+            discount_type='fixed',
+            discount_value=Decimal('10000'),
+            valid_to=timezone.localdate() - timedelta(days=1),
+            is_active=True,
+        )
+        Coupon.objects.create(
+            code='VALID_P3',
+            discount_type='fixed',
+            discount_value=Decimal('15000'),
+            valid_to=timezone.localdate() + timedelta(days=5),
+            is_active=True,
+        )
+
+        ajax_bad = self.client.post(
+            '/apply-coupon/',
+            {'coupon_code': 'EXPIRED_P3'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(ajax_bad.status_code, 400)
+        self.assertFalse(ajax_bad.json()['success'])
+
+        ajax_ok = self.client.post(
+            '/apply-coupon/',
+            {'coupon_code': 'VALID_P3'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(ajax_ok.status_code, 200)
+        ok_data = ajax_ok.json()
+        self.assertTrue(ok_data['success'])
+        self.assertEqual(ok_data['coupon_code'], 'VALID_P3')
+        self.assertEqual(ok_data['discount'], 15000.0)
+
+        # 4. CODE-04: update_cart_view chặn tăng quá tồn kho & giảm 1 -> 0 tự xóa key
+        cart_key = str(self.product.id)
+        self.client.post(f'/update-cart/{cart_key}/increase/')
+        self.assertEqual(self.client.session['cart'][cart_key], 3)
+        self.client.post(f'/update-cart/{cart_key}/increase/')
+        self.assertEqual(self.client.session['cart'][cart_key], 3)  # Không vượt quá stock=3
+
+        self.client.post(f'/update-cart/{cart_key}/decrease/')
+        self.client.post(f'/update-cart/{cart_key}/decrease/')
+        self.assertEqual(self.client.session['cart'][cart_key], 1)
+        self.client.post(f'/update-cart/{cart_key}/decrease/')
+        self.assertNotIn(cart_key, self.client.session.get('cart', {}))
+
+        # 5. CODE-04: UserProfile(role='staff', is_staff=False) vào dashboard, cập nhật trạng thái & in phiếu
+        fifo_prod = Product.objects.create(
+            name="Cây Multi FIFO P3",
+            slug="cay-multi-fifo-p3",
+            category=self.category,
+            regular_price=Decimal('50000'),
+            stock_quantity=5,
+            is_active=True,
+        )
+        today = timezone.localdate()
+        lot_newer_id1 = InventoryLot.objects.create(
+            lot_code="FIFO-NEWER-ID1",
+            product=fifo_prod,
+            quantity_received=3,
+            quantity_available=3,
+            status='healthy_emerged',
+        )
+        lot_older_id2 = InventoryLot.objects.create(
+            lot_code="FIFO-OLDER-ID2",
+            product=fifo_prod,
+            quantity_received=2,
+            quantity_available=2,
+            status='healthy_submerged',
+        )
+        # Đặt ngày nhập cũ hơn cho lô có id lớn hơn để chứng minh sắp theo received_date chứ không phải id
+        InventoryLot.objects.filter(pk=lot_newer_id1.pk).update(received_date=today - timedelta(days=1))
+        InventoryLot.objects.filter(pk=lot_older_id2.pk).update(received_date=today - timedelta(days=5))
+
+        self.client.post(f'/add-to-cart/{fifo_prod.id}/', {'quantity': 4})
+        chk = self.client.post('/checkout/', {
+            'customer_name': 'Khách FIFO P3',
+            'phone': '0904444555',
+            'email': 'fifo_p3@example.com',
+            'shipping_address': '227 Nguyễn Văn Cừ',
+        })
+        self.assertEqual(chk.status_code, 200)
+        lot_older_id2.refresh_from_db()
+        lot_newer_id1.refresh_from_db()
+        self.assertEqual(lot_older_id2.quantity_available, 0)  # Lô nhập cũ hơn (id=2) trừ hết trước
+        self.assertEqual(lot_newer_id1.quantity_available, 1)  # Lô mới hơn (id=1) trừ 2 -> còn 1
+
+        fifo_order = Order.objects.get(email='fifo_p3@example.com')
+        staff_c = Client()
+        staff_c.force_login(role_staff)
+        self.assertEqual(staff_c.get('/staff/dashboard/').status_code, 200)
+        self.assertEqual(staff_c.get(f'/staff/order/{fifo_order.id}/print-slip/').status_code, 200)
+        staff_c.post(f'/staff/order/{fifo_order.id}/update-status/', {'status': 'confirmed'}, follow=True)
+        fifo_order.refresh_from_db()
+        self.assertEqual(fifo_order.status, 'confirmed')
+
+        # 6. CODE-04: plant_quantity_view chặn 'nan', 'abc', '1001'
+        for bad_len in ('nan', 'abc', '1001'):
+            r_qty = self.client.post('/tinh-so-luong-cay/', {
+                'product_id': self.product.id,
+                'length': bad_len,
+                'width': '30',
+            })
+            self.assertEqual(r_qty.status_code, 200)
+            self.assertIsNone(r_qty.context['result'])
+
+        # 7. CODE-04: ai_desk_render_view từ chối token thiếu/hết hạn và token của phiên người dùng khác
+        from django.core.cache import cache as dj_cache
+        buyer_a = User.objects.create_user(username='ai_owner_a', password='StrongPassword123!')
+        buyer_b = User.objects.create_user(username='ai_other_b', password='StrongPassword123!')
+        dj_cache.set('ai_desk_ctx:valid_token_a', {
+            'user_id': buyer_a.id,
+            'session_key': 'sess-a',
+            'image_bytes': b'fake',
+            'recommended_tank': {},
+        }, timeout=300)
+
+        client_b = Client()
+        client_b.force_login(buyer_b)
+        with override_settings(AGNES_API_KEY='test-agnes-key'):
+            no_tok = client_b.post('/tro-ly-chon-cay/ai-render-preview/', {})
+            self.assertEqual(no_tok.status_code, 400)
+
+            stolen_tok = client_b.post('/tro-ly-chon-cay/ai-render-preview/', {'render_context_token': 'valid_token_a'})
+            self.assertEqual(stolen_tok.status_code, 400)
+        dj_cache.delete('ai_desk_ctx:valid_token_a')
 

@@ -16,7 +16,7 @@ from django import forms
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from .models import Order, ProductReview, UserProfile
+from .models import ProductReview, UserProfile
 
 
 # ------------------------------------------------------------------------------
@@ -232,7 +232,7 @@ class OrderTrackingForm(forms.Form):
         label="Mã đơn hàng hoặc Số điện thoại",
         widget=forms.TextInput(attrs={
             'class': 'w-full px-4 py-2.5 border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]',
-            'placeholder': 'Nhập mã đơn (vd: HD-...) hoặc số điện thoại đặt hàng'
+            'placeholder': 'Nhập mã đơn HD-... hoặc SĐT'
         })
     )
 

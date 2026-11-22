@@ -9,6 +9,8 @@ Bao gồm:
 """
 
 import hashlib
+from html import escape as html_escape
+from html.parser import HTMLParser
 import ipaddress
 import os
 import time
@@ -16,7 +18,8 @@ import time
 from django.conf import settings
 from django.core.cache import cache, caches
 from django.core.cache.backends.db import BaseDatabaseCache
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
+from django.utils.safestring import mark_safe
 from PIL import Image, UnidentifiedImageError
 
 ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
@@ -232,3 +235,56 @@ class SecurityHeadersMiddleware:
             'camera=(), microphone=(), geolocation=(), payment=(), usb=()'
         )
         return response
+
+
+def get_user_role(user):
+    """Trích xuất role RBAC từ UserProfile một cách an toàn (không nuốt lỗi DB hệ thống)."""
+    if not user or not getattr(user, 'is_authenticated', False):
+        return 'customer'
+    try:
+        profile = user.profile
+        if profile and profile.role:
+            return profile.role
+    except (ObjectDoesNotExist, AttributeError):
+        return 'customer'
+    return 'customer'
+
+
+def is_staff_or_admin(user):
+    """Kiểm tra quyền Staff/Admin thống nhất trên cả User flags và UserProfile."""
+    if not user or not getattr(user, 'is_authenticated', False):
+        return False
+    if user.is_staff or user.is_superuser:
+        return True
+    return get_user_role(user) in ('staff', 'admin')
+
+
+class _PolicyHTMLSanitizer(HTMLParser):
+    """Chỉ giữ lại các thẻ định dạng văn bản an toàn, loại bỏ mọi thẻ lạ và thuộc tính HTML."""
+
+    ALLOWED_TAGS = frozenset({'strong', 'code', 'em', 'b', 'br'})
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.parts = []
+
+    def handle_starttag(self, tag, attrs):
+        tag_l = tag.lower()
+        if tag_l in self.ALLOWED_TAGS:
+            self.parts.append(f"<{tag_l}>")
+
+    def handle_endtag(self, tag):
+        tag_l = tag.lower()
+        if tag_l in self.ALLOWED_TAGS and tag_l != 'br':
+            self.parts.append(f"</{tag_l}>")
+
+    def handle_data(self, data):
+        self.parts.append(html_escape(data))
+
+
+def sanitize_policy_html(raw_html):
+    """Làm sạch HTML nội dung chính sách trước khi đánh dấu SafeString."""
+    parser = _PolicyHTMLSanitizer()
+    parser.feed(str(raw_html or ''))
+    parser.close()
+    return mark_safe(''.join(parser.parts))

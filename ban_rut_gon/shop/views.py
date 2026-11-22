@@ -11,7 +11,6 @@
 # ==============================================================================
 
 import secrets
-from datetime import datetime
 from decimal import Decimal
 from django.conf import settings
 from django.shortcuts import render, redirect, get_object_or_404
@@ -35,6 +34,7 @@ from .security import (
     check_rate_limit,
     clear_rate_limit,
     get_client_ip,
+    is_staff_or_admin,
     record_rate_limit_hit,
 )
 
@@ -353,6 +353,26 @@ def home_view(request):
 # ------------------------------------------------------------------------------
 # 2. CHI TIẾT SẢN PHẨM, BIẾN THỂ, GALLERY & ĐÁNH GIÁ
 # ------------------------------------------------------------------------------
+def _handle_review_submission(request, product):
+    """Helper dùng chung cho POST đánh giá cây cảnh (kèm Rate Limit)."""
+    ip = get_client_ip(request)
+    if check_rate_limit('review', ip, limit=5):
+        return False, None, HttpResponse("Bạn gửi đánh giá quá nhanh. Vui lòng thử lại sau 10 phút.", status=429)
+    record_rate_limit_hit('review', ip, 600)
+
+    form = ReviewForm(request.POST)
+    if form.is_valid():
+        review = form.save(commit=False)
+        review.product = product
+        if request.user.is_authenticated:
+            review.user = request.user
+            if not review.reviewer_name:
+                review.reviewer_name = request.user.get_full_name() or request.user.username
+        review.save()
+        return True, form, None
+    return False, form, None
+
+
 def product_detail_view(request, slug):
     """
     Trang chi tiết cây cảnh:
@@ -363,17 +383,10 @@ def product_detail_view(request, slug):
     product = get_object_or_404(Product, slug=slug, is_active=True)
 
     if request.method == 'POST':
-        ip = get_client_ip(request)
-        if check_rate_limit('review', ip, limit=5):
-            return HttpResponse("Bạn gửi đánh giá quá nhanh. Vui lòng thử lại sau 10 phút.", status=429)
-        record_rate_limit_hit('review', ip, 600)
-        review_form = ReviewForm(request.POST)
-        if review_form.is_valid():
-            new_review = review_form.save(commit=False)
-            new_review.product = product
-            if request.user.is_authenticated:
-                new_review.user = request.user
-            new_review.save()
+        saved, review_form, rate_resp = _handle_review_submission(request, product)
+        if rate_resp is not None:
+            return rate_resp
+        if saved:
             messages.success(request, "Cảm ơn bạn đã gửi đánh giá cho sản phẩm này!")
             return redirect('product_detail', slug=product.slug)
     else:
@@ -429,21 +442,11 @@ def product_detail_view(request, slug):
 @require_POST
 def submit_review_view(request, slug):
     """Endpoint POST riêng xử lý gửi đánh giá cho sản phẩm (có Rate Limit)."""
-    ip = get_client_ip(request)
-    if check_rate_limit('review', ip, limit=5):
-        return HttpResponse("Bạn gửi đánh giá quá nhanh. Vui lòng thử lại sau 10 phút.", status=429)
-    record_rate_limit_hit('review', ip, 600)
-
     product = get_object_or_404(Product, slug=slug, is_active=True)
-    form = ReviewForm(request.POST)
-    if form.is_valid():
-        review = form.save(commit=False)
-        review.product = product
-        if request.user.is_authenticated:
-            review.user = request.user
-            if not review.reviewer_name:
-                review.reviewer_name = request.user.get_full_name() or request.user.username
-        review.save()
+    saved, _, rate_resp = _handle_review_submission(request, product)
+    if rate_resp is not None:
+        return rate_resp
+    if saved:
         messages.success(request, "Cảm ơn bạn đã gửi đánh giá trải nghiệm cho dòng cây này!")
     else:
         messages.error(request, "Vui lòng kiểm tra lại thông tin đánh giá.")
@@ -1142,25 +1145,34 @@ def forgot_password_view(request):
         if form.is_valid():
             username = form.cleaned_data['username'].strip()
             email = form.cleaned_data['email'].strip().lower()
-            user = User.objects.filter(username=username, email__iexact=email, is_active=True).first()
-            if user is not None and not user.is_staff and not user.is_superuser:
-                uid = urlsafe_base64_encode(force_bytes(user.pk))
-                token = default_token_generator.make_token(user)
-                reset_path = reverse('password_reset_confirm', kwargs={'uidb64': uid, 'token': token})
-                reset_url = request.build_absolute_uri(reset_path)
-                send_mail(
-                    subject='[AquaPlant Shop] Xác nhận đặt lại mật khẩu tài khoản',
-                    message=(
-                        f"Xin chào {user.get_full_name() or user.username},\n\n"
-                        f"Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản '{user.username}'.\n"
-                        f"Vui lòng nhấn vào liên kết bên dưới để tạo mật khẩu mới (hiệu lực trong 30 phút):\n"
-                        f"{reset_url}\n\n"
-                        f"Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email."
-                    ),
-                    from_email=settings.DEFAULT_FROM_EMAIL,
-                    recipient_list=[user.email],
-                    fail_silently=True,
+            user = User.objects.select_related('profile').filter(
+                username=username,
+                email__iexact=email,
+                is_active=True,
+            ).first()
+            if user is not None and not is_staff_or_admin(user):
+                using_console_in_prod = (
+                    not settings.DEBUG
+                    and settings.EMAIL_BACKEND == 'django.core.mail.backends.console.EmailBackend'
                 )
+                if not using_console_in_prod:
+                    uid = urlsafe_base64_encode(force_bytes(user.pk))
+                    token = default_token_generator.make_token(user)
+                    reset_path = reverse('password_reset_confirm', kwargs={'uidb64': uid, 'token': token})
+                    reset_url = request.build_absolute_uri(reset_path)
+                    send_mail(
+                        subject='[AquaPlant Shop] Xác nhận đặt lại mật khẩu tài khoản',
+                        message=(
+                            f"Xin chào {user.get_full_name() or user.username},\n\n"
+                            f"Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản '{user.username}'.\n"
+                            f"Vui lòng nhấn vào liên kết bên dưới để tạo mật khẩu mới (hiệu lực trong 30 phút):\n"
+                            f"{reset_url}\n\n"
+                            f"Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email."
+                        ),
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        recipient_list=[user.email],
+                        fail_silently=True,
+                    )
 
             messages.success(
                 request,
@@ -1191,8 +1203,7 @@ def reset_password_confirm_view(request, uidb64, token):
 
     validlink = (
         user is not None
-        and not user.is_staff
-        and not user.is_superuser
+        and not is_staff_or_admin(user)
         and default_token_generator.check_token(user, token)
     )
 

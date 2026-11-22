@@ -21,19 +21,20 @@ load_dotenv(BASE_DIR / '.env')
 # 1. BẢO MẬT & MÔI TRƯỜNG THỰC THI (SECURITY & RUNTIME)
 # ------------------------------------------------------------------------------
 IS_RENDER = 'RENDER' in os.environ
+IS_PRODUCTION = IS_RENDER or os.environ.get('DJANGO_ENV', '').strip().lower() in ('prod', 'production')
 
 SECRET_KEY = os.environ.get('SECRET_KEY')
 if not SECRET_KEY:
-    if IS_RENDER:
+    if IS_PRODUCTION:
         raise RuntimeError(
-            "Biến môi trường SECRET_KEY bắt buộc phải được cấu hình khi chạy trên Render!"
+            "Biến môi trường SECRET_KEY bắt buộc phải được cấu hình khi chạy trên môi trường Production!"
         )
     SECRET_KEY = 'django-insecure-aquaplant-basic-student-key-26ctt2-hcmus'
 
-# Tự động chuyển DEBUG=False khi chạy trên Render (có biến môi trường RENDER), ở local mặc định True
+# Tự động chuyển DEBUG=False khi chạy trên Production (Render hoặc DJANGO_ENV=production), ở local mặc định True
 DEBUG = os.environ.get(
     'DEBUG',
-    'False' if IS_RENDER else 'True'
+    'False' if IS_PRODUCTION else 'True'
 ).lower() in ('true', '1', 'yes')
 
 ALLOWED_HOSTS = [

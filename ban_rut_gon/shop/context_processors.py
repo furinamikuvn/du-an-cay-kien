@@ -8,6 +8,7 @@
 # ==============================================================================
 
 from .models import Product, ProductVariant
+from .security import get_user_role, is_staff_or_admin
 
 
 def cart_count(request):
@@ -70,19 +71,9 @@ def cart_count(request):
                 total_qty += qty
 
     user = getattr(request, 'user', None)
-    is_admin_or_staff = False
-    is_django_admin = False
-    user_role = 'customer'
-
-    if user and user.is_authenticated:
-        is_django_admin = bool(user.is_staff or user.is_superuser)
-        try:
-            profile = user.profile
-            if profile and profile.role:
-                user_role = profile.role
-        except Exception:
-            profile = None
-        is_admin_or_staff = is_django_admin or (user_role in ('staff', 'admin'))
+    is_admin_or_staff = is_staff_or_admin(user)
+    is_django_admin = bool(user and getattr(user, 'is_authenticated', False) and (user.is_staff or user.is_superuser))
+    user_role = get_user_role(user)
 
     return {
         'cart_count': total_qty,

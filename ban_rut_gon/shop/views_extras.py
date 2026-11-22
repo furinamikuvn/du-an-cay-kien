@@ -10,9 +10,12 @@
 # ==============================================================================
 
 import json
+import logging
 import math
 import secrets
 from decimal import Decimal
+import requests
+from PIL import UnidentifiedImageError
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
@@ -20,11 +23,13 @@ from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.db.models import Count, Q, Sum
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
+from google.genai import errors as genai_errors
+from pydantic import ValidationError as PydanticValidationError
 
 from .ai_assistant import (
     analyze_desk_with_gemini,
@@ -40,19 +45,16 @@ from .ai_assistant import (
 from .forms import CustomPasswordChangeForm
 from .inventory import transition_order_status
 from .models import Article, FAQ, InventoryLot, LayoutPreset, Order, Product
-from .security import check_rate_limit, get_client_ip, record_rate_limit_hit
+from .security import (
+    check_rate_limit,
+    get_client_ip,
+    is_staff_or_admin,
+    record_rate_limit_hit,
+    sanitize_policy_html,
+)
 
-
-def _is_staff_or_admin(user):
-    """Kiểm tra quyền Staff/Admin thống nhất trên cả User flags và UserProfile."""
-    if not user or not user.is_authenticated:
-        return False
-    if user.is_staff or user.is_superuser:
-        return True
-    try:
-        return user.profile.role in ('staff', 'admin')
-    except Exception:
-        return False
+logger = logging.getLogger(__name__)
+_is_staff_or_admin = is_staff_or_admin
 
 
 # ------------------------------------------------------------------------------
@@ -186,7 +188,7 @@ def ai_desk_scan_view(request):
             'success': False,
             'message': ' '.join(exc.messages),
         }, status=400)
-    except Exception:
+    except (UnidentifiedImageError, OSError, ValueError):
         return JsonResponse({
             'success': False,
             'message': 'Không thể xử lý tệp ảnh tải lên. Vui lòng thử lại với ảnh JPG, PNG hoặc WEBP hợp lệ.',
@@ -254,7 +256,15 @@ def ai_desk_scan_view(request):
             desk_width_cm=desk_width_cm,
             user_note=user_note,
         )
-    except Exception as exc:
+    except (
+        genai_errors.APIError,
+        PydanticValidationError,
+        requests.RequestException,
+        RuntimeError,
+        ValueError,
+        TypeError,
+        OSError,
+    ) as exc:
         finalize_ai_usage_log(usage_log, 'failed', model_used=settings.GEMINI_VISION_MODEL)
         err_low = str(exc).lower()
         if '429' in err_low or 'resource_exhausted' in err_low or 'quota' in err_low or 'rate' in err_low:
@@ -406,7 +416,7 @@ def ai_desk_render_view(request):
                     raw_preset_id = str(body_data.get('preset_id')).strip()
                 placement_position = str(body_data.get('placement_position') or 'auto').strip().lower()
                 tank_scale = str(body_data.get('tank_scale') or 'balanced').strip().lower()
-        except Exception:
+        except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError):
             context_token = ''
             raw_preset_id = ''
     else:
@@ -483,7 +493,14 @@ def ai_desk_render_view(request):
             placement_position=placement_position,
             tank_scale=tank_scale,
         )
-    except Exception as exc:
+    except (
+        genai_errors.APIError,
+        requests.RequestException,
+        RuntimeError,
+        ValueError,
+        TypeError,
+        OSError,
+    ) as exc:
         finalize_ai_usage_log(usage_log, 'failed', model_used=img_model)
         err_lower = str(exc).lower()
         if img_provider == 'agnes':
@@ -552,12 +569,16 @@ def plant_quantity_view(request):
             elif length > MAX_TANK_DIM_CM or width > MAX_TANK_DIM_CM:
                 messages.error(request, f"Kích thước vùng trồng tối đa hỗ trợ là {int(MAX_TANK_DIM_CM)} cm cho mỗi chiều.")
             else:
-                product = get_object_or_404(Product, id=product_id, is_active=True)
+                product = get_object_or_404(Product.objects.select_related('category'), id=product_id, is_active=True)
                 area_cm2 = round(length * width, 1)
                 coverage = product.coverage_area_cm2 or 100
                 estimated_cups = max(1, int(round(area_cm2 / coverage)))
                 unit_price = product.current_price
                 total_estimated_cost = estimated_cups * unit_price
+                is_bag = ('bao' in product.name.lower()) or (
+                    product.category is not None and product.category.slug == 'phan-nen-phu-kien'
+                )
+                unit_label = 'bao' if is_bag else 'cốc'
 
                 result = {
                     'product': product,
@@ -565,6 +586,7 @@ def plant_quantity_view(request):
                     'width': width,
                     'area_cm2': area_cm2,
                     'estimated_cups': estimated_cups,
+                    'unit_label': unit_label,
                     'unit_price': unit_price,
                     'total_cost': total_estimated_cost,
                 }
@@ -713,8 +735,7 @@ POLICIES_DATA = {
                 'content': (
                     'Tại trang Giỏ Hàng hoặc Thanh Toán, nhập mã ưu đãi:<br>'
                     '• <code>AQUA2026</code>: Giảm ngay 10% cho đơn hàng từ 100.000₫.<br>'
-                    '• <code>FREESHIP</code>: Giảm ngay 30.000₫ cho đơn hàng từ 200.000₫.<br>'
-                    'Mọi đơn hàng đều tự động khấu trừ kho theo nguyên tắc FIFO.'
+                    '• <code>FREESHIP</code>: Giảm ngay 30.000₫ chi phí đóng gói bảo ôn cho đơn hàng từ 200.000₫ (bên cạnh miễn phí vận chuyển tiêu chuẩn).'
                 ),
             },
             {
@@ -807,11 +828,31 @@ POLICIES_DATA = {
 }
 
 
+POLICY_SLUG_ALIASES = {
+    'bao-hanh-24h': 'chinh-sach-bao-hiem-dap-nat-1-doi-1',
+}
+
+
 def policy_detail_view(request, slug):
     """Trang chi tiết các chính sách bán hàng & hướng dẫn dưỡng cây."""
-    policy = POLICIES_DATA.get(slug)
-    if not policy:
-        return redirect('policy_detail', slug='huong-dan-dat-hang-va-thanh-toan')
+    alias_target = POLICY_SLUG_ALIASES.get(slug)
+    if alias_target:
+        return redirect('policy_detail', slug=alias_target, permanent=True)
+
+    raw_policy = POLICIES_DATA.get(slug)
+    if not raw_policy:
+        raise Http404("Chính sách bạn tìm không tồn tại.")
+
+    policy = {
+        **raw_policy,
+        'sections': [
+            {
+                'heading': sec['heading'],
+                'content': sanitize_policy_html(sec['content']),
+            }
+            for sec in raw_policy.get('sections', [])
+        ],
+    }
 
     all_policies = [
         {
@@ -981,5 +1022,5 @@ def print_packing_slip_view(request, order_id):
     return render(request, 'shop/print_packing_slip.html', {
         'order': order,
         'items': items,
-        'print_timestamp': timezone.now(),
+        'print_timestamp': timezone.localtime(),
     })

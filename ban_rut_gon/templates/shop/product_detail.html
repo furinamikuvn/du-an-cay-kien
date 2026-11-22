@@ -8,12 +8,12 @@
 <div class="space-y-6">
 
     <!-- Breadcrumb -->
-    <nav aria-label="Đường dẫn" class="text-xs text-slate-600 flex items-center gap-2">
+    <nav aria-label="Đường dẫn" class="text-xs text-slate-600 flex flex-wrap items-center gap-x-2 gap-y-1">
         <a href="{% url 'home' %}" class="hover:text-[#2F5C3E]">Trang chủ</a>
         <span>/</span>
         <a href="{% url 'home' %}?category={{ product.category.slug }}" class="hover:text-[#2F5C3E]">{{ product.category.name }}</a>
         <span>/</span>
-        <span class="text-slate-800 font-bold truncate">{{ product.name }}</span>
+        <span class="text-slate-800 font-bold">{{ product.name }}</span>
     </nav>
 
     <!-- 1. KHỐI CHI TIẾT SẢN PHẨM, GALLERY & BIẾN THỂ -->
@@ -189,14 +189,14 @@
 
     <!-- 3. TAB KIẾN THỨC CHĂM SÓC & NHÂN GIỐNG -->
     <div class="bg-white border border-slate-200 p-6">
-        <div role="tablist" aria-label="Thông tin kỹ thuật cây cảnh" class="flex border-b border-slate-200 mb-4 gap-2 overflow-x-auto">
-            <button type="button" role="tab" aria-selected="true" aria-controls="tab-desc" data-tab-target="tab-desc" id="btn-tab-desc" class="product-tab-btn px-4 py-2.5 text-xs font-bold border-b-2 border-[#3D6B4E] text-[#2F5C3E] bg-[#EEF5F0] whitespace-nowrap">
+        <div role="tablist" aria-label="Thông tin kỹ thuật cây cảnh" class="flex flex-wrap sm:flex-nowrap border-b border-slate-200 mb-4 gap-1 sm:gap-2">
+            <button type="button" role="tab" aria-selected="true" aria-controls="tab-desc" data-tab-target="tab-desc" id="btn-tab-desc" class="product-tab-btn px-3 sm:px-4 py-2.5 text-[11px] sm:text-xs font-bold border-b-2 border-[#3D6B4E] text-[#2F5C3E] bg-[#EEF5F0] whitespace-nowrap">
                 Mô Tả Kỹ Thuật
             </button>
-            <button type="button" role="tab" aria-selected="false" aria-controls="tab-planting" data-tab-target="tab-planting" id="btn-tab-planting" class="product-tab-btn px-4 py-2.5 text-xs font-bold border-b-2 border-transparent text-slate-600 hover:text-[#2F5C3E] whitespace-nowrap">
+            <button type="button" role="tab" aria-selected="false" aria-controls="tab-planting" data-tab-target="tab-planting" id="btn-tab-planting" class="product-tab-btn px-3 sm:px-4 py-2.5 text-[11px] sm:text-xs font-bold border-b-2 border-transparent text-slate-600 hover:text-[#2F5C3E] whitespace-nowrap">
                 Hướng Dẫn Cắm Cây
             </button>
-            <button type="button" role="tab" aria-selected="false" aria-controls="tab-prop" data-tab-target="tab-prop" id="btn-tab-prop" class="product-tab-btn px-4 py-2.5 text-xs font-bold border-b-2 border-transparent text-slate-600 hover:text-[#2F5C3E] whitespace-nowrap">
+            <button type="button" role="tab" aria-selected="false" aria-controls="tab-prop" data-tab-target="tab-prop" id="btn-tab-prop" class="product-tab-btn px-3 sm:px-4 py-2.5 text-[11px] sm:text-xs font-bold border-b-2 border-transparent text-slate-600 hover:text-[#2F5C3E] whitespace-nowrap">
                 Nhân Giống & Cắt Tỉa
             </button>
         </div>

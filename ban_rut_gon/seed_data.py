@@ -81,7 +81,7 @@ def sync_seed_users(is_render=None):
                 admin_user.save(update_fields=['is_staff', 'is_superuser'])
         UserProfile.objects.get_or_create(
             user=admin_user,
-            defaults={'role': 'admin', 'phone': '1900000', 'address': '227 Nguyễn Văn Cừ, Quận 5, TP.HCM'},
+            defaults={'role': 'admin', 'phone': '1900-6868', 'address': '227 Nguyễn Văn Cừ, Quận 5, TP.HCM'},
         )
         print("✓ Đã đồng bộ tài khoản Admin (admin)")
 
@@ -174,7 +174,7 @@ def run_seed():
             'name': 'Cây Ráy Nana Thủy Sinh',
             'slug': 'cay-ray-nana-thuy-sinh',
             'scientific_name': 'Anubias barteri var. nana',
-            'category': cats['cay-tien-canh'],
+            'category': cats['cay-trung-canh'],
             'regular_price': Decimal('80000'),
             'sale_price': Decimal('65000'),
             'stock_quantity': 45,
@@ -432,7 +432,7 @@ def run_seed():
             'tank_width_cm': 40,
             'recommended_space': 'nano',
             'style': 'Nature Rừng Rêu Đường Mòn',
-            'co2_required': 'no',
+            'co2_required': 'yes',
             'light_level': 'medium',
             'description': 'Bể kính không viền phong cách vòm rừng rêu cổ thụ kết hợp đường cát trắng và đàn cá neon, phù hợp bàn học và bàn làm việc.',
             'total_price': Decimal('260000'),
@@ -556,7 +556,7 @@ def run_seed():
             'tank_width_cm': 90,
             'recommended_space': 'large',
             'style': 'Phong cách Nature Rừng Nhiệt Đới',
-            'co2_required': 'no',
+            'co2_required': 'yes',
             'light_level': 'medium',
             'description': 'Bố cục lũa tự nhiên kết hợp cây ráy, tiêu thảo và vảy ốc đỏ rực rỡ.',
             'total_price': Decimal('325000'),
@@ -577,7 +577,7 @@ def run_seed():
             'tank_width_cm': 90,
             'recommended_space': 'large',
             'style': 'Nature Backlight Rừng Thưa',
-            'co2_required': 'no',
+            'co2_required': 'yes',
             'light_level': 'medium',
             'description': 'Bố cục đảo cây hai bên chừa khoảng sáng xanh dịu ở giữa, hợp tường sáng màu và văn phòng hiện đại cần chiều sâu thị giác.',
             'total_price': Decimal('335000'),
@@ -692,11 +692,11 @@ def run_seed():
             'answer': 'Cây thuần lá nước đã thích nghi hoàn toàn dưới nước, khi cắm bể sẽ không bị rụng lá cũ hay làm đục nước như cây ươm lá cạn.',
         },
     )
-    FAQ.objects.get_or_create(
+    FAQ.objects.update_or_create(
         order_num=3,
-        question='Hồ của tôi chưa có bình CO2 thì nên chọn giống cây nào?',
         defaults={
-            'answer': 'Bạn nên ưu tiên các loài cây bền bỉ như Ráy Nana, Tiêu Thảo Nâu, Dương Xỉ Java hoặc Rêu thủy sinh. Bạn có thể dùng công cụ Trợ Lý Chọn Cây trên thanh menu để lọc tự động.',
+            'question': 'Hồ của tôi chưa có bình CO2 thì nên chọn giống cây nào?',
+            'answer': 'Bạn nên ưu tiên các loài cây bền bỉ, dễ sống có sẵn tại AquaPlant như Cây Ráy Nana Thủy Sinh hoặc Cây Tiêu Thảo Nâu. Bạn có thể dùng công cụ Trợ Lý Chọn Cây trên thanh menu để lọc tự động.',
         },
     )
     FAQ.objects.get_or_create(

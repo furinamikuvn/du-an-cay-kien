@@ -23,9 +23,10 @@ from django.db import connection, transaction
 from django.db.models import Q
 from django.utils import timezone
 from google import genai
+from google.genai import errors as genai_errors
 from google.genai import types
-from PIL import Image, ImageOps
-from pydantic import BaseModel, Field
+from PIL import Image, ImageOps, UnidentifiedImageError
+from pydantic import BaseModel, Field, ValidationError as PydanticValidationError
 
 from .models import AIUsageLog
 from .security import validate_image_file
@@ -128,7 +129,7 @@ def resize_jpeg_bytes(image_bytes, max_dim=768, quality=76):
             out = io.BytesIO()
             img.save(out, format='JPEG', quality=quality, optimize=True)
             return out.getvalue()
-    except Exception:
+    except (UnidentifiedImageError, OSError, ValueError):
         return image_bytes
 
 
@@ -485,7 +486,15 @@ def analyze_desk_with_gemini(image_bytes, catalog_products, catalog_presets, des
                 raise ValueError("Phản hồi AI không chứa nội dung JSON.")
             parsed = DeskScanResult.model_validate_json(raw_text)
             return _ground_recommendations(parsed, catalog_products, catalog_presets), model_name
-        except Exception as exc:
+        except (
+            genai_errors.APIError,
+            PydanticValidationError,
+            requests.RequestException,
+            RuntimeError,
+            ValueError,
+            TypeError,
+            OSError,
+        ) as exc:
             logger.warning("Gemini vision model %s failed: %s", model_name, exc)
             last_error = exc
 
@@ -609,7 +618,7 @@ def _detect_aspect_ratio(image_bytes):
             if w > 0 and h > 0:
                 target = w / h
                 return min(candidates, key=lambda item: abs(item[1] - target))[0]
-    except Exception:
+    except (UnidentifiedImageError, OSError, ValueError):
         pass
     return "4:3"
 
@@ -708,7 +717,13 @@ def render_tank_preview_with_agnes(
                 return base64.b64encode(img_resp.content).decode('utf-8'), mime_type, model_name
 
             raise ValueError("Phản hồi Agnes AI thiếu cả b64_json và URL ảnh hợp lệ.")
-        except Exception as exc:
+        except (
+            requests.RequestException,
+            RuntimeError,
+            ValueError,
+            TypeError,
+            OSError,
+        ) as exc:
             logger.warning("Agnes image model %s failed: %s", model_name, exc)
             last_error = exc
 

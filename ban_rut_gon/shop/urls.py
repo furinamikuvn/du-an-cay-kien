@@ -59,8 +59,10 @@ urlpatterns = [
     path('logout/', views.logout_view),
     path('profile/', views.profile_view),
     path('tracking/', views.order_tracking_view),
+    path('tra-cuu-don/', views.order_tracking_view),
     path('my-orders/', views_extras.my_orders_view),
     path('dashboard/', views_extras.staff_dashboard_view),
     path('faq/', views_extras.faq_view),
+    path('hoi-dap/', views_extras.faq_view),
     path('articles/', views_extras.article_list_view),
 ]
