@@ -1,0 +1,11 @@
+# DECISIONS — AquaPlant Shop (ban_rut_gon)
+
+| ID | Quyết Định Đã Đóng Băng | Lý Do Kỹ Thuật & Dữ Liệu Thực Nghiệm | Ngày Duyệt |
+| :--- | :--- | :--- | :--- |
+| D1 | Thi công tuần tự theo 4 Phase `P0 → P1 → P2 → P3` từ `AUDIT_THIEU_SOT_HE_THONG.md`; mỗi phiên chỉ làm đúng 1 Phase và chỉ chỉnh sửa mã nguồn trong `ban_rut_gon/`. | Ngăn ngừa trôi ngữ cảnh (context drift), cô lập rủi ro hồi quy theo từng tầng nghiệp vụ và bảo vệ các tệp kế thừa ngoài phạm vi ứng dụng chính. | 2026-11-22 |
+| D2 | Áp dụng mô hình quản trị Tier 2 (Lean Relay): `AGENTS.md` + `PROGRESS.md` + `DECISIONS.md`, xem `AUDIT_THIEU_SOT_HE_THONG.md` là bản đặc tả kiểm toán gốc (G0). | Dự án là Django web app nhiều module có DB, xác thực và AI pipeline; cần rào chắn trạng thái rõ ràng và Red-Team Audit (G3) trước khi chốt hoàn thiện. | 2026-11-22 |
+| D3 | Thay thế `LocMemCache` bằng `DatabaseCache` (`aquaplant_cache_table` qua migration `0006`) trong P0 (`INF-01`). | Gunicorn chạy `--workers 2 --threads 4` trên Render khiến `LocMemCache` phân mảnh giữa các worker, gây gãy token AI Render và giảm một nửa hiệu lực Rate-Limit. | 2026-11-22 |
+| D4 | Cứng hóa `get_client_ip()` tại `ban_rut_gon/shop/security.py` thay vì tin cậy phần tử đầu tiên của `X-Forwarded-For` (`SEC-01`). | Phía sau proxy Render/Cloudflare, header `X-Forwarded-For` bên trái có thể bị client giả mạo để vượt Rate-Limit và hạn mức AI ẩn danh. | 2026-11-22 |
+| D5 | Bổ sung `UserProfile.email_verified` và kiểm tra trùng `email` không phân biệt hoa thường tại `RegisterForm` (`SEC-02`). | Chặn lỗ hổng Email Pre-Hijack IDOR tại `order_tracking_view`, chỉ mở khóa PII đơn hàng khi quyền sở hữu email được xác thực hợp lệ. | 2026-11-22 |
+| D6 | Khóa tạo/đặt mật khẩu mặc định yếu cho `admin`/`nhanvien`/`khachhang` trên Render khi thiếu biến môi trường đủ mạnh (`SEC-03`). | Ngăn việc `seed_data.py` chạy trong `build.sh` vô tình để lộ tài khoản đặc quyền với mật khẩu mặc định mỗi lần redeploy. | 2026-11-22 |
+| D7 | Khóa nguyên tử hạn mức `AIUsageLog` (`INF-03`) và giữ lại token quét bàn AI khi khách ẩn danh đăng nhập qua signal `user_logged_in` trong `shop/signals.py` (`BIZ-04`). | Tránh race condition vượt hạn mức chi phí AI khi gửi nhiều request song song, đồng thời khắc phục lỗi mất token quét bàn khi `login()` xoay vòng `session_key`. | 2026-11-22 |
