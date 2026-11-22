@@ -34,23 +34,16 @@ class UserProfile(models.Model):
     """
     Mở rộng bảng User mặc định qua OneToOneField để lưu SĐT, địa chỉ và vai trò RBAC.
     """
+
     ROLE_CHOICES = [
-        ('customer', 'Khách hàng'),
-        ('staff', 'Nhân viên xử lý đơn & Kho'),
-        ('admin', 'Quản trị viên hệ thống'),
+        ("customer", "Khách hàng"),
+        ("staff", "Nhân viên xử lý đơn & Kho"),
+        ("admin", "Quản trị viên hệ thống"),
     ]
     user = models.OneToOneField(
-        User,
-        on_delete=models.CASCADE,
-        related_name='profile',
-        verbose_name="Tài khoản hệ thống"
+        User, on_delete=models.CASCADE, related_name="profile", verbose_name="Tài khoản hệ thống"
     )
-    role = models.CharField(
-        max_length=20,
-        choices=ROLE_CHOICES,
-        default='customer',
-        verbose_name="Vai trò phân quyền"
-    )
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default="customer", verbose_name="Vai trò phân quyền")
     phone = models.CharField(max_length=20, blank=True, default="", verbose_name="Số điện thoại liên hệ")
     address = models.TextField(blank=True, default="", verbose_name="Địa chỉ nhận hàng mặc định")
     email_verified = models.BooleanField(default=False, verbose_name="Email đã xác thực")
@@ -72,6 +65,7 @@ class Category(models.Model):
     Phân loại các nhóm cây cảnh trong cửa hàng:
     Ví dụ: Cây Tiền Cảnh (Trải Thảm), Cây Trung Cảnh, Cây Hậu Cảnh, Phân Nền Thủy Sinh.
     """
+
     name = models.CharField(max_length=150, verbose_name="Tên danh mục")
     slug = models.SlugField(max_length=150, unique=True, verbose_name="Đường dẫn thân thiện (Slug)")
     description = models.TextField(blank=True, verbose_name="Mô tả danh mục")
@@ -97,57 +91,67 @@ class Product(models.Model):
     Lưu trữ chi tiết thông tin cây cảnh bán trên trang web và hồ sơ sinh học
     phục vụ Trợ lý chọn cây, Bộ lọc sinh thái & Dự toán số lượng theo diện tích.
     """
+
     CO2_CHOICES = [
-        ('no', 'Không cần bình CO2 (Dễ trồng)'),
-        ('yes', 'Cần bình khí CO2 ổn định'),
+        ("no", "Không cần bình CO2 (Dễ trồng)"),
+        ("yes", "Cần bình khí CO2 ổn định"),
     ]
     LIGHT_CHOICES = [
-        ('low', 'Ánh sáng yếu'),
-        ('medium', 'Ánh sáng vừa'),
-        ('high', 'Ánh sáng mạnh'),
+        ("low", "Ánh sáng yếu"),
+        ("medium", "Ánh sáng vừa"),
+        ("high", "Ánh sáng mạnh"),
     ]
     POSITION_CHOICES = [
-        ('tien_canh', 'Tiền cảnh (Thảm đáy)'),
-        ('trung_canh', 'Trung cảnh (Bụi giữa)'),
-        ('hau_canh', 'Hậu cảnh (Cây cao phía sau)'),
-        ('gia_the', 'Gắn giá thể đá lũa'),
+        ("tien_canh", "Tiền cảnh (Thảm đáy)"),
+        ("trung_canh", "Trung cảnh (Bụi giữa)"),
+        ("hau_canh", "Hậu cảnh (Cây cao phía sau)"),
+        ("gia_the", "Gắn giá thể đá lũa"),
     ]
     CARE_CHOICES = [
-        ('easy', 'Dễ trồng (Người mới bắt đầu)'),
-        ('medium', 'Trung bình'),
-        ('hard', 'Nâng cao (Cần kinh nghiệm)'),
+        ("easy", "Dễ trồng (Người mới bắt đầu)"),
+        ("medium", "Trung bình"),
+        ("hard", "Nâng cao (Cần kinh nghiệm)"),
     ]
     GROWTH_CHOICES = [
-        ('slow', 'Chậm (Dễ kiểm soát bố cục)'),
-        ('medium', 'Trung bình'),
-        ('fast', 'Nhanh (Cần cắt tỉa thường xuyên)'),
+        ("slow", "Chậm (Dễ kiểm soát bố cục)"),
+        ("medium", "Trung bình"),
+        ("fast", "Nhanh (Cần cắt tỉa thường xuyên)"),
     ]
     LEAF_CHOICES = [
-        ('submerged', '100% Cây thuần lá nước (Cắm hồ sống ngay)'),
-        ('emerged', 'Cây lá cạn ươm vỉ (Cần thời gian chuyển lá)'),
+        ("submerged", "100% Cây thuần lá nước (Cắm hồ sống ngay)"),
+        ("emerged", "Cây lá cạn ươm vỉ (Cần thời gian chuyển lá)"),
     ]
 
-    category = models.ForeignKey(
-        Category,
-        on_delete=models.CASCADE,
-        related_name="products",
-        verbose_name="Danh mục"
-    )
+    category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="products", verbose_name="Danh mục")
     name = models.CharField(max_length=200, verbose_name="Tên cây cảnh")
     slug = models.SlugField(max_length=200, unique=True, blank=True, verbose_name="Slug URL")
     scientific_name = models.CharField(max_length=150, blank=True, verbose_name="Tên khoa học")
 
     regular_price = models.DecimalField(max_digits=10, decimal_places=0, db_index=True, verbose_name="Giá gốc (VNĐ)")
-    sale_price = models.DecimalField(max_digits=10, decimal_places=0, null=True, blank=True, verbose_name="Giá khuyến mãi (VNĐ)")
+    sale_price = models.DecimalField(
+        max_digits=10, decimal_places=0, null=True, blank=True, verbose_name="Giá khuyến mãi (VNĐ)"
+    )
     stock_quantity = models.PositiveIntegerField(default=50, verbose_name="Số lượng tồn kho")
 
     # Hồ sơ sinh học chi tiết (cấp mặc định an toàn để tương thích ngược với dữ liệu/test cũ)
-    co2_requirement = models.CharField(max_length=20, choices=CO2_CHOICES, default='no', db_index=True, verbose_name="Nhu cầu CO2")
-    light_requirement = models.CharField(max_length=20, choices=LIGHT_CHOICES, default='low', db_index=True, verbose_name="Nhu cầu ánh sáng")
-    placement_position = models.CharField(max_length=20, choices=POSITION_CHOICES, default='tien_canh', db_index=True, verbose_name="Vị trí trồng")
-    care_level = models.CharField(max_length=20, choices=CARE_CHOICES, default='easy', db_index=True, verbose_name="Mức độ chăm sóc")
-    growth_rate = models.CharField(max_length=30, choices=GROWTH_CHOICES, default='medium', verbose_name="Tốc độ phát triển")
-    leaf_state = models.CharField(max_length=30, choices=LEAF_CHOICES, default='submerged', verbose_name="Tình trạng lá")
+    co2_requirement = models.CharField(
+        max_length=20, choices=CO2_CHOICES, default="no", db_index=True, verbose_name="Nhu cầu CO2"
+    )
+    light_requirement = models.CharField(
+        max_length=20, choices=LIGHT_CHOICES, default="low", db_index=True, verbose_name="Nhu cầu ánh sáng"
+    )
+    placement_position = models.CharField(
+        max_length=20, choices=POSITION_CHOICES, default="tien_canh", db_index=True, verbose_name="Vị trí trồng"
+    )
+    care_level = models.CharField(
+        max_length=20, choices=CARE_CHOICES, default="easy", db_index=True, verbose_name="Mức độ chăm sóc"
+    )
+    growth_rate = models.CharField(
+        max_length=30, choices=GROWTH_CHOICES, default="medium", verbose_name="Tốc độ phát triển"
+    )
+    leaf_state = models.CharField(
+        max_length=30, choices=LEAF_CHOICES, default="submerged", verbose_name="Tình trạng lá"
+    )
 
     ph_min = models.DecimalField(max_digits=3, decimal_places=1, default=5.5, verbose_name="Độ pH tối thiểu")
     ph_max = models.DecimalField(max_digits=3, decimal_places=1, default=7.5, verbose_name="Độ pH tối đa")
@@ -160,18 +164,18 @@ class Product(models.Model):
     propagation_guide = models.TextField(blank=True, default="", verbose_name="Hướng dẫn nhân giống & tỉa ngọn")
     image_url = models.CharField(max_length=255, blank=True, verbose_name="Đường dẫn ảnh tĩnh")
     image = models.ImageField(
-        upload_to='products/',
+        upload_to="products/",
         blank=True,
         null=True,
         validators=[validate_image_file],
-        verbose_name="Tải ảnh lên từ máy tính"
+        verbose_name="Tải ảnh lên từ máy tính",
     )
 
     is_active = models.BooleanField(default=True, db_index=True, verbose_name="Đang kinh doanh")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày đăng bán")
 
     class Meta:
-        ordering = ['-id']
+        ordering = ["-id"]
         verbose_name = "Sản phẩm cây cảnh"
         verbose_name_plural = "Quản lý sản phẩm cây cảnh"
 
@@ -201,22 +205,22 @@ class Product(models.Model):
         if self.image_url:
             url = self.image_url.strip()
             lower = url.lower()
-            if not lower.startswith(('javascript:', 'data:', 'vbscript:')):
-                if lower.startswith(('https://', 'http://')):
+            if not lower.startswith(("javascript:", "data:", "vbscript:")):
+                if lower.startswith(("https://", "http://")):
                     return url
-                if url.startswith('/') and not url.startswith('//') and '..' not in url:
+                if url.startswith("/") and not url.startswith("//") and ".." not in url:
                     return url
-                if '..' not in url and ':' not in url and not url.startswith('//'):
+                if ".." not in url and ":" not in url and not url.startswith("//"):
                     return f"/static/{url.lstrip('/')}"
-        if 'Nana' in self.name:
+        if "Nana" in self.name:
             return "/static/images/anubias_nana.webp"
-        elif 'Trân Châu' in self.name:
+        elif "Trân Châu" in self.name:
             return "/static/images/monte_carlo.webp"
-        elif 'Tiêu Thảo' in self.name:
+        elif "Tiêu Thảo" in self.name:
             return "/static/images/cryptocoryne_brown.webp"
-        elif 'Vảy Ốc' in self.name:
+        elif "Vảy Ốc" in self.name:
             return "/static/images/rotala_hra.webp"
-        elif 'Phân Nền' in self.name:
+        elif "Phân Nền" in self.name:
             return "/static/images/aquasoil.webp"
         return "/static/images/anubias_nana.webp"
 
@@ -228,28 +232,21 @@ class ProductImage(models.Model):
     """
     Quản lý bộ sưu tập nhiều góc chụp thực tế cho mỗi sản phẩm cây cảnh.
     """
+
     product = models.ForeignKey(
-        Product,
-        on_delete=models.CASCADE,
-        related_name="images",
-        verbose_name="Sản phẩm cây cảnh"
+        Product, on_delete=models.CASCADE, related_name="images", verbose_name="Sản phẩm cây cảnh"
     )
     image = models.ImageField(
-        upload_to='products/gallery/',
-        validators=[validate_image_file],
-        verbose_name="Tệp ảnh chi tiết tải lên"
+        upload_to="products/gallery/", validators=[validate_image_file], verbose_name="Tệp ảnh chi tiết tải lên"
     )
     caption = models.CharField(
-        max_length=150,
-        blank=True,
-        default="",
-        verbose_name="Mô tả ảnh (vd: Tán lá nước, Rễ cấy mô, Phối đá)"
+        max_length=150, blank=True, default="", verbose_name="Mô tả ảnh (vd: Tán lá nước, Rễ cấy mô, Phối đá)"
     )
     order = models.PositiveIntegerField(default=0, verbose_name="Thứ tự hiển thị")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Thời điểm tải lên")
 
     class Meta:
-        ordering = ['order', 'id']
+        ordering = ["order", "id"]
         verbose_name = "Ảnh chi tiết cây cảnh"
         verbose_name_plural = "Album ảnh chi tiết cây cảnh (Gallery)"
 
@@ -266,16 +263,11 @@ class ProductVariant(models.Model):
     Các hình thức đóng gói / quy cách bán khác nhau của cùng 1 loài cây:
     Ví dụ: Cốc cấy mô Invitro, Bụi lá nước thuần dưỡng, Chậu gốm Wabi-Kusa.
     """
+
     product = models.ForeignKey(
-        Product,
-        on_delete=models.CASCADE,
-        related_name="variants",
-        verbose_name="Sản phẩm cây gốc"
+        Product, on_delete=models.CASCADE, related_name="variants", verbose_name="Sản phẩm cây gốc"
     )
-    name = models.CharField(
-        max_length=100,
-        verbose_name="Tên quy cách (Cốc mô, Bụi cạn, Chậu gốm)"
-    )
+    name = models.CharField(max_length=100, verbose_name="Tên quy cách (Cốc mô, Bụi cạn, Chậu gốm)")
     sku_code = models.CharField(max_length=50, blank=True, default="", verbose_name="Mã SKU quy cách")
     price = models.DecimalField(max_digits=10, decimal_places=0, verbose_name="Đơn giá theo quy cách (VNĐ)")
     stock = models.PositiveIntegerField(default=20, verbose_name="Tồn kho quy cách")
@@ -283,7 +275,7 @@ class ProductVariant(models.Model):
     is_active = models.BooleanField(default=True, verbose_name="Đang kinh doanh")
 
     class Meta:
-        ordering = ['-is_default', 'price']
+        ordering = ["-is_default", "price"]
         verbose_name = "Biến thể quy cách cây"
         verbose_name_plural = "Quản lý biến thể quy cách cây"
 
@@ -300,17 +292,15 @@ class InventoryLot(models.Model):
     - Hỗ trợ thuật toán xuất kho FIFO (received_date tăng dần).
     - Cách ly sinh học: lô 'quarantined' bị loại trừ tuyệt đối khi xuất đơn.
     """
+
     STATUS_CHOICES = [
-        ('healthy_submerged', 'Lá nước khỏe mạnh (Sẵn sàng bán)'),
-        ('healthy_emerged', 'Lá cạn thuần dưỡng (Sẵn sàng bán)'),
-        ('quarantined', 'Cách ly / Cảnh báo úng rữa lá (Không tính tồn khả dụng)'),
+        ("healthy_submerged", "Lá nước khỏe mạnh (Sẵn sàng bán)"),
+        ("healthy_emerged", "Lá cạn thuần dưỡng (Sẵn sàng bán)"),
+        ("quarantined", "Cách ly / Cảnh báo úng rữa lá (Không tính tồn khả dụng)"),
     ]
     lot_code = models.CharField(max_length=50, unique=True, verbose_name="Mã lô kiểm kê")
     product = models.ForeignKey(
-        Product,
-        on_delete=models.CASCADE,
-        related_name="inventory_lots",
-        verbose_name="Cây giống"
+        Product, on_delete=models.CASCADE, related_name="inventory_lots", verbose_name="Cây giống"
     )
     quantity_received = models.PositiveIntegerField(verbose_name="Số lượng nhập kho")
     quantity_available = models.PositiveIntegerField(verbose_name="Số lượng tồn khả dụng")
@@ -319,9 +309,9 @@ class InventoryLot(models.Model):
     status = models.CharField(
         max_length=30,
         choices=STATUS_CHOICES,
-        default='healthy_submerged',
+        default="healthy_submerged",
         db_index=True,
-        verbose_name="Tình trạng sinh học lô cây"
+        verbose_name="Tình trạng sinh học lô cây",
     )
     note = models.TextField(blank=True, default="", verbose_name="Ghi chú giám định kỹ thuật")
 
@@ -330,7 +320,9 @@ class InventoryLot(models.Model):
         verbose_name_plural = "Quản lý lô tồn kho sinh học"
 
     def __str__(self):
-        return f"Lô {self.lot_code}: {self.product.name} ({self.quantity_available} đơn vị - {self.get_status_display()})"
+        return (
+            f"Lô {self.lot_code}: {self.product.name} ({self.quantity_available} đơn vị - {self.get_status_display()})"
+        )
 
 
 # ------------------------------------------------------------------------------
@@ -340,23 +332,18 @@ class Coupon(models.Model):
     """
     Quản lý mã ưu đãi khuyến mãi (% hoặc VNĐ) kèm điều kiện đơn tối thiểu và thời hạn.
     """
+
     DISCOUNT_TYPES = [
-        ('fixed', 'Khấu trừ tiền mặt (VNĐ)'),
-        ('percent', 'Khấu trừ phần trăm (%)'),
+        ("fixed", "Khấu trừ tiền mặt (VNĐ)"),
+        ("percent", "Khấu trừ phần trăm (%)"),
     ]
     code = models.CharField(max_length=30, unique=True, verbose_name="Mã voucher ưu đãi")
     discount_type = models.CharField(
-        max_length=20,
-        choices=DISCOUNT_TYPES,
-        default='percent',
-        verbose_name="Loại giảm giá"
+        max_length=20, choices=DISCOUNT_TYPES, default="percent", verbose_name="Loại giảm giá"
     )
     discount_value = models.DecimalField(max_digits=10, decimal_places=0, verbose_name="Giá trị chiết khấu")
     min_order_value = models.DecimalField(
-        max_digits=10,
-        decimal_places=0,
-        default=0,
-        verbose_name="Đơn hàng tối thiểu (VNĐ)"
+        max_digits=10, decimal_places=0, default=0, verbose_name="Đơn hàng tối thiểu (VNĐ)"
     )
     is_active = models.BooleanField(default=True, verbose_name="Đang kích hoạt")
     valid_from = models.DateField(default=timezone.localdate, null=True, blank=True, verbose_name="Ngày bắt đầu")
@@ -364,10 +351,7 @@ class Coupon(models.Model):
     max_uses = models.PositiveIntegerField(null=True, blank=True, verbose_name="Số lượt sử dụng tối đa")
     used_count = models.PositiveIntegerField(default=0, verbose_name="Số lượt đã sử dụng")
     per_user_limit = models.PositiveIntegerField(
-        default=1,
-        null=True,
-        blank=True,
-        verbose_name="Giới hạn lượt dùng mỗi khách hàng"
+        default=1, null=True, blank=True, verbose_name="Giới hạn lượt dùng mỗi khách hàng"
     )
 
     class Meta:
@@ -386,19 +370,20 @@ class LayoutPreset(models.Model):
     Gói combo bố cục hồ thủy sinh mẫu (Nano 30cm, Iwagumi 60cm, Rừng Lũa 90cm...).
     Lưu kèm ảnh bể thật từ nguồn mở/không bản quyền để phục vụ hiển thị & ghép phối cảnh AI.
     """
+
     SPACE_CHOICES = [
-        ('nano', 'Bàn nhỏ / Nano (25–40cm)'),
-        ('medium', 'Bàn vừa / Phổ thông (45–65cm)'),
-        ('large', 'Bàn lớn / Phòng khách (80–120cm)'),
+        ("nano", "Bàn nhỏ / Nano (25–40cm)"),
+        ("medium", "Bàn vừa / Phổ thông (45–65cm)"),
+        ("large", "Bàn lớn / Phòng khách (80–120cm)"),
     ]
     CO2_CHOICES = [
-        ('no', 'Không cần CO₂'),
-        ('yes', 'Cần bình CO₂'),
+        ("no", "Không cần CO₂"),
+        ("yes", "Cần bình CO₂"),
     ]
     LIGHT_CHOICES = [
-        ('low', 'Ánh sáng nhẹ'),
-        ('medium', 'Ánh sáng vừa'),
-        ('high', 'Ánh sáng mạnh (WRGB)'),
+        ("low", "Ánh sáng nhẹ"),
+        ("medium", "Ánh sáng vừa"),
+        ("high", "Ánh sáng mạnh (WRGB)"),
     ]
 
     name = models.CharField(max_length=150, verbose_name="Tên bố cục hồ mẫu")
@@ -407,27 +392,27 @@ class LayoutPreset(models.Model):
     recommended_space = models.CharField(
         max_length=20,
         choices=SPACE_CHOICES,
-        default='medium',
+        default="medium",
         verbose_name="Kích thước góc bàn phù hợp",
     )
     style = models.CharField(max_length=100, verbose_name="Phong cách bố cục")
     co2_required = models.CharField(
         max_length=10,
         choices=CO2_CHOICES,
-        default='no',
+        default="no",
         verbose_name="Yêu cầu CO₂",
     )
     light_level = models.CharField(
         max_length=10,
         choices=LIGHT_CHOICES,
-        default='medium',
+        default="medium",
         verbose_name="Cường độ đèn",
     )
     description = models.TextField(verbose_name="Mô tả ý tưởng bố cục")
     total_price = models.DecimalField(max_digits=10, decimal_places=0, verbose_name="Tổng chi phí set cây (VNĐ)")
     plant_list_text = models.TextField(verbose_name="Danh sách cây thành phần")
     image = models.ImageField(
-        upload_to='tanks/',
+        upload_to="tanks/",
         blank=True,
         null=True,
         validators=[validate_image_file],
@@ -436,19 +421,19 @@ class LayoutPreset(models.Model):
     license_name = models.CharField(
         max_length=80,
         blank=True,
-        default='CC0 / Public Domain',
+        default="CC0 / Public Domain",
         verbose_name="Giấy phép nguồn ảnh",
     )
     source_attribution = models.CharField(
         max_length=180,
         blank=True,
-        default='',
+        default="",
         verbose_name="Tác giả / Nguồn gốc ảnh",
     )
     source_url = models.URLField(
         max_length=400,
         blank=True,
-        default='',
+        default="",
         verbose_name="Liên kết nguồn gốc (Wikimedia/Open)",
     )
 
@@ -469,7 +454,7 @@ class LayoutPreset(models.Model):
                 return f"{url}?v={st.st_size}-{int(st.st_mtime)}"
             except (OSError, ValueError, NotImplementedError):
                 return url
-        if 'Iwagumi' in self.name:
+        if "Iwagumi" in self.name:
             return f"{settings.STATIC_URL}images/iwagumi_60cm.webp"
         return f"{settings.STATIC_URL}images/nature_wood_90cm.webp"
 
@@ -485,8 +470,8 @@ class LayoutPreset(models.Model):
                 file_path = os.path.join(settings.MEDIA_ROOT, self.image.name)
 
         if not file_path or not os.path.exists(file_path):
-            fallback_rel = 'images/iwagumi_60cm.webp' if 'Iwagumi' in self.name else 'images/nature_wood_90cm.webp'
-            candidate_static = os.path.join(settings.BASE_DIR, 'static', fallback_rel)
+            fallback_rel = "images/iwagumi_60cm.webp" if "Iwagumi" in self.name else "images/nature_wood_90cm.webp"
+            candidate_static = os.path.join(settings.BASE_DIR, "static", fallback_rel)
             if os.path.exists(candidate_static):
                 file_path = candidate_static
 
@@ -496,11 +481,11 @@ class LayoutPreset(models.Model):
         try:
             with Image.open(file_path) as img:
                 img = ImageOps.exif_transpose(img)
-                if img.mode != 'RGB':
-                    img = img.convert('RGB')
+                if img.mode != "RGB":
+                    img = img.convert("RGB")
                 img.thumbnail((max_dim, max_dim), Image.Resampling.LANCZOS)
                 buf = io.BytesIO()
-                img.save(buf, format='JPEG', quality=84, optimize=True)
+                img.save(buf, format="JPEG", quality=84, optimize=True)
                 return buf.getvalue()
         except (UnidentifiedImageError, OSError, ValueError):
             return None
@@ -508,14 +493,14 @@ class LayoutPreset(models.Model):
     @property
     def calculated_total_price(self):
         """Tính tổng chi phí thực tế từ các cây thành phần (fallback về total_price nếu chưa có item)."""
-        items = list(self.preset_items.select_related('product').all())
+        items = list(self.preset_items.select_related("product").all())
         if items:
             return sum((item.subtotal for item in items), 0)
         return self.total_price
 
     def sync_total_price(self, save=True):
         """Đồng bộ cột total_price trên DB khớp với tổng thành phần hiện tại."""
-        items = list(self.preset_items.select_related('product').all())
+        items = list(self.preset_items.select_related("product").all())
         if items:
             computed = sum((item.subtotal for item in items), 0)
             if self.total_price != computed:
@@ -528,21 +513,23 @@ class LayoutPreset(models.Model):
         """
         Lấy danh sách cây thành phần qua LayoutPresetItem (có fallback an toàn nếu chưa gán item).
         """
-        items = list(self.preset_items.select_related('product').all())
+        items = list(self.preset_items.select_related("product").all())
         if items:
             return items
 
         fallback_products = list(Product.objects.filter(is_active=True)[:3])
         dummy_items = []
-        roles = ['Tiền cảnh', 'Trung cảnh', 'Hậu cảnh']
+        roles = ["Tiền cảnh", "Trung cảnh", "Hậu cảnh"]
         for i, prod in enumerate(fallback_products):
             qty = 2 if i == 0 else 1
-            dummy_items.append({
-                'product': prod,
-                'quantity': qty,
-                'layer_role': roles[i % len(roles)],
-                'subtotal': prod.current_price * qty,
-            })
+            dummy_items.append(
+                {
+                    "product": prod,
+                    "quantity": qty,
+                    "layer_role": roles[i % len(roles)],
+                    "subtotal": prod.current_price * qty,
+                }
+            )
         return dummy_items
 
 
@@ -550,27 +537,20 @@ class LayoutPresetItem(models.Model):
     """
     Bảng trung gian lưu từng loài cây, số lượng và tầng bố cục trong một LayoutPreset.
     """
+
     preset = models.ForeignKey(
-        LayoutPreset,
-        on_delete=models.CASCADE,
-        related_name="preset_items",
-        verbose_name="Bố cục mẫu"
+        LayoutPreset, on_delete=models.CASCADE, related_name="preset_items", verbose_name="Bố cục mẫu"
     )
     product = models.ForeignKey(
-        Product,
-        on_delete=models.CASCADE,
-        related_name="in_presets",
-        verbose_name="Cây thành phần"
+        Product, on_delete=models.CASCADE, related_name="in_presets", verbose_name="Cây thành phần"
     )
     quantity = models.PositiveIntegerField(default=1, verbose_name="Số lượng khuyên dùng")
     layer_role = models.CharField(
-        max_length=50,
-        default="Trung cảnh",
-        verbose_name="Vị trí trong bố cục (Tiền/Trung/Hậu cảnh)"
+        max_length=50, default="Trung cảnh", verbose_name="Vị trí trong bố cục (Tiền/Trung/Hậu cảnh)"
     )
 
     class Meta:
-        unique_together = ('preset', 'product')
+        unique_together = ("preset", "product")
         verbose_name = "Cây trong bố cục mẫu"
         verbose_name_plural = "Danh sách cây trong bố cục mẫu"
 
@@ -600,22 +580,18 @@ class Order(models.Model):
     """
     Lưu trữ đơn hàng thanh toán, mã ưu đãi, nhật ký hành trình và cơ chế che thông tin (Data Masking).
     """
+
     STATUS_CHOICES = [
-        ('pending', 'Chờ xác nhận đơn hàng'),
-        ('confirmed', 'Đã xác nhận & đang chuẩn bị cây'),
-        ('shipping', 'Đang giao hàng'),
-        ('completed', 'Giao hàng thành công'),
-        ('cancelled', 'Đã hủy đơn'),
+        ("pending", "Chờ xác nhận đơn hàng"),
+        ("confirmed", "Đã xác nhận & đang chuẩn bị cây"),
+        ("shipping", "Đang giao hàng"),
+        ("completed", "Giao hàng thành công"),
+        ("cancelled", "Đã hủy đơn"),
     ]
 
     order_code = models.CharField(max_length=30, unique=True, verbose_name="Mã đơn hàng")
     user = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="orders",
-        verbose_name="Tài khoản mua hàng"
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="orders", verbose_name="Tài khoản mua hàng"
     )
     customer_name = models.CharField(max_length=150, verbose_name="Họ và tên người nhận")
     email = models.EmailField(verbose_name="Email liên hệ")
@@ -624,43 +600,30 @@ class Order(models.Model):
     customer_note = models.TextField(blank=True, default="", verbose_name="Ghi chú đơn hàng")
 
     subtotal_amount = models.DecimalField(
-        max_digits=12,
-        decimal_places=0,
-        default=0,
-        verbose_name="Tạm tính tiền hàng (VNĐ)"
+        max_digits=12, decimal_places=0, default=0, verbose_name="Tạm tính tiền hàng (VNĐ)"
     )
     coupon = models.ForeignKey(
-        Coupon,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        verbose_name="Mã ưu đãi áp dụng"
+        Coupon, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Mã ưu đãi áp dụng"
     )
     discount_amount = models.DecimalField(
-        max_digits=10,
-        decimal_places=0,
-        default=0,
-        verbose_name="Tiền giảm giá (VNĐ)"
+        max_digits=10, decimal_places=0, default=0, verbose_name="Tiền giảm giá (VNĐ)"
     )
     shipping_fee = models.DecimalField(
-        max_digits=10,
-        decimal_places=0,
-        default=0,
-        verbose_name="Phí đóng gói & vận chuyển"
+        max_digits=10, decimal_places=0, default=0, verbose_name="Phí đóng gói & vận chuyển"
     )
     total_amount = models.DecimalField(max_digits=12, decimal_places=0, verbose_name="Tổng tiền đơn hàng (VNĐ)")
-    status = models.CharField(max_length=30, choices=STATUS_CHOICES, default='pending', db_index=True, verbose_name="Trạng thái đơn hàng")
+    status = models.CharField(
+        max_length=30, choices=STATUS_CHOICES, default="pending", db_index=True, verbose_name="Trạng thái đơn hàng"
+    )
     tracking_note = models.TextField(
-        blank=True,
-        default="Đơn hàng đã được khởi tạo trên hệ thống.",
-        verbose_name="Nhật ký hành trình vận chuyển"
+        blank=True, default="Đơn hàng đã được khởi tạo trên hệ thống.", verbose_name="Nhật ký hành trình vận chuyển"
     )
 
     created_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name="Thời điểm đặt hàng")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Lần cập nhật gần nhất")
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
         verbose_name = "Đơn đặt hàng"
         verbose_name_plural = "Quản lý đơn đặt hàng"
 
@@ -702,7 +665,7 @@ class Order(models.Model):
     def masked_address(self):
         """Che giấu số nhà và tên đường chi tiết, chỉ hiển thị cấp quận/huyện và tỉnh/thành."""
         addr = self.shipping_address.strip()
-        parts = [p.strip() for p in addr.split(',') if p.strip()]
+        parts = [p.strip() for p in addr.split(",") if p.strip()]
         if len(parts) >= 2:
             return "***, " + ", ".join(parts[1:])
         return "*** (Đã ẩn địa chỉ chi tiết)"
@@ -716,31 +679,18 @@ class OrderItem(models.Model):
     Lưu từng sản phẩm cây cảnh (và quy cách biến thể nếu có) trong một đơn đặt hàng.
     Giữ nguyên subtotal dưới dạng @property để bảo đảm tương thích ngược 100%.
     """
-    order = models.ForeignKey(
-        Order,
-        on_delete=models.CASCADE,
-        related_name="items",
-        verbose_name="Đơn hàng"
-    )
-    product = models.ForeignKey(
-        Product,
-        on_delete=models.PROTECT,
-        verbose_name="Sản phẩm cây cảnh"
-    )
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items", verbose_name="Đơn hàng")
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, verbose_name="Sản phẩm cây cảnh")
     variant = models.ForeignKey(
         ProductVariant,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
         related_name="order_items",
-        verbose_name="Biến thể đã chọn"
+        verbose_name="Biến thể đã chọn",
     )
-    variant_name = models.CharField(
-        max_length=100,
-        blank=True,
-        default="",
-        verbose_name="Tên quy cách lúc mua"
-    )
+    variant_name = models.CharField(max_length=100, blank=True, default="", verbose_name="Tên quy cách lúc mua")
     quantity = models.PositiveIntegerField(default=1, verbose_name="Số lượng")
     unit_price = models.DecimalField(max_digits=10, decimal_places=0, verbose_name="Đơn giá khi mua (VNĐ)")
 
@@ -766,26 +716,16 @@ class ProductReview(models.Model):
     """
     Lưu trữ nhận xét và đánh giá sao (1-5 sao) của khách hàng cho từng loài cây.
     """
-    product = models.ForeignKey(
-        Product,
-        on_delete=models.CASCADE,
-        related_name="reviews",
-        verbose_name="Sản phẩm"
-    )
-    user = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        verbose_name="Tài khoản đánh giá"
-    )
+
+    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="reviews", verbose_name="Sản phẩm")
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, verbose_name="Tài khoản đánh giá")
     reviewer_name = models.CharField(max_length=100, verbose_name="Họ tên người đánh giá")
     rating = models.PositiveSmallIntegerField(default=5, verbose_name="Số sao đánh giá (1 - 5)")
     comment = models.TextField(verbose_name="Nội dung nhận xét")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày gửi đánh giá")
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
         verbose_name = "Đánh giá sản phẩm"
         verbose_name_plural = "Quản lý đánh giá sản phẩm"
 
@@ -800,16 +740,17 @@ class Article(models.Model):
     """
     Cẩm nang hướng dẫn kỹ thuật thủy sinh, phương pháp diệt rêu hại và ươm cấy mô.
     """
+
     title = models.CharField(max_length=250, verbose_name="Tiêu đề bài viết")
     slug = models.SlugField(max_length=250, unique=True, verbose_name="Slug URL")
-    category = models.CharField(max_length=100, default='Kỹ thuật thủy sinh', db_index=True, verbose_name="Chuyên mục")
+    category = models.CharField(max_length=100, default="Kỹ thuật thủy sinh", db_index=True, verbose_name="Chuyên mục")
     summary = models.TextField(verbose_name="Tóm tắt nội dung")
     content = models.TextField(verbose_name="Nội dung bài viết chi tiết")
-    thumbnail = models.CharField(max_length=255, default='images/anubias_nana.webp', verbose_name="Ảnh minh họa")
+    thumbnail = models.CharField(max_length=255, default="images/anubias_nana.webp", verbose_name="Ảnh minh họa")
     published_at = models.DateTimeField(auto_now_add=True, verbose_name="Ngày đăng bài")
 
     class Meta:
-        ordering = ['-published_at']
+        ordering = ["-published_at"]
         verbose_name = "Bài viết kiến thức"
         verbose_name_plural = "Cẩm nang kiến thức thủy sinh"
 
@@ -821,6 +762,7 @@ class FAQ(models.Model):
     """
     Các câu hỏi thường gặp của khách hàng khi mua và chăm sóc cây cảnh thủy sinh.
     """
+
     question = models.CharField(max_length=300, verbose_name="Câu hỏi thường gặp")
     answer = models.TextField(verbose_name="Câu trả lời giải đáp")
     order_num = models.PositiveIntegerField(default=1, verbose_name="Thứ tự hiển thị")
@@ -828,7 +770,7 @@ class FAQ(models.Model):
     class Meta:
         verbose_name = "Câu hỏi thường gặp (FAQ)"
         verbose_name_plural = "Quản lý câu hỏi thường gặp (FAQ)"
-        ordering = ['order_num']
+        ordering = ["order_num"]
 
     def __str__(self):
         return self.question
@@ -842,27 +784,23 @@ class AIUsageLog(models.Model):
     Ghi nhận lịch sử gọi Gemini Vision (quét góc bàn) & Nano Banana 2.1 (vẽ phối cảnh),
     đảm bảo khóa trần ngân sách $10/tháng trên database bền vững.
     """
+
     ACTION_CHOICES = [
-        ('scan', 'Quét phân tích góc bàn (Vision)'),
-        ('render', 'Vẽ phối cảnh đặt bể lên bàn (Nano Banana)'),
+        ("scan", "Quét phân tích góc bàn (Vision)"),
+        ("render", "Vẽ phối cảnh đặt bể lên bàn (Nano Banana)"),
     ]
 
     action_type = models.CharField(max_length=20, choices=ACTION_CHOICES, db_index=True, verbose_name="Loại tác vụ AI")
     user = models.ForeignKey(
-        User,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='ai_usage_logs',
-        verbose_name="Người dùng"
+        User, on_delete=models.SET_NULL, null=True, blank=True, related_name="ai_usage_logs", verbose_name="Người dùng"
     )
     ip_hash = models.CharField(max_length=64, db_index=True, verbose_name="Mã băm IP")
-    model_used = models.CharField(max_length=80, blank=True, default='', verbose_name="Model sử dụng")
-    status = models.CharField(max_length=20, default='success', verbose_name="Trạng thái")
+    model_used = models.CharField(max_length=80, blank=True, default="", verbose_name="Model sử dụng")
+    status = models.CharField(max_length=20, default="success", verbose_name="Trạng thái")
     created_at = models.DateTimeField(auto_now_add=True, db_index=True, verbose_name="Thời điểm gọi")
 
     class Meta:
-        ordering = ['-created_at']
+        ordering = ["-created_at"]
         verbose_name = "Nhật ký gọi AI"
         verbose_name_plural = "Nhật ký & Hạn mức AI"
 

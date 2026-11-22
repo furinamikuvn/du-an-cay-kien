@@ -1,0 +1,14 @@
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+extend-exclude = '''
+/(
+    \.git
+  | \.venv
+  | venv
+  | __pycache__
+  | staticfiles
+  | media
+  | shop/migrations
+)/
+'''

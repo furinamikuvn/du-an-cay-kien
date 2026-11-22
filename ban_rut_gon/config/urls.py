@@ -18,11 +18,11 @@ from shop.security import ALLOWED_IMAGE_EXTENSIONS
 
 urlpatterns = [
     # Phân hệ quản trị Django Admin
-    path('admin/', admin.site.urls),
-
+    path("admin/", admin.site.urls),
     # Kết nối toàn bộ URL của ứng dụng bán cây cảnh
-    path('', include('shop.urls')),
+    path("", include("shop.urls")),
 ]
+
 
 def secure_media_serve(request, path):
     """Chỉ phục vụ các tệp ảnh an toàn trong MEDIA_ROOT kèm nosniff."""
@@ -30,14 +30,14 @@ def secure_media_serve(request, path):
     if ext not in ALLOWED_IMAGE_EXTENSIONS:
         raise Http404("Tệp không hợp lệ hoặc không được phép truy cập.")
     response = serve(request, path, document_root=settings.MEDIA_ROOT)
-    response['X-Content-Type-Options'] = 'nosniff'
-    response.setdefault('Cache-Control', 'public, max-age=86400')
+    response["X-Content-Type-Options"] = "nosniff"
+    response.setdefault("Cache-Control", "public, max-age=86400")
     return response
 
 
 # Phục vụ tệp media hình ảnh sản phẩm an toàn
 urlpatterns += [
-    re_path(r'^media/(?P<path>.*)$', secure_media_serve),
+    re_path(r"^media/(?P<path>.*)$", secure_media_serve),
 ]
 
 if settings.DEBUG:

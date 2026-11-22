@@ -16,7 +16,7 @@ def cart_count(request):
     Tính tổng số lượng cây cảnh đang có trong giỏ hàng & quyền truy cập quản trị của user.
     Chỉ đếm sản phẩm & biến thể còn đang kinh doanh (is_active=True) để khớp với giỏ hàng thực tế.
     """
-    cart = request.session.get('cart', {})
+    cart = request.session.get("cart", {})
     total_qty = 0
     if isinstance(cart, dict) and cart:
         parsed_entries = []
@@ -30,8 +30,8 @@ def cart_count(request):
             if qty < 1:
                 continue
             key_str = str(raw_key)
-            if ':' in key_str:
-                parts = key_str.split(':', 1)
+            if ":" in key_str:
+                parts = key_str.split(":", 1)
                 try:
                     pid = int(parts[0])
                     vid = int(parts[1])
@@ -49,16 +49,14 @@ def cart_count(request):
                     continue
 
         if parsed_entries:
-            active_prod_ids = set(
-                Product.objects.filter(id__in=prod_ids, is_active=True).values_list('id', flat=True)
-            )
+            active_prod_ids = set(Product.objects.filter(id__in=prod_ids, is_active=True).values_list("id", flat=True))
             active_var_pairs = (
                 set(
                     ProductVariant.objects.filter(
                         id__in=var_ids,
                         product_id__in=active_prod_ids,
                         is_active=True,
-                    ).values_list('id', 'product_id')
+                    ).values_list("id", "product_id")
                 )
                 if var_ids
                 else set()
@@ -70,14 +68,14 @@ def cart_count(request):
                     continue
                 total_qty += qty
 
-    user = getattr(request, 'user', None)
+    user = getattr(request, "user", None)
     is_admin_or_staff = is_staff_or_admin(user)
-    is_django_admin = bool(user and getattr(user, 'is_authenticated', False) and (user.is_staff or user.is_superuser))
+    is_django_admin = bool(user and getattr(user, "is_authenticated", False) and (user.is_staff or user.is_superuser))
     user_role = get_user_role(user)
 
     return {
-        'cart_count': total_qty,
-        'is_admin_or_staff': is_admin_or_staff,
-        'is_django_admin': is_django_admin,
-        'user_role': user_role,
+        "cart_count": total_qty,
+        "is_admin_or_staff": is_admin_or_staff,
+        "is_django_admin": is_django_admin,
+        "user_role": user_role,
     }

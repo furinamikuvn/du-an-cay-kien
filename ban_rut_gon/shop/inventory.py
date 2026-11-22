@@ -7,7 +7,7 @@ from django.utils import timezone
 
 from .models import Coupon, InventoryLot, Order, Product, ProductVariant
 
-HEALTHY_LOT_STATUSES = ('healthy_submerged', 'healthy_emerged')
+HEALTHY_LOT_STATUSES = ("healthy_submerged", "healthy_emerged")
 
 
 def get_locked_product_lots(product, today=None):
@@ -18,11 +18,7 @@ def get_locked_product_lots(product, today=None):
     if today is None:
         today = timezone.localdate()
 
-    all_lots = list(
-        InventoryLot.objects.select_for_update()
-        .filter(product=product)
-        .order_by('received_date', 'id')
-    )
+    all_lots = list(InventoryLot.objects.select_for_update().filter(product=product).order_by("received_date", "id"))
     if not all_lots:
         return False, []
 
@@ -46,7 +42,7 @@ def deduct_lots_fifo(eligible_lots, qty_needed):
         if take > 0:
             lot.quantity_available -= take
             remaining -= take
-            lot.save(update_fields=['quantity_available'])
+            lot.save(update_fields=["quantity_available"])
     return remaining
 
 
@@ -56,23 +52,18 @@ def restore_inventory_for_order(order):
     và hoàn lượt sử dụng Coupon khi đơn hàng bị hủy.
     Phải được gọi bên trong transaction.atomic().
     """
-    items = list(
-        order.items.select_related('product', 'variant').order_by('product_id', 'variant_id', 'id')
-    )
+    items = list(order.items.select_related("product", "variant").order_by("product_id", "variant_id", "id"))
     if not items:
         return
 
     # Khóa Product và ProductVariant theo thứ tự cố định (product_id, variant_id) để chống deadlock
     product_ids = sorted({item.product_id for item in items if item.product_id})
-    locked_products = {
-        p.id: p
-        for p in Product.objects.select_for_update().filter(id__in=product_ids).order_by('id')
-    }
+    locked_products = {p.id: p for p in Product.objects.select_for_update().filter(id__in=product_ids).order_by("id")}
 
     variant_ids = sorted({item.variant_id for item in items if item.variant_id})
     locked_variants = {
         v.id: v
-        for v in ProductVariant.objects.select_for_update().filter(id__in=variant_ids).order_by('product_id', 'id')
+        for v in ProductVariant.objects.select_for_update().filter(id__in=variant_ids).order_by("product_id", "id")
     }
 
     for item in items:
@@ -83,14 +74,14 @@ def restore_inventory_for_order(order):
         prod = locked_products.get(item.product_id)
         if prod:
             prod.stock_quantity += qty
-            prod.save(update_fields=['stock_quantity'])
+            prod.save(update_fields=["stock_quantity"])
 
             has_any_lots = InventoryLot.objects.filter(product=prod).exists()
             if has_any_lots:
                 healthy_lots = list(
                     InventoryLot.objects.select_for_update()
                     .filter(product=prod, status__in=HEALTHY_LOT_STATUSES)
-                    .order_by('-received_date', '-id')
+                    .order_by("-received_date", "-id")
                 )
                 remaining = qty
                 for lot in healthy_lots:
@@ -101,12 +92,12 @@ def restore_inventory_for_order(order):
                         give_back = min(capacity, remaining)
                         lot.quantity_available += give_back
                         remaining -= give_back
-                        lot.save(update_fields=['quantity_available'])
+                        lot.save(update_fields=["quantity_available"])
 
                 if remaining > 0 and healthy_lots:
                     newest_lot = healthy_lots[0]
                     newest_lot.quantity_available += remaining
-                    newest_lot.save(update_fields=['quantity_available'])
+                    newest_lot.save(update_fields=["quantity_available"])
                     remaining = 0
 
                 if remaining > 0:
@@ -115,7 +106,7 @@ def restore_inventory_for_order(order):
                         product=prod,
                         quantity_received=remaining,
                         quantity_available=remaining,
-                        status='healthy_submerged',
+                        status="healthy_submerged",
                         note=f"Hoàn kho từ đơn hủy {order.order_code}",
                     )
 
@@ -123,13 +114,13 @@ def restore_inventory_for_order(order):
             variant = locked_variants.get(item.variant_id)
             if variant:
                 variant.stock += qty
-                variant.save(update_fields=['stock'])
+                variant.save(update_fields=["stock"])
 
     if order.coupon_id:
         coupon = Coupon.objects.select_for_update().filter(pk=order.coupon_id).first()
         if coupon and coupon.used_count > 0:
             coupon.used_count -= 1
-            coupon.save(update_fields=['used_count'])
+            coupon.save(update_fields=["used_count"])
 
 
 def transition_order_status(order_id, new_status, append_tracking_note=True):
@@ -149,10 +140,13 @@ def transition_order_status(order_id, new_status, append_tracking_note=True):
             return False, "Không tìm thấy đơn hàng.", None
 
         old_status = order.status
-        if old_status == 'cancelled' and new_status != 'cancelled':
+        if old_status == "cancelled" and new_status != "cancelled":
             return (
                 False,
-                f"Đơn hàng {order.order_code} đã hủy nên không thể chuyển ngược sang trạng thái '{valid_statuses[new_status]}'.",
+                (
+                    f"Đơn hàng {order.order_code} đã hủy nên không thể chuyển ngược sang trạng thái "
+                    f"'{valid_statuses[new_status]}'."
+                ),
                 order,
             )
 
@@ -160,18 +154,20 @@ def transition_order_status(order_id, new_status, append_tracking_note=True):
             return True, f"Đơn hàng {order.order_code} hiện đang ở trạng thái '{valid_statuses[new_status]}'.", order
 
         old_status_name = order.get_status_display()
-        if new_status == 'cancelled':
+        if new_status == "cancelled":
             restore_inventory_for_order(order)
 
         order.status = new_status
         if append_tracking_note:
-            time_str = timezone.localtime().strftime('%H:%M %d/%m/%Y')
+            time_str = timezone.localtime().strftime("%H:%M %d/%m/%Y")
             base_note = (order.tracking_note or "").strip()
-            suffix = " (Đã hoàn tồn kho tự động)" if new_status == 'cancelled' else ""
-            append_line = f"[{time_str}] Thay đổi trạng thái: {old_status_name} -> {valid_statuses[new_status]}{suffix}."
+            suffix = " (Đã hoàn tồn kho tự động)" if new_status == "cancelled" else ""
+            append_line = (
+                f"[{time_str}] Thay đổi trạng thái: {old_status_name} -> {valid_statuses[new_status]}{suffix}."
+            )
             order.tracking_note = f"{base_note}\n{append_line}".strip()
-            order.save(update_fields=['status', 'tracking_note', 'updated_at'])
+            order.save(update_fields=["status", "tracking_note", "updated_at"])
         else:
-            order.save(update_fields=['status', 'updated_at'])
+            order.save(update_fields=["status", "updated_at"])
 
         return True, f"Đã chuyển trạng thái đơn {order.order_code} thành: '{valid_statuses[new_status]}'.", order
