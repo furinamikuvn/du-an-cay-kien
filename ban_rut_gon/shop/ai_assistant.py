@@ -28,6 +28,30 @@ from google.genai import types
 from PIL import Image, ImageOps, UnidentifiedImageError
 from pydantic import BaseModel, Field, ValidationError as PydanticValidationError
 
+try:
+    import httpx
+    _HTTPX_ERRORS = (httpx.HTTPError,)
+except ImportError:
+    _HTTPX_ERRORS = ()
+
+try:
+    from google.genai._interactions import GeminiNextGenAPIClientError
+    _INTERACTIONS_ERRORS = (GeminiNextGenAPIClientError,)
+except ImportError:
+    _INTERACTIONS_ERRORS = ()
+
+GEMINI_CALL_ERRORS = (
+    genai_errors.APIError,
+    *_INTERACTIONS_ERRORS,
+    *_HTTPX_ERRORS,
+    PydanticValidationError,
+    requests.RequestException,
+    RuntimeError,
+    ValueError,
+    TypeError,
+    OSError,
+)
+
 from .models import AIUsageLog
 from .security import validate_image_file
 
@@ -486,15 +510,7 @@ def analyze_desk_with_gemini(image_bytes, catalog_products, catalog_presets, des
                 raise ValueError("Phản hồi AI không chứa nội dung JSON.")
             parsed = DeskScanResult.model_validate_json(raw_text)
             return _ground_recommendations(parsed, catalog_products, catalog_presets), model_name
-        except (
-            genai_errors.APIError,
-            PydanticValidationError,
-            requests.RequestException,
-            RuntimeError,
-            ValueError,
-            TypeError,
-            OSError,
-        ) as exc:
+        except GEMINI_CALL_ERRORS as exc:
             logger.warning("Gemini vision model %s failed: %s", model_name, exc)
             last_error = exc
 
@@ -776,7 +792,13 @@ def render_tank_preview_with_nano_banana(
             "mime_type": "image/jpeg",
         })
 
-    client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    client = genai.Client(
+        api_key=settings.GEMINI_API_KEY,
+        http_options=types.HttpOptions(
+            timeout=55000,
+            retry_options=types.HttpRetryOptions(attempts=1),
+        ),
+    )
     interaction = client.interactions.create(
         model=settings.GEMINI_IMAGE_MODEL,
         input=input_parts,
@@ -786,7 +808,9 @@ def render_tank_preview_with_nano_banana(
             "mime_type": "image/jpeg",
             "delivery": "inline",
         },
+        automatic_continuation=False,
         store=False,
+        timeout=55.0,
     )
 
     output_img = getattr(interaction, 'output_image', None)

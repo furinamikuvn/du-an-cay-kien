@@ -14,7 +14,6 @@ import logging
 import math
 import secrets
 from decimal import Decimal
-import requests
 from PIL import UnidentifiedImageError
 from django.conf import settings
 from django.contrib import messages
@@ -28,10 +27,9 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
-from google.genai import errors as genai_errors
-from pydantic import ValidationError as PydanticValidationError
 
 from .ai_assistant import (
+    GEMINI_CALL_ERRORS,
     analyze_desk_with_gemini,
     can_run_ai_action,
     finalize_ai_usage_log,
@@ -256,15 +254,8 @@ def ai_desk_scan_view(request):
             desk_width_cm=desk_width_cm,
             user_note=user_note,
         )
-    except (
-        genai_errors.APIError,
-        PydanticValidationError,
-        requests.RequestException,
-        RuntimeError,
-        ValueError,
-        TypeError,
-        OSError,
-    ) as exc:
+    except GEMINI_CALL_ERRORS as exc:
+        logger.warning("ai_desk_scan_view failed: %s", exc)
         finalize_ai_usage_log(usage_log, 'failed', model_used=settings.GEMINI_VISION_MODEL)
         err_low = str(exc).lower()
         if '429' in err_low or 'resource_exhausted' in err_low or 'quota' in err_low or 'rate' in err_low:
@@ -277,7 +268,7 @@ def ai_desk_scan_view(request):
                 'success': False,
                 'message': 'GEMINI_API_KEY trên máy chủ không hợp lệ hoặc chưa được cấp quyền truy cập model.',
             }, status=503)
-        if 'timeout' in err_low or 'timed out' in err_low:
+        if 'timeout' in err_low or 'timed out' in err_low or 'apitimeout' in type(exc).__name__.lower():
             return JsonResponse({
                 'success': False,
                 'message': 'Máy chủ Gemini phản hồi chậm quá giới hạn ở tất cả model dự phòng. Vui lòng thử bấm Quét lại sau vài giây nhé.',
@@ -493,14 +484,8 @@ def ai_desk_render_view(request):
             placement_position=placement_position,
             tank_scale=tank_scale,
         )
-    except (
-        genai_errors.APIError,
-        requests.RequestException,
-        RuntimeError,
-        ValueError,
-        TypeError,
-        OSError,
-    ) as exc:
+    except GEMINI_CALL_ERRORS as exc:
+        logger.warning("ai_desk_render_view failed: %s", exc)
         finalize_ai_usage_log(usage_log, 'failed', model_used=img_model)
         err_lower = str(exc).lower()
         if img_provider == 'agnes':

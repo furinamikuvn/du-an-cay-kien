@@ -1967,3 +1967,99 @@ class AquaPlantShopTest(TestCase):
             self.assertEqual(stolen_tok.status_code, 400)
         dj_cache.delete('ai_desk_ctx:valid_token_a')
 
+    def test_26_ai_interactions_and_httpx_error_handling(self):
+        """TC26 (Hotfix): Bắt đầy đủ lỗi google.genai._interactions & httpx để fallback và trả JSON thay vì 500 HTML"""
+        import json
+        from types import SimpleNamespace
+        from unittest.mock import patch
+
+        import httpx
+        from django.core.cache import cache as dj_cache
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from django.test import override_settings
+        from google.genai._interactions import APIConnectionError, APITimeoutError, NotFoundError
+        from PIL import Image
+
+        def _make_jpeg(name='desk_hotfix.jpg'):
+            buf = io.BytesIO()
+            Image.new('RGB', (200, 150), color=(110, 150, 120)).save(buf, format='JPEG')
+            return SimpleUploadedFile(name, buf.getvalue(), content_type='image/jpeg')
+
+        ok_payload = {
+            'space_summary': 'Mặt bàn gỗ có khoảng trống bên phải.',
+            'lighting_assessment': 'Ánh sáng phòng dịu nhẹ.',
+            'detected_style': 'Gỗ ấm cúng',
+            'estimated_free_width_cm': '35 - 40 cm',
+            'recommended_tank': {
+                'size_cm': '35x22x25 cm',
+                'shape': 'Chữ nhật rimless',
+                'volume_liters': '19 Lít',
+                'style_name': 'Rừng ráy tối giản',
+                'placement_reason': 'Gọn gàng trên góc bàn.',
+            },
+            'placement_box': [250, 500, 750, 900],
+            'placement_tips': ['Tránh để sát ổ điện.', 'Lót thảm chống rung.'],
+            'suggested_co2': 'no',
+            'suggested_light': 'low',
+            'recommended_plants': [
+                {'product_id': self.product.id, 'layer_role': 'Trung cảnh', 'reason': 'Dễ chăm.'},
+            ],
+            'recommended_preset_id': None,
+            'render_scene_prompt': '35cm rimless planted tank on wooden desk',
+        }
+
+        dj_cache.clear()
+        fake_req = httpx.Request('POST', 'https://generativelanguage.googleapis.com/v1beta/interactions')
+        fake_resp_404 = httpx.Response(404, request=fake_req)
+
+        # 1. Model chính ném NotFoundError (_interactions) + httpx.ReadTimeout -> fallback sang model thứ 3 thành công
+        with override_settings(GEMINI_API_KEY='test-key-only'), patch('shop.ai_assistant.genai.Client') as mock_client_cls:
+            mock_client = mock_client_cls.return_value
+            mock_client.interactions.create.side_effect = [
+                NotFoundError('Model not found', response=fake_resp_404, body=None),
+                httpx.ReadTimeout('Timed out waiting for response'),
+                SimpleNamespace(output_text=json.dumps(ok_payload, ensure_ascii=False)),
+            ]
+            resp = self.client.post('/tro-ly-chon-cay/ai-scan/', {'desk_image': _make_jpeg('fb.jpg')})
+            self.assertEqual(resp.status_code, 200)
+            data = resp.json()
+            self.assertTrue(data['success'])
+            self.assertEqual(data['model_used'], 'gemini-3.5-flash-lite')
+
+        # 2. Toàn bộ model đều ném APITimeoutError (_interactions) -> trả JSON 504, không văng 500 HTML
+        dj_cache.clear()
+        with override_settings(GEMINI_API_KEY='test-key-only'), patch('shop.ai_assistant.genai.Client') as mock_client_cls:
+            mock_client = mock_client_cls.return_value
+            mock_client.interactions.create.side_effect = APITimeoutError(request=fake_req)
+            resp_timeout = self.client.post('/tro-ly-chon-cay/ai-scan/', {'desk_image': _make_jpeg('to.jpg')})
+            self.assertEqual(resp_timeout.status_code, 504)
+            self.assertIn('application/json', resp_timeout['Content-Type'])
+            self.assertFalse(resp_timeout.json()['success'])
+
+        # 3. ai_desk_render_view khi Gemini Nano Banana gặp APIConnectionError -> trả JSON 502, không văng 500 HTML
+        dj_cache.clear()
+        owner = User.objects.create_user(username='ai_render_err_user', password='StrongPassword123!')
+        self.client.force_login(owner)
+        dj_cache.set('ai_desk_ctx:err_ctx_token', {
+            'user_id': owner.id,
+            'session_key': self.client.session.session_key or 'sess-err',
+            'image_bytes': _make_jpeg('base.jpg').read(),
+            'recommended_tank': ok_payload['recommended_tank'],
+            'placement_box': ok_payload['placement_box'],
+            'plant_names': [self.product.name],
+            'render_scene_prompt': ok_payload['render_scene_prompt'],
+        }, timeout=300)
+        with override_settings(
+            GEMINI_API_KEY='test-key-only',
+            AGNES_API_KEY='',
+            AI_IMAGE_PROVIDER='gemini',
+        ), patch('shop.ai_assistant.genai.Client') as mock_client_cls:
+            mock_client = mock_client_cls.return_value
+            mock_client.interactions.create.side_effect = APIConnectionError(message='Connection dropped', request=fake_req)
+            render_err = self.client.post('/tro-ly-chon-cay/ai-render-preview/', {'render_context_token': 'err_ctx_token'})
+            self.assertEqual(render_err.status_code, 502)
+            self.assertIn('application/json', render_err['Content-Type'])
+            self.assertFalse(render_err.json()['success'])
+        dj_cache.delete('ai_desk_ctx:err_ctx_token')
+
+

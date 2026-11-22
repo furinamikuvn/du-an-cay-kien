@@ -169,6 +169,42 @@
         return inp ? inp.value : '';
     }
 
+    async function parseJsonResponse(resp) {
+        const rawText = await resp.text();
+        try {
+            return JSON.parse(rawText);
+        } catch (_) {
+            if (resp.status === 403) {
+                return {
+                    success: false,
+                    message: 'Phiên làm việc đã hết hạn hoặc thiếu xác thực bảo mật. Vui lòng tải lại trang rồi thử lại.',
+                };
+            }
+            if (resp.status === 413) {
+                return {
+                    success: false,
+                    message: 'Tệp ảnh quá lớn so với giới hạn máy chủ. Vui lòng chọn ảnh gọn hơn.',
+                };
+            }
+            if (resp.status === 502 || resp.status === 503 || resp.status === 504) {
+                return {
+                    success: false,
+                    message: 'Máy chủ AI đang quá tải hoặc phản hồi chậm (HTTP ' + resp.status + '). Vui lòng đợi vài giây rồi thử lại.',
+                };
+            }
+            if (resp.status >= 500) {
+                return {
+                    success: false,
+                    message: 'Máy chủ gặp sự cố nội bộ khi xử lý yêu cầu (HTTP ' + resp.status + '). Vui lòng thử lại sau ít phút.',
+                };
+            }
+            return {
+                success: false,
+                message: 'Phản hồi từ máy chủ không đúng định dạng (HTTP ' + resp.status + '). Vui lòng thử lại.',
+            };
+        }
+    }
+
     function showScanError(msg) {
         scanErrorBox.textContent = msg;
         scanErrorBox.classList.remove('hidden');
@@ -565,7 +601,7 @@
                 body: formData,
                 signal: controller.signal,
             });
-            const data = await resp.json();
+            const data = await parseJsonResponse(resp);
             if (!resp.ok || !data.success) {
                 loadingState.classList.add('hidden');
                 emptyState.classList.remove('hidden');
@@ -626,7 +662,7 @@
                     body: formData,
                     signal: rController.signal,
                 });
-                const data = await resp.json();
+                const data = await parseJsonResponse(resp);
                 if (!resp.ok || !data.success) {
                     renderErrBox.textContent = '';
                     const msgSpan = document.createElement('span');
