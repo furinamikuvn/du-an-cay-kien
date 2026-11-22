@@ -86,7 +86,7 @@
                     <div>
                         <span class="text-[10px] font-bold uppercase text-slate-400 block">Tổng chi phí đã chọn:</span>
                         <span id="combo-total-{{ layout.id }}" class="text-xl font-black font-mono text-rose-700">
-                            {{ layout.total_price|floatformat:0 }}₫
+                            {{ layout.calculated_total_price|floatformat:0 }}₫
                         </span>
                     </div>
                     <button type="submit" id="combo-submit-{{ layout.id }}" class="bg-[#7AA88B] hover:bg-[#6B997C] text-white font-bold text-xs px-4 py-2.5 transition">

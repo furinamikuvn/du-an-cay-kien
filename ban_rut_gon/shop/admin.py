@@ -2,8 +2,10 @@
 # CẤU HÌNH TRANG QUẢN TRỊ DJANGO ADMIN (SHOP/ADMIN.PY)
 # ==============================================================================
 
-from django.contrib import admin
+from django.contrib import admin, messages
+from django.db import transaction
 from django.utils.html import format_html
+from .inventory import restore_inventory_for_order, transition_order_status
 from .models import (
     AIUsageLog,
     Article,
@@ -71,7 +73,7 @@ class ProductVariantInline(admin.TabularInline):
 class InventoryLotInline(admin.TabularInline):
     model = InventoryLot
     extra = 1
-    fields = ('lot_code', 'quantity_received', 'quantity_available', 'status', 'note')
+    fields = ('lot_code', 'quantity_received', 'quantity_available', 'expiry_date', 'status', 'note')
 
 
 @admin.register(Product)
@@ -124,14 +126,14 @@ class ProductVariantAdmin(admin.ModelAdmin):
 
 @admin.register(InventoryLot)
 class InventoryLotAdmin(admin.ModelAdmin):
-    list_display = ('lot_code', 'product', 'quantity_received', 'quantity_available', 'status', 'received_date')
-    list_filter = ('status', 'received_date')
+    list_display = ('lot_code', 'product', 'quantity_received', 'quantity_available', 'status', 'received_date', 'expiry_date')
+    list_filter = ('status', 'received_date', 'expiry_date')
     search_fields = ('lot_code', 'product__name')
 
 
 @admin.register(Coupon)
 class CouponAdmin(admin.ModelAdmin):
-    list_display = ('code', 'discount_type', 'discount_value', 'min_order_value', 'is_active', 'valid_to')
+    list_display = ('code', 'discount_type', 'discount_value', 'min_order_value', 'used_count', 'max_uses', 'per_user_limit', 'is_active', 'valid_from', 'valid_to')
     list_filter = ('discount_type', 'is_active')
     search_fields = ('code',)
 
@@ -237,25 +239,65 @@ class OrderAdmin(admin.ModelAdmin):
         }),
     )
 
+    def save_model(self, request, obj, form, change):
+        if change and 'status' in getattr(form, 'changed_data', []):
+            with transaction.atomic():
+                old_status = (
+                    Order.objects.select_for_update()
+                    .filter(pk=obj.pk)
+                    .values_list('status', flat=True)
+                    .first()
+                )
+                if old_status == 'cancelled' and obj.status != 'cancelled':
+                    obj.status = 'cancelled'
+                    self.message_user(
+                        request,
+                        f"Đơn hàng {obj.order_code} đã hủy nên không thể chuyển sang trạng thái khác.",
+                        level=messages.ERROR,
+                    )
+                    super().save_model(request, obj, form, change)
+                    return
+                if old_status != 'cancelled' and obj.status == 'cancelled':
+                    restore_inventory_for_order(obj)
+                    self.message_user(
+                        request,
+                        f"Đã hoàn tồn kho cho đơn hàng hủy {obj.order_code}.",
+                        level=messages.INFO,
+                    )
+                super().save_model(request, obj, form, change)
+                return
+        super().save_model(request, obj, form, change)
+
+    def _apply_status_action(self, request, queryset, target_status):
+        updated = 0
+        blocked = 0
+        for order in queryset.order_by('id'):
+            ok, _, _ = transition_order_status(order.id, target_status)
+            if ok:
+                updated += 1
+            else:
+                blocked += 1
+        return updated, blocked
+
     @admin.action(description="✓ Chuyển sang: Đã xác nhận & đang chuẩn bị cây")
     def mark_as_confirmed(self, request, queryset):
-        count = queryset.update(status='confirmed')
-        self.message_user(request, f"Đã cập nhật {count} đơn hàng sang: Đã xác nhận & đang chuẩn bị cây.")
+        updated, blocked = self._apply_status_action(request, queryset, 'confirmed')
+        self.message_user(request, f"Đã chuyển {updated} đơn sang: Đã xác nhận & đang chuẩn bị cây" + (f" ({blocked} đơn đã hủy được giữ nguyên)." if blocked else "."))
 
     @admin.action(description="🚚 Chuyển sang: Đang giao hàng")
     def mark_as_shipping(self, request, queryset):
-        count = queryset.update(status='shipping')
-        self.message_user(request, f"Đã cập nhật {count} đơn hàng sang: Đang giao hàng.")
+        updated, blocked = self._apply_status_action(request, queryset, 'shipping')
+        self.message_user(request, f"Đã chuyển {updated} đơn sang: Đang giao hàng" + (f" ({blocked} đơn đã hủy được giữ nguyên)." if blocked else "."))
 
     @admin.action(description="🎉 Chuyển sang: Giao hàng thành công")
     def mark_as_completed(self, request, queryset):
-        count = queryset.update(status='completed')
-        self.message_user(request, f"Đã cập nhật {count} đơn hàng sang: Giao hàng thành công.")
+        updated, blocked = self._apply_status_action(request, queryset, 'completed')
+        self.message_user(request, f"Đã chuyển {updated} đơn sang: Giao hàng thành công" + (f" ({blocked} đơn đã hủy được giữ nguyên)." if blocked else "."))
 
-    @admin.action(description="❌ Chuyển sang: Đã hủy đơn")
+    @admin.action(description="❌ Chuyển sang: Đã hủy đơn (kèm hoàn tồn kho)")
     def mark_as_cancelled(self, request, queryset):
-        count = queryset.update(status='cancelled')
-        self.message_user(request, f"Đã cập nhật {count} đơn hàng sang: Đã hủy đơn.")
+        updated, blocked = self._apply_status_action(request, queryset, 'cancelled')
+        self.message_user(request, f"Đã hủy và hoàn kho cho {updated} đơn hàng" + (f" ({blocked} đơn bỏ qua)." if blocked else "."))
 
 
 # ------------------------------------------------------------------------------

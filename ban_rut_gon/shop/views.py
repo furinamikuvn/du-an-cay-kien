@@ -22,7 +22,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.tokens import default_token_generator
 from django.core.mail import send_mail
 from django.db import transaction
-from django.db.models import Avg, Q, Sum
+from django.db.models import Avg, Case, DecimalField, F, Q, Sum, When
 from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
 from django.utils import timezone
@@ -30,6 +30,7 @@ from django.utils.encoding import force_bytes, force_str
 from django.utils.http import url_has_allowed_host_and_scheme, urlsafe_base64_decode, urlsafe_base64_encode
 from django.views.decorators.http import require_POST
 
+from .inventory import deduct_lots_fifo, get_locked_product_lots
 from .security import (
     check_rate_limit,
     clear_rate_limit,
@@ -65,10 +66,71 @@ from .forms import (
 # ------------------------------------------------------------------------------
 # HELPER: GIỎ HÀNG & MÃ GIẢM GIÁ (DUAL-MODE CART & COUPON HELPERS)
 # ------------------------------------------------------------------------------
+def _clear_session_coupon(request):
+    """Xóa thông tin mã giảm giá đang lưu trong Session."""
+    removed = False
+    for key in ('applied_coupon_id', 'applied_coupon_code', 'coupon_discount'):
+        if key in request.session:
+            del request.session[key]
+            removed = True
+    if removed:
+        request.session.modified = True
+    return removed
+
+
+def _cart_total_qty_for_product(cart, product_id):
+    """Tổng số lượng của một sản phẩm trong giỏ (gộp cả key 'prod_id' và 'prod_id:var_id')."""
+    if not isinstance(cart, dict):
+        return 0
+    prefix = f"{product_id}:"
+    exact = str(product_id)
+    total = 0
+    for k, raw_qty in cart.items():
+        k_str = str(k)
+        if k_str == exact or k_str.startswith(prefix):
+            try:
+                total += max(0, int(raw_qty))
+            except (ValueError, TypeError):
+                continue
+    return total
+
+
+def _validate_coupon_usage(coupon, subtotal, user=None, email=''):
+    """Kiểm tra toàn bộ điều kiện hiệu lực và hạn mức sử dụng của Coupon."""
+    if not coupon or not coupon.is_active:
+        return False, "Mã ưu đãi không còn hiệu lực."
+
+    today = timezone.localdate()
+    if coupon.valid_from and coupon.valid_from > today:
+        return False, f"Mã ưu đãi '{coupon.code}' chưa đến ngày có hiệu lực sử dụng."
+    if coupon.valid_to and coupon.valid_to < today:
+        return False, f"Mã ưu đãi '{coupon.code}' đã hết hạn sử dụng."
+    if coupon.max_uses is not None and coupon.used_count >= coupon.max_uses:
+        return False, f"Mã ưu đãi '{coupon.code}' đã đạt giới hạn lượt sử dụng."
+
+    if coupon.per_user_limit is not None:
+        used_qs = Order.objects.filter(coupon=coupon).exclude(status='cancelled')
+        user_used = 0
+        if user is not None and getattr(user, 'is_authenticated', False):
+            user_used = used_qs.filter(user=user).count()
+        elif email:
+            user_used = used_qs.filter(email__iexact=email.strip()).count()
+        if user_used >= coupon.per_user_limit:
+            return False, f"Bạn đã sử dụng hết lượt cho phép của mã ưu đãi '{coupon.code}'."
+
+    if subtotal < coupon.min_order_value:
+        return False, (
+            f"Đơn hàng chưa đạt giá trị tối thiểu "
+            f"({coupon.min_order_value:,.0f}₫) để áp dụng mã '{coupon.code}'."
+        )
+    return True, ""
+
+
 def get_cart_items(request):
     """
     Trích xuất danh sách sản phẩm trong giỏ hàng Session.
     Hỗ trợ cả key dạng 'product_id' (mặc định) và 'product_id:variant_id' (biến thể).
+    Tự động dọn các khóa không hợp lệ, sản phẩm ngừng kinh doanh hoặc biến thể đã tắt.
     """
     cart = request.session.get('cart', {})
     if not isinstance(cart, dict):
@@ -77,6 +139,7 @@ def get_cart_items(request):
     items = []
     subtotal = Decimal('0')
     savings = Decimal('0')
+    stale_keys = []
 
     for cart_key, raw_qty in list(cart.items()):
         cart_key_str = str(cart_key)
@@ -86,8 +149,10 @@ def get_cart_items(request):
         try:
             qty = int(raw_qty)
         except (ValueError, TypeError):
+            stale_keys.append(cart_key)
             continue
         if qty < 1:
+            stale_keys.append(cart_key)
             continue
 
         if ':' in cart_key_str:
@@ -96,24 +161,29 @@ def get_cart_items(request):
                 prod_id = int(parts[0])
                 var_id = int(parts[1])
             except ValueError:
+                stale_keys.append(cart_key)
                 continue
         else:
             try:
                 prod_id = int(cart_key_str)
             except ValueError:
+                stale_keys.append(cart_key)
                 continue
 
         try:
-            prod = Product.objects.get(id=prod_id, is_active=True)
+            prod = Product.objects.select_related('category').get(id=prod_id, is_active=True)
         except Product.DoesNotExist:
+            stale_keys.append(cart_key)
             continue
 
         variant = None
-        if var_id:
+        if var_id is not None:
             try:
                 variant = ProductVariant.objects.get(id=var_id, product=prod, is_active=True)
             except ProductVariant.DoesNotExist:
-                variant = None
+                # Chặn lỗi biến thể đã tắt âm thầm rơi về giá sản phẩm cha
+                stale_keys.append(cart_key)
+                continue
 
         if variant:
             unit_price = variant.price
@@ -140,6 +210,12 @@ def get_cart_items(request):
             'subtotal': item_subtotal,
         })
 
+    if stale_keys:
+        for k in stale_keys:
+            cart.pop(k, None)
+        request.session['cart'] = cart
+        request.session.modified = True
+
     return items, subtotal, savings
 
 
@@ -158,26 +234,28 @@ def calculate_coupon_discount(coupon, subtotal):
     return min(discount, subtotal)
 
 
-def get_valid_coupon_from_session(request, subtotal):
-    """Kiểm tra hiệu lực Coupon đang lưu trong Session."""
+def get_valid_coupon_from_session(request, subtotal, notify=True):
+    """Kiểm tra hiệu lực Coupon đang lưu trong Session; tự xóa & báo nếu không còn hợp lệ."""
     coupon_id = request.session.get('applied_coupon_id')
     if not coupon_id:
         return None, Decimal('0')
 
-    try:
-        coupon = Coupon.objects.get(id=coupon_id, is_active=True)
-        today = timezone.localdate()
-        if coupon.valid_from and coupon.valid_from > today:
-            return None, Decimal('0')
-        if coupon.valid_to and coupon.valid_to < today:
-            return None, Decimal('0')
-        if subtotal < coupon.min_order_value:
-            return None, Decimal('0')
-
-        discount = calculate_coupon_discount(coupon, subtotal)
-        return coupon, discount
-    except Coupon.DoesNotExist:
+    coupon = Coupon.objects.filter(id=coupon_id).first()
+    if not coupon:
+        _clear_session_coupon(request)
+        if notify and subtotal > 0:
+            messages.warning(request, "Mã ưu đãi trước đó không còn tồn tại nên đã được gỡ khỏi giỏ hàng.")
         return None, Decimal('0')
+
+    ok, err_msg = _validate_coupon_usage(coupon, subtotal, user=getattr(request, 'user', None))
+    if not ok:
+        _clear_session_coupon(request)
+        if notify and subtotal > 0:
+            messages.warning(request, f"Đã gỡ mã ưu đãi '{coupon.code}': {err_msg}")
+        return None, Decimal('0')
+
+    discount = calculate_coupon_discount(coupon, subtotal)
+    return coupon, discount
 
 
 # ------------------------------------------------------------------------------
@@ -219,10 +297,17 @@ def home_view(request):
         products = products.filter(care_level=care_filter)
 
     sort_option = request.GET.get('sort', '')
+    products = products.annotate(
+        effective_price=Case(
+            When(sale_price__gt=0, then='sale_price'),
+            default='regular_price',
+            output_field=DecimalField(max_digits=10, decimal_places=0),
+        )
+    )
     if sort_option == 'price_asc':
-        products = products.order_by('regular_price')
+        products = products.order_by('effective_price', '-id')
     elif sort_option == 'price_desc':
-        products = products.order_by('-regular_price')
+        products = products.order_by('-effective_price', '-id')
     else:
         products = products.order_by('-id')
 
@@ -346,7 +431,8 @@ def add_to_cart_view(request, product_id):
             variant = ProductVariant.objects.get(id=int(variant_id), product=product, is_active=True)
             prod_key = f"{product.id}:{variant.id}"
         except (ValueError, TypeError, ProductVariant.DoesNotExist):
-            prod_key = str(product.id)
+            messages.warning(request, "Quy cách sản phẩm bạn chọn hiện không còn kinh doanh.")
+            return redirect('product_detail', slug=product.slug)
     else:
         prod_key = str(product.id)
 
@@ -357,17 +443,21 @@ def add_to_cart_view(request, product_id):
     if quantity < 1:
         quantity = 1
 
-    max_stock = variant.stock if variant else product.stock_quantity
     current_qty = int(cart.get(prod_key, 0)) if str(cart.get(prod_key, 0)).isdigit() else 0
+    total_prod_qty = _cart_total_qty_for_product(cart, product.id)
+    remaining_prod_stock = max(0, product.stock_quantity - total_prod_qty)
+    remaining_var_stock = max(0, variant.stock - current_qty) if variant else remaining_prod_stock
+    effective_remaining = min(remaining_prod_stock, remaining_var_stock)
 
-    if max_stock <= 0 or current_qty >= max_stock:
+    if effective_remaining <= 0:
         label = f"{product.name} ({variant.name})" if variant else product.name
-        messages.warning(request, f"Sản phẩm '{label}' hiện chỉ còn tối đa {max_stock} phần sẵn kho.")
+        max_display = min(product.stock_quantity, variant.stock) if variant else product.stock_quantity
+        messages.warning(request, f"Sản phẩm '{label}' hiện chỉ còn tối đa {max(0, max_display)} phần sẵn kho.")
         return redirect('cart')
 
-    allowed_add = min(quantity, max_stock - current_qty)
+    allowed_add = min(quantity, effective_remaining)
     if allowed_add < quantity:
-        messages.warning(request, f"Đã điều chỉnh số lượng thêm thành {allowed_add} theo tồn kho khả dụng ({max_stock}).")
+        messages.warning(request, f"Đã điều chỉnh số lượng thêm thành {allowed_add} theo tồn kho khả dụng.")
 
     cart[prod_key] = current_qty + allowed_add
     request.session['cart'] = cart
@@ -418,21 +508,27 @@ def update_cart_view(request, item_key, action):
 
     if target_key:
         if action == 'increase':
-            # Kiểm tra tồn kho trước khi tăng
-            max_stock = None
+            # Kiểm tra is_active và tồn kho tổng + biến thể trước khi tăng
             try:
                 if ':' in target_key:
                     pid, vid = target_key.split(':', 1)
-                    var = ProductVariant.objects.get(id=int(vid), product_id=int(pid))
-                    max_stock = var.stock
+                    prod = Product.objects.get(id=int(pid), is_active=True)
+                    var = ProductVariant.objects.get(id=int(vid), product=prod, is_active=True)
+                    variant_limit = var.stock
                 else:
-                    prod = Product.objects.get(id=int(target_key))
-                    max_stock = prod.stock_quantity
+                    prod = Product.objects.get(id=int(target_key), is_active=True)
+                    variant_limit = prod.stock_quantity
             except (ValueError, Product.DoesNotExist, ProductVariant.DoesNotExist):
-                max_stock = None
+                del cart[target_key]
+                request.session['cart'] = cart
+                request.session.modified = True
+                messages.warning(request, "Sản phẩm hoặc quy cách này hiện đã ngừng kinh doanh nên đã được gỡ khỏi giỏ hàng.")
+                return redirect('cart')
 
-            if max_stock is not None and cart[target_key] >= max_stock:
-                messages.warning(request, f"Đã đạt giới hạn tồn kho ({max_stock} phần).")
+            total_prod_qty = _cart_total_qty_for_product(cart, prod.id)
+            if cart[target_key] >= variant_limit or total_prod_qty >= prod.stock_quantity:
+                max_cap = min(variant_limit, prod.stock_quantity)
+                messages.warning(request, f"Đã đạt giới hạn tồn kho ({max_cap} phần).")
             else:
                 cart[target_key] += 1
         elif action == 'decrease':
@@ -523,26 +619,12 @@ def apply_coupon_view(request):
             return JsonResponse({'success': False, 'message': err_msg}, status=400)
         return redirect(redirect_target)
 
-    today = timezone.localdate()
-    if coupon.valid_from and coupon.valid_from > today:
-        err_msg = f"Mã ưu đãi '{coupon.code}' chưa đến ngày có hiệu lực sử dụng."
-        messages.error(request, err_msg)
-        if is_ajax:
-            return JsonResponse({'success': False, 'message': err_msg}, status=400)
-        return redirect(redirect_target)
-
-    if coupon.valid_to and coupon.valid_to < today:
-        err_msg = f"Mã ưu đãi '{coupon.code}' đã hết hạn sử dụng."
-        messages.error(request, err_msg)
-        if is_ajax:
-            return JsonResponse({'success': False, 'message': err_msg}, status=400)
-        return redirect(redirect_target)
-
-    if subtotal < coupon.min_order_value:
-        err_msg = (
-            f"Đơn hàng của bạn chưa đạt giá trị tối thiểu "
-            f"({coupon.min_order_value:,.0f}₫) để áp dụng mã '{coupon.code}'."
-        )
+    ok_coupon, err_msg = _validate_coupon_usage(
+        coupon,
+        subtotal,
+        user=getattr(request, 'user', None),
+    )
+    if not ok_coupon:
         messages.error(request, err_msg)
         if is_ajax:
             return JsonResponse({'success': False, 'message': err_msg}, status=400)
@@ -599,57 +681,99 @@ def checkout_view(request):
     """
     Xử lý đặt hàng toàn trình:
     - Tự động điền thông tin từ User + UserProfile nếu đã đăng nhập.
-    - Áp dụng Coupon hợp lệ từ Session.
-    - Khóa dòng sản phẩm bằng select_for_update() trong transaction.atomic().
-    - Lưu Order & OrderItem (kèm biến thể), trừ tồn kho tổng, trừ biến thể
-      và khấu trừ kho lô FIFO (bỏ qua tuyệt đối lô quarantined).
+    - Kiểm tra giỏ hàng, Coupon (giới hạn lượt dùng) và khóa sản phẩm/biến thể/lô FIFO
+      theo thứ tự (product.id, variant.id) hoàn toàn bên trong transaction.atomic().
     """
-    cart_items, subtotal_amount, savings = get_cart_items(request)
-    if not cart_items:
-        messages.warning(request, "Giỏ hàng của bạn đang trống. Vui lòng chọn cây trước khi thanh toán.")
-        return redirect('home')
-
-    coupon, discount_amount = get_valid_coupon_from_session(request, subtotal_amount)
     shipping_fee = Decimal('0')
-    total_amount = max(Decimal('0'), subtotal_amount - discount_amount + shipping_fee)
 
     if request.method == 'POST':
         form = CheckoutForm(request.POST)
         if form.is_valid():
             with transaction.atomic():
-                # Khóa sản phẩm & biến thể theo thứ tự id cố định để chống Race Condition và Deadlock
-                sorted_items = sorted(cart_items, key=lambda x: x['product'].id)
+                cart_items, _, _ = get_cart_items(request)
+                if not cart_items:
+                    messages.warning(request, "Giỏ hàng của bạn đang trống. Vui lòng chọn cây trước khi thanh toán.")
+                    return redirect('home')
+
+                # Khóa sản phẩm & biến thể theo thứ tự (product_id, variant_id) để chống deadlock
+                sorted_items = sorted(
+                    cart_items,
+                    key=lambda x: (x['product'].id, x['variant'].id if x.get('variant') else 0),
+                )
+                locked_products = {}
+                locked_lots_map = {}
+                product_qty_totals = {}
                 locked_entries = []
                 stock_error = None
+                atomic_subtotal = Decimal('0')
 
                 for item in sorted_items:
-                    prod = Product.objects.select_for_update().get(id=item['product'].id)
+                    pid = item['product'].id
+                    if pid not in locked_products:
+                        prod = Product.objects.select_for_update().filter(id=pid).first()
+                        locked_products[pid] = prod
+                        if prod:
+                            locked_lots_map[pid] = get_locked_product_lots(prod)
+                        product_qty_totals[pid] = 0
+                    else:
+                        prod = locked_products[pid]
+
                     variant = item.get('variant')
                     if variant:
-                        variant = ProductVariant.objects.select_for_update().get(id=variant.id)
+                        variant = ProductVariant.objects.select_for_update().filter(id=variant.id, product_id=pid).first()
 
                     qty_needed = item['quantity']
-                    available_stock = variant.stock if variant else prod.stock_quantity
-                    if (
-                        not prod.is_active
-                        or (variant and not variant.is_active)
-                        or qty_needed <= 0
-                        or qty_needed > available_stock
-                    ):
+                    if not prod or not prod.is_active or (item.get('variant') and (not variant or not variant.is_active)):
+                        stock_error = "Một số sản phẩm hoặc quy cách trong giỏ hiện đã ngừng kinh doanh. Vui lòng kiểm tra lại giỏ hàng."
+                        break
+
+                    product_qty_totals[pid] += qty_needed
+                    has_any_lots, eligible_lots = locked_lots_map[pid]
+                    healthy_lot_stock = sum(lot.quantity_available for lot in eligible_lots) if has_any_lots else prod.stock_quantity
+                    effective_prod_stock = min(prod.stock_quantity, healthy_lot_stock) if has_any_lots else prod.stock_quantity
+
+                    if qty_needed <= 0 or product_qty_totals[pid] > effective_prod_stock or (variant and qty_needed > variant.stock):
+                        avail_now = min(variant.stock, effective_prod_stock) if variant else effective_prod_stock
                         label = f"{prod.name} ({variant.name})" if variant else prod.name
                         stock_error = (
-                            f"Sản phẩm '{label}' hiện chỉ còn {max(0, available_stock)} phần sẵn kho. "
+                            f"Sản phẩm '{label}' hiện chỉ còn {max(0, avail_now)} phần sẵn kho. "
                             f"Vui lòng cập nhật lại giỏ hàng trước khi đặt."
                         )
                         break
 
-                    locked_entries.append((prod, variant, qty_needed, item))
+                    unit_price = variant.price if variant else prod.current_price
+                    atomic_subtotal += unit_price * qty_needed
+                    locked_entries.append((prod, variant, qty_needed, unit_price, item.get('variant_name', '')))
 
                 if stock_error:
                     messages.error(request, stock_error)
                     return redirect('cart')
 
-                now_str = datetime.now().strftime('%Y%m%d')
+                coupon = None
+                discount_amount = Decimal('0')
+                applied_coupon_id = request.session.get('applied_coupon_id')
+                if applied_coupon_id:
+                    coupon = Coupon.objects.select_for_update().filter(id=applied_coupon_id).first()
+                    if not coupon:
+                        _clear_session_coupon(request)
+                        messages.error(request, "Mã ưu đãi đã chọn không còn tồn tại. Vui lòng kiểm tra lại đơn hàng.")
+                        return redirect('checkout')
+                    ok_coupon, coupon_err = _validate_coupon_usage(
+                        coupon,
+                        atomic_subtotal,
+                        user=getattr(request, 'user', None),
+                        email=form.cleaned_data['email'],
+                    )
+                    if not ok_coupon:
+                        _clear_session_coupon(request)
+                        messages.error(request, coupon_err)
+                        return redirect('checkout')
+                    discount_amount = calculate_coupon_discount(coupon, atomic_subtotal)
+                    coupon.used_count += 1
+                    coupon.save(update_fields=['used_count'])
+
+                total_amount = max(Decimal('0'), atomic_subtotal - discount_amount + shipping_fee)
+                now_str = timezone.localtime().strftime('%Y%m%d')
                 rand_suffix = secrets.token_hex(4).upper()
                 order_code = f"HD-{now_str}-{rand_suffix}"
 
@@ -661,27 +785,27 @@ def checkout_view(request):
                     phone=form.cleaned_data['phone'],
                     shipping_address=form.cleaned_data['shipping_address'],
                     customer_note=form.cleaned_data['customer_note'],
-                    subtotal_amount=subtotal_amount,
+                    subtotal_amount=atomic_subtotal,
                     coupon=coupon,
                     discount_amount=discount_amount,
                     shipping_fee=shipping_fee,
                     total_amount=total_amount,
                     status='pending',
                     tracking_note=(
-                        f"Đơn hàng khởi tạo lúc {timezone.now().strftime('%H:%M %d/%m/%Y')}. "
+                        f"Đơn hàng khởi tạo lúc {timezone.localtime().strftime('%H:%M %d/%m/%Y')}. "
                         f"Mã ưu đãi: {coupon.code if coupon else 'Không áp dụng'}. "
                         f"Đang chuyển kho kiểm kê sinh học đóng gói bọc ẩm."
                     ),
                 )
 
-                for prod, variant, qty_needed, item in locked_entries:
+                for prod, variant, qty_needed, unit_price, variant_name in locked_entries:
                     OrderItem.objects.create(
                         order=order,
                         product=prod,
                         variant=variant,
-                        variant_name=item.get('variant_name', ''),
+                        variant_name=variant_name,
                         quantity=qty_needed,
-                        unit_price=item['unit_price'],
+                        unit_price=unit_price,
                     )
 
                     if variant:
@@ -691,24 +815,9 @@ def checkout_view(request):
                     prod.stock_quantity = max(0, prod.stock_quantity - qty_needed)
                     prod.save(update_fields=['stock_quantity'])
 
-                    # Khấu trừ kho lô FIFO, tuyệt đối bỏ qua lô 'quarantined'
-                    eligible_lots = InventoryLot.objects.select_for_update().filter(
-                        product=prod,
-                        status__in=['healthy_submerged', 'healthy_emerged'],
-                        quantity_available__gt=0,
-                    ).order_by('received_date', 'id')
-
-                    remaining = qty_needed
-                    for lot in eligible_lots:
-                        if remaining <= 0:
-                            break
-                        if lot.quantity_available >= remaining:
-                            lot.quantity_available -= remaining
-                            remaining = 0
-                        else:
-                            remaining -= lot.quantity_available
-                            lot.quantity_available = 0
-                        lot.save(update_fields=['quantity_available'])
+                    has_any_lots, eligible_lots = locked_lots_map[prod.id]
+                    if has_any_lots:
+                        deduct_lots_fifo(eligible_lots, qty_needed)
 
                 for key in ('cart', 'applied_coupon_id', 'applied_coupon_code', 'coupon_discount'):
                     if key in request.session:
@@ -717,7 +826,21 @@ def checkout_view(request):
 
                 messages.success(request, f"Chúc mừng bạn! Đơn hàng {order.order_code} đã được đặt thành công.")
                 return render(request, 'shop/order_success.html', {'order': order})
+
+        cart_items, subtotal_amount, savings = get_cart_items(request)
+        if not cart_items:
+            messages.warning(request, "Giỏ hàng của bạn đang trống. Vui lòng chọn cây trước khi thanh toán.")
+            return redirect('home')
+        coupon, discount_amount = get_valid_coupon_from_session(request, subtotal_amount)
+        total_amount = max(Decimal('0'), subtotal_amount - discount_amount + shipping_fee)
     else:
+        cart_items, subtotal_amount, savings = get_cart_items(request)
+        if not cart_items:
+            messages.warning(request, "Giỏ hàng của bạn đang trống. Vui lòng chọn cây trước khi thanh toán.")
+            return redirect('home')
+        coupon, discount_amount = get_valid_coupon_from_session(request, subtotal_amount)
+        total_amount = max(Decimal('0'), subtotal_amount - discount_amount + shipping_fee)
+
         initial_data = {}
         if request.user.is_authenticated:
             profile = getattr(request.user, 'profile', None)

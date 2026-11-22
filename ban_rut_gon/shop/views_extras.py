@@ -10,6 +10,7 @@
 # ==============================================================================
 
 import json
+import math
 import secrets
 from decimal import Decimal
 from django.conf import settings
@@ -37,6 +38,7 @@ from .ai_assistant import (
     reserve_ai_action_slot,
 )
 from .forms import CustomPasswordChangeForm
+from .inventory import transition_order_status
 from .models import Article, FAQ, InventoryLot, LayoutPreset, Order, Product
 from .security import check_rate_limit, get_client_ip, record_rate_limit_hit
 
@@ -99,7 +101,7 @@ def plant_assistant_view(request):
     ai_quota = get_ai_quota_status(user=request.user, ip_hash=ip_h)
     img_provider, img_model = get_active_image_provider_and_model()
 
-    all_presets = list(LayoutPreset.objects.order_by('tank_width_cm', 'id'))
+    all_presets = list(LayoutPreset.objects.prefetch_related('preset_items__product').order_by('tank_width_cm', 'id'))
 
     context = {
         'results': results,
@@ -123,6 +125,7 @@ def plant_assistant_view(request):
 
 def _serialize_layout_preset(pr, is_recommended=False):
     """Chuẩn hóa thông tin mẫu bể thật trong CSDL (kèm ảnh & bản quyền mở) trả về JSON."""
+    effective_total = pr.calculated_total_price
     return {
         'id': pr.id,
         'name': pr.name,
@@ -133,7 +136,7 @@ def _serialize_layout_preset(pr, is_recommended=False):
         'style': pr.style,
         'co2_display': pr.get_co2_required_display(),
         'light_display': pr.get_light_level_display(),
-        'total_price_display': f"{pr.total_price:,.0f}₫".replace(',', '.'),
+        'total_price_display': f"{effective_total:,.0f}₫".replace(',', '.'),
         'image_url': pr.display_image_url,
         'license_name': pr.license_name or 'Open License',
         'source_attribution': pr.source_attribution,
@@ -227,7 +230,7 @@ def ai_desk_scan_view(request):
         for p in active_products
     ]
 
-    presets_qs = list(LayoutPreset.objects.all().order_by('tank_width_cm', 'id'))
+    presets_qs = list(LayoutPreset.objects.prefetch_related('preset_items__product').order_by('tank_width_cm', 'id'))
     preset_obj_map = {pr.id: pr for pr in presets_qs}
     catalog_presets = [
         {
@@ -525,10 +528,13 @@ def ai_desk_render_view(request):
 # ------------------------------------------------------------------------------
 # 2. TÍNH SỐ LƯỢNG CÂY THEO DIỆN TÍCH (PLANT QUANTITY CALCULATOR)
 # ------------------------------------------------------------------------------
+MAX_TANK_DIM_CM = 1000.0
+
+
 def plant_quantity_view(request):
     """
     Tính số cốc cây và tổng chi phí ước tính theo chiều dài x chiều rộng (cm).
-    Chặn chiều dài/rộng <= 0 để tránh kết quả âm vô lý.
+    Chặn chiều dài/rộng <= 0, NaN/Infinity và vượt ngưỡng trần 1000 cm.
     """
     result = None
     products = Product.objects.filter(is_active=True)
@@ -539,8 +545,12 @@ def plant_quantity_view(request):
             length = float(request.POST.get('length', 40))
             width = float(request.POST.get('width', 20))
 
-            if length <= 0 or width <= 0:
+            if not (math.isfinite(length) and math.isfinite(width)):
+                messages.error(request, "Vui lòng nhập kích thước là số hợp lệ.")
+            elif length <= 0 or width <= 0:
                 messages.error(request, "Chiều dài và chiều rộng vùng trồng phải lớn hơn 0 cm.")
+            elif length > MAX_TANK_DIM_CM or width > MAX_TANK_DIM_CM:
+                messages.error(request, f"Kích thước vùng trồng tối đa hỗ trợ là {int(MAX_TANK_DIM_CM)} cm cho mỗi chiều.")
             else:
                 product = get_object_or_404(Product, id=product_id, is_active=True)
                 area_cm2 = round(length * width, 1)
@@ -558,7 +568,7 @@ def plant_quantity_view(request):
                     'unit_price': unit_price,
                     'total_cost': total_estimated_cost,
                 }
-        except (ValueError, TypeError):
+        except (ValueError, TypeError, OverflowError):
             messages.error(request, "Vui lòng nhập kích thước hợp lệ.")
 
     return render(request, 'shop/plant_quantity.html', {'result': result, 'products': products})
@@ -594,8 +604,12 @@ def add_combo_to_cart_view(request):
 
             key = str(pid)
             current_qty = int(cart.get(key, 0)) if str(cart.get(key, 0)).isdigit() else 0
-            if product.stock_quantity > current_qty:
-                allowed = min(qty, product.stock_quantity - current_qty)
+            total_prod_qty = sum(
+                int(v) for k, v in cart.items()
+                if (str(k) == key or str(k).startswith(f"{pid}:")) and str(v).isdigit()
+            )
+            if product.stock_quantity > total_prod_qty:
+                allowed = min(qty, product.stock_quantity - total_prod_qty)
                 cart[key] = current_qty + allowed
                 added_count += 1
         except (ValueError, TypeError, Product.DoesNotExist):
@@ -884,9 +898,10 @@ def staff_dashboard_view(request):
     quarantined_count = quarantined_lots.count()
     quarantined_total_units = quarantined_lots.aggregate(total_units=Sum('quantity_available'))['total_units'] or 0
 
+    active_order_filter = Q(orderitem__order__isnull=False) & ~Q(orderitem__order__status='cancelled')
     top_plants = Product.objects.annotate(
-        total_sold=Sum('orderitem__quantity'),
-        total_orders_count=Count('orderitem'),
+        total_sold=Sum('orderitem__quantity', filter=active_order_filter),
+        total_orders_count=Count('orderitem__order', filter=active_order_filter, distinct=True),
     ).filter(total_sold__gt=0).order_by('-total_sold')[:5]
     if not top_plants.exists():
         top_plants = Product.objects.filter(is_active=True)[:5]
@@ -909,26 +924,18 @@ def staff_dashboard_view(request):
 
 @require_POST
 def update_order_status(request, order_id):
-    """Cập nhật nhanh trạng thái đơn hàng từ Staff Dashboard kèm nhật ký thời gian (chỉ POST)."""
+    """Cập nhật nhanh trạng thái đơn hàng từ Staff Dashboard kèm hoàn kho & khóa chuyển ngược đơn hủy (chỉ POST)."""
     if not _is_staff_or_admin(request.user):
         messages.error(request, "Quyền truy cập bị từ chối: Bạn không có quyền cập nhật đơn hàng.")
         return redirect('home')
 
     order = get_object_or_404(Order, id=order_id)
     new_status = request.POST.get('status', '').strip()
-    valid_statuses = dict(Order.STATUS_CHOICES)
-
-    if new_status in valid_statuses:
-        old_status_name = order.get_status_display()
-        order.status = new_status
-        time_str = timezone.now().strftime('%H:%M %d/%m/%Y')
-        base_note = (order.tracking_note or "").strip()
-        append_line = f"[{time_str}] Thay đổi trạng thái: {old_status_name} -> {valid_statuses[new_status]}."
-        order.tracking_note = f"{base_note}\n{append_line}".strip()
-        order.save(update_fields=['status', 'tracking_note', 'updated_at'])
-        messages.success(request, f"Đã chuyển trạng thái đơn {order.order_code} thành: '{valid_statuses[new_status]}'.")
+    ok, msg, _ = transition_order_status(order.id, new_status)
+    if ok:
+        messages.success(request, msg)
     else:
-        messages.error(request, "Trạng thái đơn hàng không hợp lệ.")
+        messages.error(request, msg)
 
     return redirect('staff_dashboard')
 

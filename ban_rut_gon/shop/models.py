@@ -20,6 +20,7 @@ import secrets
 from django.conf import settings
 from django.db import models
 from django.contrib.auth.models import User
+from django.utils import timezone
 from django.utils.text import slugify
 from PIL import Image, ImageOps
 
@@ -314,6 +315,7 @@ class InventoryLot(models.Model):
     quantity_received = models.PositiveIntegerField(verbose_name="Số lượng nhập kho")
     quantity_available = models.PositiveIntegerField(verbose_name="Số lượng tồn khả dụng")
     received_date = models.DateField(auto_now_add=True, verbose_name="Ngày nhập kho")
+    expiry_date = models.DateField(null=True, blank=True, verbose_name="Hạn sử dụng / Kiểm định lại")
     status = models.CharField(
         max_length=30,
         choices=STATUS_CHOICES,
@@ -356,8 +358,16 @@ class Coupon(models.Model):
         verbose_name="Đơn hàng tối thiểu (VNĐ)"
     )
     is_active = models.BooleanField(default=True, verbose_name="Đang kích hoạt")
-    valid_from = models.DateField(auto_now_add=True, verbose_name="Ngày bắt đầu")
+    valid_from = models.DateField(default=timezone.localdate, null=True, blank=True, verbose_name="Ngày bắt đầu")
     valid_to = models.DateField(null=True, blank=True, verbose_name="Ngày hết hạn")
+    max_uses = models.PositiveIntegerField(null=True, blank=True, verbose_name="Số lượt sử dụng tối đa")
+    used_count = models.PositiveIntegerField(default=0, verbose_name="Số lượt đã sử dụng")
+    per_user_limit = models.PositiveIntegerField(
+        default=1,
+        null=True,
+        blank=True,
+        verbose_name="Giới hạn lượt dùng mỗi khách hàng"
+    )
 
     class Meta:
         verbose_name = "Mã giảm giá (Coupon)"
@@ -494,6 +504,25 @@ class LayoutPreset(models.Model):
         except Exception:
             return None
 
+    @property
+    def calculated_total_price(self):
+        """Tính tổng chi phí thực tế từ các cây thành phần (fallback về total_price nếu chưa có item)."""
+        items = list(self.preset_items.select_related('product').all())
+        if items:
+            return sum((item.subtotal for item in items), 0)
+        return self.total_price
+
+    def sync_total_price(self, save=True):
+        """Đồng bộ cột total_price trên DB khớp với tổng thành phần hiện tại."""
+        items = list(self.preset_items.select_related('product').all())
+        if items:
+            computed = sum((item.subtotal for item in items), 0)
+            if self.total_price != computed:
+                self.total_price = computed
+                if save and self.pk:
+                    LayoutPreset.objects.filter(pk=self.pk).update(total_price=computed)
+        return self.total_price
+
     def get_combo_items(self):
         """
         Lấy danh sách cây thành phần qua LayoutPresetItem (có fallback an toàn nếu chưa gán item).
@@ -550,6 +579,17 @@ class LayoutPresetItem(models.Model):
     @property
     def subtotal(self):
         return self.product.current_price * self.quantity
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        if self.preset_id:
+            self.preset.sync_total_price(save=True)
+
+    def delete(self, *args, **kwargs):
+        preset = self.preset
+        super().delete(*args, **kwargs)
+        if preset and preset.pk:
+            preset.sync_total_price(save=True)
 
 
 # ------------------------------------------------------------------------------

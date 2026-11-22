@@ -315,49 +315,53 @@ def run_seed():
                 defaults={'caption': caption, 'order': order_num},
             )
 
-    # 3.2. Biến thể quy cách & Lô tồn kho FIFO
+    # 3.2. Biến thể quy cách & Lô tồn kho FIFO (tổng tồn biến thể = stock_quantity = lô sạch khả dụng)
     for prod in prods.values():
         base_price = prod.current_price
-        ProductVariant.objects.get_or_create(
+        sub_stock = (prod.stock_quantity * 4) // 10
+        inv_stock = (prod.stock_quantity * 4) // 10
+        cer_stock = max(0, prod.stock_quantity - sub_stock - inv_stock)
+
+        ProductVariant.objects.update_or_create(
             product=prod,
             name="Bụi lá nước thuần dưỡng (Cắm hồ ngay)",
             defaults={
                 'sku_code': f"SKU-{prod.id}-SUBMERGED",
                 'price': base_price,
-                'stock': 20,
+                'stock': sub_stock,
                 'is_default': True,
                 'is_active': True,
             },
         )
-        ProductVariant.objects.get_or_create(
+        ProductVariant.objects.update_or_create(
             product=prod,
             name="Cốc cấy mô Invitro (Sạch ốc hại)",
             defaults={
                 'sku_code': f"SKU-{prod.id}-INVITRO",
                 'price': Decimal(int(base_price * 9 // 10)),
-                'stock': 25,
+                'stock': inv_stock,
                 'is_default': False,
                 'is_active': True,
             },
         )
-        ProductVariant.objects.get_or_create(
+        ProductVariant.objects.update_or_create(
             product=prod,
             name="Chậu gốm / Gắn giá thể sẵn",
             defaults={
                 'sku_code': f"SKU-{prod.id}-CERAMIC",
                 'price': Decimal(int(base_price * 135 // 100)),
-                'stock': 10,
+                'stock': cer_stock,
                 'is_default': False,
                 'is_active': True,
             },
         )
 
-        InventoryLot.objects.get_or_create(
+        InventoryLot.objects.update_or_create(
             lot_code=f"LOT-2026-{prod.id}-01",
             defaults={
                 'product': prod,
-                'quantity_received': 50,
-                'quantity_available': 45,
+                'quantity_received': prod.stock_quantity + 5,
+                'quantity_available': prod.stock_quantity,
                 'status': 'healthy_submerged',
                 'note': 'Lô thuần dưỡng lá nước khỏe mạnh, sẵn sàng xuất kho FIFO.',
             },
@@ -411,7 +415,7 @@ def run_seed():
             'co2_required': 'no',
             'light_level': 'low',
             'description': 'Bể kính siêu trong giấu keo gọn gàng cho góc bàn nhỏ, kết hợp ráy thủy sinh, dương xỉ bám lũa và thác sương tạo điểm nhấn thư giãn.',
-            'total_price': Decimal('245000'),
+            'total_price': Decimal('175000'),
             'plant_list_text': '- 2 Chậu Ráy Nana (Gắn lũa & tiền cảnh)\n- 1 Bụi Tiêu Thảo Nâu (Điểm góc lũa)',
             'image': 'tanks/tank_01_nano_wood.jpg',
             'license_name': 'CC0 1.0 Public Domain',
@@ -431,7 +435,7 @@ def run_seed():
             'co2_required': 'no',
             'light_level': 'medium',
             'description': 'Bể kính không viền phong cách vòm rừng rêu cổ thụ kết hợp đường cát trắng và đàn cá neon, phù hợp bàn học và bàn làm việc.',
-            'total_price': Decimal('295000'),
+            'total_price': Decimal('260000'),
             'plant_list_text': '- 2 Cốc Trân Châu Ngọc Trai (Thảm xanh hai bên)\n- 1 Chậu Ráy Nana (Bám vòm lũa)\n- 1 Bụi Tiêu Thảo Nâu (Góc hốc đá)',
             'image': 'tanks/tank_02_nano_neon.jpg',
             'license_name': 'CC BY-SA 3.0',
@@ -452,7 +456,7 @@ def run_seed():
             'co2_required': 'no',
             'light_level': 'medium',
             'description': 'Thiết kế bể kính frameless thanh thoát dáng nằm ngang, bố cục lũa vươn nghiêng cùng thảm cây xanh dịu mắt rất hợp bàn gỗ hoặc tủ văn phòng.',
-            'total_price': Decimal('310000'),
+            'total_price': Decimal('220000'),
             'plant_list_text': '- 2 Chậu Ráy Nana (Gắn thân lũa)\n- 2 Bụi Tiêu Thảo Nâu (Gốc lũa tạo tầng)',
             'image': 'tanks/tank_03_office_hood_45.jpg',
             'license_name': 'CC BY-SA 3.0',
@@ -493,7 +497,7 @@ def run_seed():
             'co2_required': 'yes',
             'light_level': 'medium',
             'description': 'Khối lũa tập trung 2/3 góc trái vươn cành lá vượt mặt nước dưới thanh LED siêu mảnh, chừa bãi cỏ mở khoáng đạt bên phải.',
-            'total_price': Decimal('395000'),
+            'total_price': Decimal('370000'),
             'plant_list_text': '- 2 Cốc Trân Châu Ngọc Trai (Bãi cỏ phải)\n- 2 Chậu Ráy Nana (Gốc lũa)\n- 2 Bụi Tiêu Thảo Nâu (Cụm trung cảnh)',
             'image': 'tanks/tank_05_triangle_60.jpg',
             'license_name': 'CC BY-SA 4.0',
@@ -514,7 +518,7 @@ def run_seed():
             'co2_required': 'yes',
             'light_level': 'high',
             'description': 'Hai khối đá vươn đỉnh bất đối xứng phủ thảm Trân Châu Ngọc Trai dày mượt, mang nét hùng vĩ mà vẫn gọn trên mặt bàn dài.',
-            'total_price': Decimal('445000'),
+            'total_price': Decimal('455000'),
             'plant_list_text': '- 4 Cốc Trân Châu Ngọc Trai (Phủ sườn đồi)\n- 1 Chậu Ráy Nana (Chân hẻm đá)\n- 2 Bụi Tiêu Thảo Nâu (Kẽ núi)',
             'image': 'tanks/tank_06_minilandschaft_60.jpg',
             'license_name': 'CC BY-SA 4.0',
@@ -535,7 +539,7 @@ def run_seed():
             'co2_required': 'yes',
             'light_level': 'high',
             'description': 'Dãy đá tai mèo dựng vách hẻm núi dẫn điểm hút mắt ở trung tâm, bao quanh bởi thảm xanh mịn cho bàn lớn hoặc tủ phòng khách.',
-            'total_price': Decimal('520000'),
+            'total_price': Decimal('505000'),
             'plant_list_text': '- 5 Cốc Trân Châu Ngọc Trai (Thảm hai sườn núi)\n- 2 Chậu Ráy Nana (Khe đá hẻm núi)',
             'image': 'tanks/tank_07_mountain_90.jpg',
             'license_name': 'CC BY-SA 3.0',
@@ -576,7 +580,7 @@ def run_seed():
             'co2_required': 'no',
             'light_level': 'medium',
             'description': 'Bố cục đảo cây hai bên chừa khoảng sáng xanh dịu ở giữa, hợp tường sáng màu và văn phòng hiện đại cần chiều sâu thị giác.',
-            'total_price': Decimal('380000'),
+            'total_price': Decimal('335000'),
             'plant_list_text': '- 2 Chậu Ráy Nana (Bám nhánh lũa)\n- 3 Bụi Tiêu Thảo Nâu (Chân cụm đảo)\n- 2 Bó Vảy Ốc Siêu Đỏ (Điểm sắc hậu cảnh)',
             'image': 'tanks/tank_09_forest_backlight_90.jpg',
             'license_name': 'CC BY 3.0',
@@ -597,7 +601,7 @@ def run_seed():
             'co2_required': 'yes',
             'light_level': 'high',
             'description': 'Tầng tán cắt cắm nhiều màu sắc tương phản rực rỡ với bụi Vảy Ốc Siêu Đỏ, phù hợp quầy lễ tân hoặc tủ kệ rộng chịu tải tốt.',
-            'total_price': Decimal('565000'),
+            'total_price': Decimal('535000'),
             'plant_list_text': '- 5 Bó Vảy Ốc Siêu Đỏ (Cụm đỏ rực trung-hậu cảnh)\n- 3 Cốc Trân Châu Ngọc Trai (Thảm tiền cảnh)\n- 3 Bụi Tiêu Thảo Nâu (Chân tầng bụi)',
             'image': 'tanks/tank_10_dutch_red_120.jpg',
             'license_name': 'CC BY-SA 3.0',
@@ -612,6 +616,7 @@ def run_seed():
     ]
 
     for spec in preset_catalog:
+        computed_total = sum((item_prod.current_price * qty for item_prod, qty, _ in spec['items']), Decimal('0'))
         preset_obj, _ = LayoutPreset.objects.update_or_create(
             image=spec['image'],
             defaults={
@@ -623,7 +628,7 @@ def run_seed():
                 'co2_required': spec['co2_required'],
                 'light_level': spec['light_level'],
                 'description': spec['description'],
-                'total_price': spec['total_price'],
+                'total_price': computed_total,
                 'plant_list_text': spec['plant_list_text'],
                 'license_name': spec['license_name'],
                 'source_attribution': spec['source_attribution'],
@@ -636,6 +641,7 @@ def run_seed():
                 product=item_prod,
                 defaults={'quantity': qty, 'layer_role': role},
             )
+        preset_obj.sync_total_price(save=True)
     print(f"✓ Đã đồng bộ {len(preset_catalog)} Bố cục hồ mẫu kèm ảnh bản quyền mở")
 
     # 6. Cẩm nang thủy sinh & Hỏi đáp FAQ

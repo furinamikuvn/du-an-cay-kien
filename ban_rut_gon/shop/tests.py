@@ -1104,6 +1104,299 @@ class AquaPlantShopTest(TestCase):
             self.assertTrue(ok4)
             self.assertIsNotNone(slot4)
 
+    def test_20_p1_inventory_cancel_restore_and_coupon_limits(self):
+        """TC20 (P1): BIZ-02 hoàn kho khi hủy đơn & chặn chuyển ngược, BIZ-03 đồng bộ FIFO/hết hạn/top_plants, SEC-05 giới hạn Coupon"""
+        from datetime import timedelta
+        from django.utils import timezone
+        import seed_data
+
+        # 1. BIZ-03 & BIZ-01: Kiểm chứng seed_data đồng bộ tồn biến thể = stock_quantity = lô sạch & giá 10 preset khớp item
+        seed_data.run_seed()
+        for prod in Product.objects.all():
+            variant_sum = sum(v.stock for v in prod.variants.filter(is_active=True))
+            healthy_sum = sum(
+                lot.quantity_available
+                for lot in prod.inventory_lots.filter(status__in=['healthy_submerged', 'healthy_emerged'])
+            )
+            self.assertEqual(variant_sum, prod.stock_quantity, f"Lệch tổng tồn biến thể cho {prod.slug}")
+            self.assertEqual(healthy_sum, prod.stock_quantity, f"Lệch tổng lô sạch cho {prod.slug}")
+
+        for preset in LayoutPreset.objects.prefetch_related('preset_items__product'):
+            items_sum = sum(item.subtotal for item in preset.preset_items.all())
+            self.assertEqual(preset.total_price, items_sum, f"Lệch total_price trên preset {preset.name}")
+            self.assertEqual(preset.calculated_total_price, items_sum)
+
+        # 2. BIZ-03: Kiểm tra InventoryLot hết hạn & thiếu lô sạch chặn checkout
+        p = Product.objects.create(
+            name="Cây Test FIFO P1",
+            slug="cay-test-fifo-p1",
+            category=self.category,
+            regular_price=Decimal('100000'),
+            stock_quantity=20,
+            is_active=True,
+        )
+        var = ProductVariant.objects.create(
+            product=p,
+            name="Cốc chuẩn",
+            price=Decimal('100000'),
+            stock=20,
+            is_active=True,
+        )
+        expired_lot = InventoryLot.objects.create(
+            lot_code="LOT-EXPIRED-P1",
+            product=p,
+            quantity_received=10,
+            quantity_available=10,
+            expiry_date=timezone.localdate() - timedelta(days=1),
+            status='healthy_submerged',
+        )
+        valid_lot = InventoryLot.objects.create(
+            lot_code="LOT-VALID-P1",
+            product=p,
+            quantity_received=5,
+            quantity_available=5,
+            expiry_date=timezone.localdate() + timedelta(days=30),
+            status='healthy_submerged',
+        )
+
+        # Đặt 6 phần trong khi lô hợp lệ còn hạn chỉ có 5 -> phải chặn checkout
+        self.client.post(f'/add-to-cart/{p.id}/', {'variant_id': var.id, 'quantity': 6})
+        blocked_chk = self.client.post('/checkout/', {
+            'customer_name': 'Khách Thiếu Lô',
+            'phone': '0901111222',
+            'email': 'lotcheck@example.com',
+            'shipping_address': 'Q5, HCM',
+        })
+        self.assertEqual(blocked_chk.status_code, 302)
+        self.assertEqual(Order.objects.filter(email='lotcheck@example.com').count(), 0)
+
+        # Giảm xuống còn 4 phần + áp dụng Coupon giới hạn max_uses=1, per_user_limit=1 -> thành công
+        self.client.post(f'/update-cart/{p.id}/decrease/')
+        self.client.post(f'/update-cart/{p.id}/decrease/')
+        limited_coupon = Coupon.objects.create(
+            code="LIMIT1P1",
+            discount_type='fixed',
+            discount_value=Decimal('20000'),
+            min_order_value=Decimal('100000'),
+            max_uses=1,
+            per_user_limit=1,
+            is_active=True,
+        )
+        apply_ok = self.client.post('/apply-coupon/', {'coupon_code': 'LIMIT1P1'})
+        self.assertEqual(apply_ok.status_code, 302)
+        self.assertEqual(self.client.session.get('applied_coupon_code'), 'LIMIT1P1')
+
+        user1 = User.objects.create_user(username='p1_buyer1', email='b1@example.com', password='StrongPassword123!')
+        self.client.force_login(user1)
+        ok_chk = self.client.post('/checkout/', {
+            'customer_name': 'Người Mua 1',
+            'phone': '0902222333',
+            'email': 'b1@example.com',
+            'shipping_address': 'Q1, HCM',
+        })
+        self.assertEqual(ok_chk.status_code, 200)
+        order = Order.objects.get(email='b1@example.com')
+
+        p.refresh_from_db()
+        var.refresh_from_db()
+        valid_lot.refresh_from_db()
+        expired_lot.refresh_from_db()
+        limited_coupon.refresh_from_db()
+        self.assertEqual(p.stock_quantity, 16)
+        self.assertEqual(var.stock, 16)
+        self.assertEqual(valid_lot.quantity_available, 1)
+        self.assertEqual(expired_lot.quantity_available, 10)  # Lô hết hạn không bị trừ
+        self.assertEqual(limited_coupon.used_count, 1)
+
+        # SEC-05: User thứ 2 áp dụng LIMIT1P1 (đã hết max_uses=1) phải bị từ chối (AJAX trả 400)
+        c2 = Client()
+        user2 = User.objects.create_user(username='p1_buyer2', email='b2@example.com', password='StrongPassword123!')
+        c2.force_login(user2)
+        c2.post(f'/add-to-cart/{p.id}/', {'quantity': 2})
+        rej_coupon = c2.post(
+            '/apply-coupon/',
+            {'coupon_code': 'LIMIT1P1'},
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(rej_coupon.status_code, 400)
+
+        # SEC-05: Coupon hẹn lịch tương lai chưa tới valid_from bị từ chối
+        Coupon.objects.create(
+            code="FUTURE2026",
+            discount_type='percent',
+            discount_value=Decimal('15'),
+            valid_from=timezone.localdate() + timedelta(days=2),
+            is_active=True,
+        )
+        fut_resp = c2.post('/apply-coupon/', {'coupon_code': 'FUTURE2026'}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(fut_resp.status_code, 400)
+
+        # 3. BIZ-02 & BIZ-03: Staff hủy đơn -> hoàn tồn kho + hoàn lượt coupon + chặn chuyển ngược + loại khỏi top_plants
+        staff_u = User.objects.create_user(username='p1_staff', password='StrongPassword123!', is_staff=False)
+        UserProfile.objects.create(user=staff_u, role='staff')
+        staff_client = Client()
+        staff_client.force_login(staff_u)
+
+        cancel_resp = staff_client.post(f'/staff/order/{order.id}/update-status/', {'status': 'cancelled'}, follow=True)
+        self.assertEqual(cancel_resp.status_code, 200)
+        order.refresh_from_db()
+        p.refresh_from_db()
+        var.refresh_from_db()
+        valid_lot.refresh_from_db()
+        limited_coupon.refresh_from_db()
+        self.assertEqual(order.status, 'cancelled')
+        self.assertEqual(p.stock_quantity, 20)
+        self.assertEqual(var.stock, 20)
+        self.assertEqual(valid_lot.quantity_available, 5)
+        self.assertEqual(limited_coupon.used_count, 0)
+
+        # Chặn chuyển ngược từ cancelled sang confirmed
+        reopen_resp = staff_client.post(f'/staff/order/{order.id}/update-status/', {'status': 'confirmed'}, follow=True)
+        self.assertEqual(reopen_resp.status_code, 200)
+        order.refresh_from_db()
+        self.assertEqual(order.status, 'cancelled')
+
+        # Staff dashboard không tính đơn hủy vào top_plants
+        dash_resp = staff_client.get('/staff/dashboard/')
+        self.assertEqual(dash_resp.status_code, 200)
+        top_plants = list(dash_resp.context['top_plants'])
+        for tp in top_plants:
+            if tp.id == p.id:
+                self.assertFalse(getattr(tp, 'total_sold', 0) and tp.total_sold > 0)
+
+        # Admin action mark_as_cancelled & chặn chuyển ngược qua OrderAdmin
+        admin_u = User.objects.create_superuser(username='p1_admin', email='p1adm@example.com', password='StrongPassword123!')
+        admin_client = Client()
+        admin_client.force_login(admin_u)
+        self.client.post(f'/add-to-cart/{p.id}/', {'quantity': 2})
+        self.client.post('/checkout/', {
+            'customer_name': 'Khách Admin Cancel',
+            'phone': '0903333444',
+            'email': 'adm_cancel@example.com',
+            'shipping_address': 'Q3, HCM',
+        })
+        ord2 = Order.objects.get(email='adm_cancel@example.com')
+        p.refresh_from_db()
+        self.assertEqual(p.stock_quantity, 18)
+
+        admin_cancel = admin_client.post('/admin/shop/order/', {
+            'action': 'mark_as_cancelled',
+            '_selected_action': [str(ord2.id)],
+        }, follow=True)
+        self.assertEqual(admin_cancel.status_code, 200)
+        ord2.refresh_from_db()
+        p.refresh_from_db()
+        self.assertEqual(ord2.status, 'cancelled')
+        self.assertEqual(p.stock_quantity, 20)
+
+        admin_reopen = admin_client.post('/admin/shop/order/', {
+            'action': 'mark_as_confirmed',
+            '_selected_action': [str(ord2.id)],
+        }, follow=True)
+        self.assertEqual(admin_reopen.status_code, 200)
+        ord2.refresh_from_db()
+        self.assertEqual(ord2.status, 'cancelled')
+
+    def test_21_p1_cart_edge_cases_quantity_presets_and_mobile_ui(self):
+        """TC21 (P1): BIZ-05 chặn inf/nan, BIZ-06 giỏ hàng/biến thể/coupon min/sort theo giá KM, UI-02/UI-03 Mobile UX"""
+        # 1. BIZ-05: Chặn inf, -inf, nan, vượt trần 1000cm (không 500 OverflowError)
+        for bad_val in ('inf', '-inf', 'nan', '1e308', '1500'):
+            resp = self.client.post('/tinh-so-luong-cay/', {
+                'product_id': self.product.id,
+                'length': bad_val,
+                'width': '40',
+            })
+            self.assertEqual(resp.status_code, 200)
+            self.assertIsNone(resp.context['result'])
+
+        # 2. BIZ-06: Biến thể tắt không fallback về sản phẩm cha; sản phẩm tắt bị xóa khỏi session & badge về 0
+        inactive_var = ProductVariant.objects.create(
+            product=self.product,
+            name="Biến thể ẩn",
+            price=Decimal('120000'),
+            stock=5,
+            is_active=False,
+        )
+        add_bad_var = self.client.post(f'/add-to-cart/{self.product.id}/', {
+            'variant_id': inactive_var.id,
+            'quantity': 1,
+        }, follow=True)
+        self.assertEqual(add_bad_var.status_code, 200)
+        self.assertEqual(self.client.session.get('cart', {}), {})
+
+        # Cộng dồn prod_id + prod_id:var_id không được vượt quá product.stock_quantity (20)
+        active_var = ProductVariant.objects.create(
+            product=self.product,
+            name="Cốc Invitro",
+            price=Decimal('90000'),
+            stock=15,
+            is_active=True,
+        )
+        self.client.post(f'/add-to-cart/{self.product.id}/', {'quantity': 15})
+        self.client.post(f'/add-to-cart/{self.product.id}/', {'variant_id': active_var.id, 'quantity': 10})
+        cart = self.client.session.get('cart', {})
+        self.assertEqual(cart.get(str(self.product.id)), 15)
+        self.assertEqual(cart.get(f'{self.product.id}:{active_var.id}'), 5)
+
+        # Tăng thêm qua update-cart phải bị chặn vì tổng đã chạm 20
+        self.client.post(f'/update-cart/{self.product.id}:{active_var.id}/increase/')
+        self.assertEqual(self.client.session.get('cart', {}).get(f'{self.product.id}:{active_var.id}'), 5)
+
+        # Khi active_var bị tắt (is_active=False), vào giỏ hàng phải xóa key biến thể thay vì rơi về giá gốc
+        active_var.is_active = False
+        active_var.save(update_fields=['is_active'])
+        cart_page = self.client.get('/cart/')
+        self.assertEqual(cart_page.status_code, 200)
+        self.assertNotIn(f'{self.product.id}:{active_var.id}', self.client.session.get('cart', {}))
+
+        # Khi sản phẩm bị tắt (is_active=False), giỏ & badge tự về 0
+        self.product.is_active = False
+        self.product.save(update_fields=['is_active'])
+        cart_after_deact = self.client.get('/cart/')
+        self.assertEqual(cart_after_deact.context['cart_count'], 0)
+        self.assertEqual(self.client.session.get('cart', {}), {})
+
+        # Bật lại sản phẩm & kiểm tra coupon tự gỡ khỏi session khi giỏ giảm xuống dưới min_order_value
+        self.product.is_active = True
+        self.product.save(update_fields=['is_active'])
+        Coupon.objects.create(
+            code="MIN150K",
+            discount_type='fixed',
+            discount_value=Decimal('20000'),
+            min_order_value=Decimal('150000'),
+            is_active=True,
+        )
+        self.client.post(f'/add-to-cart/{self.product.id}/', {'quantity': 3})  # 3 * 65k = 195k
+        self.client.post('/apply-coupon/', {'coupon_code': 'MIN150K'})
+        self.assertEqual(self.client.session.get('applied_coupon_code'), 'MIN150K')
+
+        # Giảm xuống 2 cây (130k < 150k) -> vào /cart/ tự gỡ applied_coupon_id
+        self.client.post(f'/update-cart/{self.product.id}/decrease/')
+        self.client.get('/cart/')
+        self.assertIsNone(self.client.session.get('applied_coupon_id'))
+        self.assertIsNone(self.client.session.get('applied_coupon_code'))
+
+        # 3. BIZ-06: home_view sắp xếp theo current_price (sale_price), không theo regular_price
+        p_high_reg_low_sale = Product.objects.create(
+            name="Cây KM Sâu",
+            slug="cay-km-sau",
+            category=self.category,
+            regular_price=Decimal('200000'),
+            sale_price=Decimal('40000'),
+            stock_quantity=10,
+            is_active=True,
+        )
+        sorted_asc = self.client.get('/?sort=price_asc')
+        ordered_ids = [p.id for p in sorted_asc.context['products']]
+        self.assertEqual(ordered_ids[0], p_high_reg_low_sale.id)
+
+        # 4. UI-02 & UI-03: Kiểm tra cấu trúc Mobile UX & Tap Target trên HTML trang chủ
+        self.assertContains(sorted_asc, 'id="mobile-filter-toggle"')
+        self.assertContains(sorted_asc, 'id="home-sidebar-filters"')
+        self.assertContains(sorted_asc, 'id="subnav-scroll-hint"')
+        self.assertContains(sorted_asc, 'min-h-[44px]')
+
+
 
 
 
