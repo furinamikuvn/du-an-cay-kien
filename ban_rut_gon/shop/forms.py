@@ -321,21 +321,21 @@ class OrderTrackingForm(forms.Form):
 # ------------------------------------------------------------------------------
 class ForgotPasswordRequestForm(forms.Form):
     """
-    Bước 1 khôi phục mật khẩu: chỉ nhận tên đăng nhập và email để gửi token xác nhận.
+    Bước 1 khôi phục mật khẩu: nhận email (và tên đăng nhập tùy chọn) để gửi mã OTP 6 số + liên kết xác nhận.
     Không tiết lộ sự tồn tại của tài khoản hay email không khớp.
     """
 
     username = forms.CharField(
         max_length=150,
-        required=True,
-        label="Tên đăng nhập",
+        required=False,
+        label="Tên đăng nhập (không bắt buộc)",
         widget=forms.TextInput(
             attrs={
                 "class": (
                     "w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 "
                     "focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]"
                 ),
-                "placeholder": "Nhập tên đăng nhập của bạn",
+                "placeholder": "Để trống nếu quên tên đăng nhập",
             }
         ),
     )
@@ -352,6 +352,23 @@ class ForgotPasswordRequestForm(forms.Form):
             }
         ),
     )
+
+
+def _validate_reset_password_pair(cleaned_data, user=None):
+    """Kiểm tra mật khẩu mới trùng khớp và đạt chuẩn độ mạnh Django."""
+    new_pwd = cleaned_data.get("new_password")
+    confirm_pwd = cleaned_data.get("confirm_new_password")
+
+    if new_pwd and confirm_pwd and new_pwd != confirm_pwd:
+        raise forms.ValidationError("Mật khẩu xác nhận không trùng khớp!")
+
+    if new_pwd:
+        try:
+            validate_password(new_pwd, user=user)
+        except ValidationError as exc:
+            raise forms.ValidationError(list(exc.messages))
+
+    return cleaned_data
 
 
 class SetNewPasswordForm(forms.Form):
@@ -393,20 +410,82 @@ class SetNewPasswordForm(forms.Form):
         super().__init__(*args, **kwargs)
 
     def clean(self):
-        cleaned_data = super().clean()
-        new_pwd = cleaned_data.get("new_password")
-        confirm_pwd = cleaned_data.get("confirm_new_password")
+        return _validate_reset_password_pair(super().clean(), user=self.user)
 
-        if new_pwd and confirm_pwd and new_pwd != confirm_pwd:
-            raise forms.ValidationError("Mật khẩu xác nhận không trùng khớp!")
 
-        if new_pwd:
-            try:
-                validate_password(new_pwd, user=self.user)
-            except ValidationError as exc:
-                raise forms.ValidationError(list(exc.messages))
+class PasswordResetOTPForm(forms.Form):
+    """
+    Bước 2 khôi phục mật khẩu bằng mã OTP 6 số gửi về email.
+    """
 
-        return cleaned_data
+    email = forms.EmailField(
+        required=True,
+        label="Email đã đăng ký",
+        widget=forms.EmailInput(
+            attrs={
+                "class": (
+                    "w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 "
+                    "focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]"
+                ),
+                "placeholder": "Nhập email đã nhận mã xác nhận",
+            }
+        ),
+    )
+    otp_code = forms.CharField(
+        min_length=6,
+        max_length=6,
+        required=True,
+        label="Mã xác nhận 6 số",
+        widget=forms.TextInput(
+            attrs={
+                "class": (
+                    "w-full px-3 py-2 border border-slate-300 text-sm font-mono tracking-wider text-center "
+                    "focus:outline-none focus:ring-2 focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]"
+                ),
+                "placeholder": "000000",
+                "inputmode": "numeric",
+                "maxlength": "6",
+                "autocomplete": "one-time-code",
+            }
+        ),
+    )
+    new_password = forms.CharField(
+        min_length=8,
+        required=True,
+        label="Mật khẩu mới",
+        widget=forms.PasswordInput(
+            attrs={
+                "class": (
+                    "w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 "
+                    "focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]"
+                ),
+                "placeholder": "Tối thiểu 8 ký tự (có chữ & số)",
+            }
+        ),
+    )
+    confirm_new_password = forms.CharField(
+        min_length=8,
+        required=True,
+        label="Xác nhận mật khẩu mới",
+        widget=forms.PasswordInput(
+            attrs={
+                "class": (
+                    "w-full px-3 py-2 border border-slate-300 text-sm focus:outline-none focus:ring-2 "
+                    "focus:ring-[#3D6B4E]/30 focus:border-[#3D6B4E]"
+                ),
+                "placeholder": "Nhập lại mật khẩu mới",
+            }
+        ),
+    )
+
+    def clean_otp_code(self):
+        code = (self.cleaned_data.get("otp_code") or "").strip()
+        if not code.isdigit() or len(code) != 6:
+            raise forms.ValidationError("Mã xác nhận phải gồm đúng 6 chữ số.")
+        return code
+
+    def clean(self):
+        return _validate_reset_password_pair(super().clean(), user=None)
 
 
 # ------------------------------------------------------------------------------

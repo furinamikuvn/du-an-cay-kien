@@ -46,6 +46,7 @@ urlpatterns = [
     path("tai-khoan/doi-mat-khau/", views_extras.change_password_view, name="change_password"),
     path("don-hang-cua-toi/", views_extras.my_orders_view, name="my_orders"),
     path("quen-mat-khau/", views.forgot_password_view, name="forgot_password"),
+    path("quen-mat-khau/nhap-ma/", views.reset_password_otp_view, name="password_reset_otp"),
     path("quen-mat-khau/xac-nhan/<uidb64>/<token>/", views.reset_password_confirm_view, name="password_reset_confirm"),
     # 7. Đường dẫn tương thích tiếng Anh (Compatibility Aliases)
     path("register/", views.register_view),

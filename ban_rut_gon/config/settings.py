@@ -87,20 +87,24 @@ else:
         }
     }
 
-# Thiết lập Email gửi Token đặt lại mật khẩu (Console ở local/fallback, SMTP khi cấu hình biến môi trường)
+# Thiết lập Email gửi mã OTP & Token đặt lại mật khẩu (Console ở local/fallback, Resend API hoặc SMTP ở Production)
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "").strip()
 if os.environ.get("EMAIL_HOST"):
     EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
     EMAIL_HOST = os.environ.get("EMAIL_HOST")
     EMAIL_PORT = int(os.environ.get("EMAIL_PORT", 587))
     EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "True").lower() in ("true", "1", "yes")
+    EMAIL_USE_SSL = os.environ.get("EMAIL_USE_SSL", "False").lower() in ("true", "1", "yes")
     EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
     EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+    EMAIL_TIMEOUT = int(os.environ.get("EMAIL_TIMEOUT", 10))
 else:
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "AquaPlant Shop <no-reply@aquaplant.local>")
 
-# Thời hạn hiệu lực của liên kết/token đặt lại mật khẩu (30 phút)
+# Thời hạn hiệu lực của liên kết/token đặt lại mật khẩu (30 phút) và mã OTP 6 số (10 phút)
 PASSWORD_RESET_TIMEOUT = 1800
+PASSWORD_RESET_OTP_TIMEOUT = 600
 
 # Cấu hình bảo mật HTTP nền tảng (tương thích cả HTTP local và manage.py test)
 SESSION_COOKIE_HTTPONLY = True

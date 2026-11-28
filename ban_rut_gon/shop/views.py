@@ -10,6 +10,8 @@
 # 7. register_view, login_view, logout_view, profile_view, forgot_password_view: Tài khoản.
 # ==============================================================================
 
+import hashlib
+import hmac
 import secrets
 from decimal import Decimal
 from django.conf import settings
@@ -18,18 +20,22 @@ from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
+from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import default_token_generator
-from django.core.mail import send_mail
+from django.core.cache import cache
+from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.db.models import Avg, Case, Count, DecimalField, Q, Sum, When
 from django.http import HttpResponse, JsonResponse
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.encoding import force_bytes, force_str
+from django.utils.html import escape
 from django.utils.http import url_has_allowed_host_and_scheme, urlsafe_base64_decode, urlsafe_base64_encode
 from django.views.decorators.http import require_POST
 
 from .inventory import deduct_lots_fifo, get_locked_product_lots
+from .mailer import send_shop_email
 from .security import (
     check_rate_limit,
     clear_rate_limit,
@@ -54,6 +60,7 @@ from .forms import (
     ForgotPasswordRequestForm,
     LoginForm,
     OrderTrackingForm,
+    PasswordResetOTPForm,
     ProfileUpdateForm,
     RegisterForm,
     ReviewForm,
@@ -1176,11 +1183,80 @@ def profile_view(request):
     return render(request, "shop/profile.html", context)
 
 
+def _otp_cache_key(email_norm):
+    """Sinh khóa cache an toàn (băm SHA-256) theo email đã chuẩn hóa."""
+    digest = hashlib.sha256((email_norm or "").strip().lower().encode("utf-8")).hexdigest()
+    return f"pwd_otp:{digest}"
+
+
+def _clear_reset_otp(email_norm):
+    """Xóa mã OTP đặt lại mật khẩu khỏi cache."""
+    if email_norm:
+        cache.delete(_otp_cache_key(email_norm))
+
+
+def _generate_and_store_reset_otp(user):
+    """
+    Sinh mã OTP 6 chữ số ngẫu nhiên an toàn và chỉ lưu dạng băm (salt + SHA-256) vào cache.
+    Không lưu OTP dạng rõ vào cache hay nhật ký hệ thống.
+    """
+    otp_code = f"{secrets.randbelow(900000) + 100000}"
+    salt = secrets.token_hex(16)
+    otp_hash = hashlib.sha256(f"{salt}:{otp_code}".encode("utf-8")).hexdigest()
+    ttl = getattr(settings, "PASSWORD_RESET_OTP_TIMEOUT", 600)
+    payload = {
+        "user_id": user.pk,
+        "salt": salt,
+        "otp_hash": otp_hash,
+        "attempts": 0,
+    }
+    cache.set(_otp_cache_key(user.email), payload, timeout=ttl)
+    return otp_code
+
+
+def _verify_reset_otp(email_norm, otp_code):
+    """
+    Xác thực mã OTP 6 số cho email tương ứng.
+    Trả về (user, None) nếu hợp lệ, ngược lại trả về (None, thông báo lỗi).
+    Hủy mã sau tối đa 5 lần nhập sai.
+    """
+    key = _otp_cache_key(email_norm)
+    payload = cache.get(key)
+    if not isinstance(payload, dict):
+        return None, "Mã xác nhận không đúng hoặc đã hết hạn."
+
+    attempts = int(payload.get("attempts") or 0)
+    if attempts >= 5:
+        cache.delete(key)
+        return None, "Mã xác nhận đã bị hủy do nhập sai quá nhiều lần. Vui lòng yêu cầu mã mới."
+
+    salt = payload.get("salt") or ""
+    expected_hash = payload.get("otp_hash") or ""
+    actual_hash = hashlib.sha256(f"{salt}:{otp_code}".encode("utf-8")).hexdigest()
+
+    if not hmac.compare_digest(actual_hash, expected_hash):
+        attempts += 1
+        if attempts >= 5:
+            cache.delete(key)
+            return None, "Mã xác nhận đã bị hủy do nhập sai quá nhiều lần. Vui lòng yêu cầu mã mới."
+        payload["attempts"] = attempts
+        ttl = getattr(settings, "PASSWORD_RESET_OTP_TIMEOUT", 600)
+        cache.set(key, payload, timeout=ttl)
+        return None, f"Mã xác nhận chưa chính xác (còn {5 - attempts} lần thử)."
+
+    user = User.objects.select_related("profile").filter(pk=payload.get("user_id"), is_active=True).first()
+    if user is None or (user.email or "").strip().lower() != email_norm or is_staff_or_admin(user):
+        cache.delete(key)
+        return None, "Mã xác nhận không hợp lệ hoặc không áp dụng cho tài khoản này."
+
+    return user, None
+
+
 def forgot_password_view(request):
     """
     Bước 1 khôi phục mật khẩu an toàn:
     - Chống vét cạn với Rate Limiting (5 lần / 10 phút).
-    - Không tự động đổi mật khẩu trực tiếp; gửi token xác nhận có thời hạn qua email.
+    - Gửi đồng thời mã OTP 6 số (hiệu lực 10 phút) và liên kết xác nhận 1 chạm (30 phút) qua email.
     - Chặn khôi phục tự động đối với tài khoản Staff/Admin.
     - Trả về thông báo đồng nhất, không tiết lộ tài khoản hay email có tồn tại hay không.
     """
@@ -1198,46 +1274,70 @@ def forgot_password_view(request):
 
         form = ForgotPasswordRequestForm(request.POST)
         if form.is_valid():
-            username = form.cleaned_data["username"].strip()
+            username = (form.cleaned_data.get("username") or "").strip()
             email = form.cleaned_data["email"].strip().lower()
-            user = (
-                User.objects.select_related("profile")
-                .filter(
-                    username=username,
-                    email__iexact=email,
-                    is_active=True,
-                )
-                .first()
-            )
-            if user is not None and not is_staff_or_admin(user):
-                using_console_in_prod = (
-                    not settings.DEBUG and settings.EMAIL_BACKEND == "django.core.mail.backends.console.EmailBackend"
-                )
-                if not using_console_in_prod:
-                    uid = urlsafe_base64_encode(force_bytes(user.pk))
-                    token = default_token_generator.make_token(user)
-                    reset_path = reverse("password_reset_confirm", kwargs={"uidb64": uid, "token": token})
-                    reset_url = request.build_absolute_uri(reset_path)
-                    send_mail(
-                        subject="[AquaPlant Shop] Xác nhận đặt lại mật khẩu tài khoản",
-                        message=(
-                            f"Xin chào {user.get_full_name() or user.username},\n\n"
-                            f"Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản '{user.username}'.\n"
-                            f"Vui lòng nhấn vào liên kết bên dưới để tạo mật khẩu mới (hiệu lực trong 30 phút):\n"
-                            f"{reset_url}\n\n"
-                            f"Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email."
-                        ),
-                        from_email=settings.DEFAULT_FROM_EMAIL,
-                        recipient_list=[user.email],
-                        fail_silently=True,
-                    )
+            user_qs = User.objects.select_related("profile").filter(email__iexact=email, is_active=True)
+            if username:
+                user_qs = user_qs.filter(username=username)
+            user = user_qs.order_by("id").first()
 
+            if user is not None and not is_staff_or_admin(user):
+                otp_code = _generate_and_store_reset_otp(user)
+                uid = urlsafe_base64_encode(force_bytes(user.pk))
+                token = default_token_generator.make_token(user)
+                reset_path = reverse("password_reset_confirm", kwargs={"uidb64": uid, "token": token})
+                reset_url = request.build_absolute_uri(reset_path)
+                otp_page_url = request.build_absolute_uri(reverse("password_reset_otp"))
+                display_name = user.get_full_name() or user.username
+
+                text_body = (
+                    f"Xin chào {display_name},\n\n"
+                    f"Chúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản '{user.username}' tại AquaPlant.\n\n"
+                    f"MÃ XÁC NHẬN 6 SỐ CỦA BẠN (hiệu lực 10 phút): {otp_code}\n"
+                    f"Nhập mã này tại: {otp_page_url}\n\n"
+                    f"Hoặc nhấn trực tiếp vào liên kết đặt lại mật khẩu (hiệu lực 30 phút):\n"
+                    f"{reset_url}\n\n"
+                    f"Nếu bạn không thực hiện yêu cầu này, vui lòng bỏ qua email."
+                )
+                safe_name = escape(display_name)
+                safe_user = escape(user.username)
+                safe_otp = escape(otp_code)
+                safe_reset_url = escape(reset_url)
+                safe_otp_url = escape(otp_page_url)
+                html_body = (
+                    "<div style='font-family:Arial,sans-serif;max-width:520px;margin:0 auto;padding:20px;"
+                    "border:1px solid #e2e8f0;color:#1e293b;'>"
+                    "<h2 style='color:#2F5C3E;margin-top:0;'>AquaPlant Shop - Khôi phục mật khẩu</h2>"
+                    f"<p>Xin chào <strong>{safe_name}</strong>,</p>"
+                    f"<p>Mã xác nhận đặt lại mật khẩu cho tài khoản <strong>{safe_user}</strong> của bạn là:</p>"
+                    "<div style='background:#EEF5F0;border:1px solid #C5DEC9;padding:14px;text-align:center;"
+                    "font-size:28px;font-weight:bold;letter-spacing:6px;color:#2F5C3E;margin:16px 0;'>"
+                    f"{safe_otp}</div>"
+                    "<p style='font-size:13px;color:#475569;'>Mã có hiệu lực trong <strong>10 phút</strong>. "
+                    f"<a href='{safe_otp_url}' style='color:#2F5C3E;font-weight:bold;'>Nhập mã tại đây</a>.</p>"
+                    "<p style='font-size:13px;color:#475569;'>Hoặc nhấn trực tiếp liên kết bên dưới "
+                    "(hiệu lực 30 phút):</p>"
+                    f"<p><a href='{safe_reset_url}' style='display:inline-block;background:#3D6B4E;color:#ffffff;"
+                    "padding:10px 18px;text-decoration:none;font-weight:bold;font-size:13px;'>"
+                    "Đặt lại mật khẩu ngay</a></p>"
+                    "<p style='font-size:12px;color:#64748b;'>Nếu bạn không gửi yêu cầu này, vui lòng bỏ qua email.</p>"
+                    "</div>"
+                )
+                sent_ok = send_shop_email(
+                    subject="[AquaPlant Shop] Mã xác nhận đặt lại mật khẩu",
+                    text_body=text_body,
+                    recipient_email=user.email,
+                    html_body=html_body,
+                )
+                if not sent_ok:
+                    _clear_reset_otp(user.email)
+
+            request.session["pwd_reset_email"] = email
             messages.success(
                 request,
                 (
-                    "Nếu thông tin tài khoản và email trùng khớp trong hệ thống, liên kết đặt lại mật khẩu "
-                    "đã được gửi qua email (hiệu lực 30 phút). Lưu ý: Tài khoản quản trị viên không hỗ trợ "
-                    "đặt lại mật khẩu tự động."
+                    "Nếu thông tin tài khoản và email trùng khớp trong hệ thống, mã xác nhận 6 số và liên kết "
+                    "đặt lại mật khẩu đã được gửi tới email của bạn."
                 ),
             )
             form = ForgotPasswordRequestForm()
@@ -1250,6 +1350,51 @@ def forgot_password_view(request):
         "shop/forgot_password.html",
         {"form": form, "request_submitted": request_submitted},
     )
+
+
+def reset_password_otp_view(request):
+    """Bước 2 khôi phục mật khẩu bằng mã OTP 6 số gửi qua email."""
+    if request.user.is_authenticated:
+        return redirect("home")
+
+    initial_email = (request.session.get("pwd_reset_email") or "").strip()
+    if request.method == "POST":
+        ip = get_client_ip(request)
+        if check_rate_limit("forgot_pwd_otp", ip, limit=10):
+            messages.error(request, "Bạn đã thử nhập mã quá nhiều lần. Vui lòng đợi 10 phút rồi thử lại.")
+            form = PasswordResetOTPForm(request.POST)
+            return render(request, "shop/password_reset_otp.html", {"form": form}, status=429)
+        record_rate_limit_hit("forgot_pwd_otp", ip, 600)
+
+        form = PasswordResetOTPForm(request.POST)
+        if form.is_valid():
+            email_norm = form.cleaned_data["email"].strip().lower()
+            otp_code = form.cleaned_data["otp_code"]
+            new_password = form.cleaned_data["new_password"]
+
+            user, otp_err = _verify_reset_otp(email_norm, otp_code)
+            if otp_err:
+                form.add_error("otp_code", otp_err)
+            else:
+                try:
+                    validate_password(new_password, user=user)
+                except ValidationError as exc:
+                    for msg in exc.messages:
+                        form.add_error("new_password", msg)
+                else:
+                    user.set_password(new_password)
+                    user.save()
+                    _clear_reset_otp(email_norm)
+                    request.session.pop("pwd_reset_email", None)
+                    messages.success(
+                        request,
+                        "Đặt lại mật khẩu mới thành công! Vui lòng đăng nhập bằng mật khẩu mới.",
+                    )
+                    return redirect("login")
+    else:
+        form = PasswordResetOTPForm(initial={"email": initial_email} if initial_email else None)
+
+    return render(request, "shop/password_reset_otp.html", {"form": form})
 
 
 def reset_password_confirm_view(request, uidb64, token):
@@ -1277,6 +1422,7 @@ def reset_password_confirm_view(request, uidb64, token):
         if form.is_valid():
             user.set_password(form.cleaned_data["new_password"])
             user.save()
+            _clear_reset_otp(user.email)
             messages.success(request, "Đặt lại mật khẩu mới thành công! Vui lòng đăng nhập bằng mật khẩu mới.")
             return redirect("login")
     else:

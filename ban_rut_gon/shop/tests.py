@@ -2251,3 +2251,134 @@ class AquaPlantShopTest(TestCase):
             self.assertIn("application/json", render_err["Content-Type"])
             self.assertFalse(render_err.json()["success"])
         dj_cache.delete("ai_desk_ctx:err_ctx_token")
+
+    def test_27_password_reset_otp_and_mailer(self):
+        """TC27: Quên mật khẩu gửi mã OTP 6 số về email, xác thực 1 lần, khóa sai 5 lần & Resend/SMTP"""
+        from types import SimpleNamespace
+        from unittest.mock import patch
+        from django.core.cache import cache as dj_cache
+        from django.test import override_settings
+        from shop.mailer import is_email_delivery_configured, send_shop_email
+        from shop.views import _otp_cache_key
+
+        customer = User.objects.create_user(
+            username="otp_customer_27",
+            email="otp27@example.com",
+            password="OldPassword123!",
+        )
+        staff_user = User.objects.create_user(
+            username="otp_staff_27",
+            email="staff27@example.com",
+            password="StaffPassword123!",
+            is_staff=False,
+        )
+        UserProfile.objects.create(user=staff_user, role="staff")
+
+        # 1. Yêu cầu quên mật khẩu chỉ bằng email (không nhập username) -> gửi OTP 6 số + link 1 chạm
+        mail.outbox.clear()
+        req_resp = self.client.post("/quen-mat-khau/", {"email": "otp27@example.com"})
+        self.assertEqual(req_resp.status_code, 200)
+        self.assertContains(req_resp, "Nhập mã đặt lại mật khẩu")
+        self.assertEqual(len(mail.outbox), 1)
+
+        sent_mail = mail.outbox[0]
+        otp_match = re.search(r"MÃ XÁC NHẬN 6 SỐ CỦA BẠN[^:]*:\s*(\d{6})", sent_mail.body)
+        self.assertIsNotNone(otp_match)
+        otp_code = otp_match.group(1)
+        self.assertIn("/quen-mat-khau/xac-nhan/", sent_mail.body)
+
+        # OTP trong cache phải được băm (không lưu plaintext)
+        cached_payload = dj_cache.get(_otp_cache_key("otp27@example.com"))
+        self.assertIsInstance(cached_payload, dict)
+        self.assertNotIn(otp_code, str(cached_payload))
+
+        # 2. Mở trang nhập mã OTP (GET) -> điền sẵn email từ session
+        otp_get = self.client.get("/quen-mat-khau/nhap-ma/")
+        self.assertEqual(otp_get.status_code, 200)
+        self.assertContains(otp_get, "otp27@example.com")
+
+        # 3. Nhập sai OTP 5 lần -> tự hủy mã trong cache, lần 6 nhập mã đúng cũng bị từ chối
+        for _ in range(5):
+            wrong_post = self.client.post(
+                "/quen-mat-khau/nhap-ma/",
+                {
+                    "email": "otp27@example.com",
+                    "otp_code": "000000" if otp_code != "000000" else "111111",
+                    "new_password": "NewStrongPassword27!",
+                    "confirm_new_password": "NewStrongPassword27!",
+                },
+            )
+            self.assertEqual(wrong_post.status_code, 200)
+        self.assertIsNone(dj_cache.get(_otp_cache_key("otp27@example.com")))
+
+        stale_post = self.client.post(
+            "/quen-mat-khau/nhap-ma/",
+            {
+                "email": "otp27@example.com",
+                "otp_code": otp_code,
+                "new_password": "NewStrongPassword27!",
+                "confirm_new_password": "NewStrongPassword27!",
+            },
+        )
+        self.assertEqual(stale_post.status_code, 200)
+        self.assertFalse(self.client.login(username="otp_customer_27", password="NewStrongPassword27!"))
+
+        # 4. Yêu cầu lại mã mới và đổi mật khẩu thành công bằng OTP -> mã chỉ dùng 1 lần
+        mail.outbox.clear()
+        self.client.post("/quen-mat-khau/", {"email": "otp27@example.com"})
+        self.assertEqual(len(mail.outbox), 1)
+        new_otp = re.search(r"MÃ XÁC NHẬN 6 SỐ CỦA BẠN[^:]*:\s*(\d{6})", mail.outbox[0].body).group(1)
+
+        ok_post = self.client.post(
+            "/quen-mat-khau/nhap-ma/",
+            {
+                "email": "otp27@example.com",
+                "otp_code": new_otp,
+                "new_password": "NewStrongPassword27!",
+                "confirm_new_password": "NewStrongPassword27!",
+            },
+            follow=True,
+        )
+        self.assertEqual(ok_post.status_code, 200)
+        self.assertIsNone(dj_cache.get(_otp_cache_key("otp27@example.com")))
+        self.assertTrue(self.client.login(username="otp_customer_27", password="NewStrongPassword27!"))
+        self.client.logout()
+
+        reuse_post = self.client.post(
+            "/quen-mat-khau/nhap-ma/",
+            {
+                "email": "otp27@example.com",
+                "otp_code": new_otp,
+                "new_password": "AnotherPassword27!",
+                "confirm_new_password": "AnotherPassword27!",
+            },
+        )
+        self.assertEqual(reuse_post.status_code, 200)
+        self.assertFalse(self.client.login(username="otp_customer_27", password="AnotherPassword27!"))
+
+        # 5. Tài khoản Staff bị chặn tạo OTP qua email
+        mail.outbox.clear()
+        self.client.post("/quen-mat-khau/", {"email": "staff27@example.com"})
+        self.assertEqual(len(mail.outbox), 0)
+        self.assertIsNone(dj_cache.get(_otp_cache_key("staff27@example.com")))
+
+        # 6. Tầng mailer: ưu tiên Resend API khi có RESEND_API_KEY & chặn console ở Production (not DEBUG)
+        with (
+            override_settings(RESEND_API_KEY="re_test_key_123", DEFAULT_FROM_EMAIL="AquaPlant <no-reply@test.vn>"),
+            patch("shop.mailer.requests.post") as mock_resend,
+        ):
+            mock_resend.return_value = SimpleNamespace(status_code=200)
+            self.assertTrue(is_email_delivery_configured())
+            self.assertTrue(send_shop_email("Chủ đề", "Nội dung", customer.email, "<p>OTP</p>"))
+            mock_resend.assert_called_once()
+            call_kwargs = mock_resend.call_args.kwargs
+            self.assertEqual(call_kwargs["json"]["to"], [customer.email])
+            self.assertEqual(call_kwargs["headers"]["Authorization"], "Bearer re_test_key_123")
+
+        with override_settings(
+            DEBUG=False,
+            RESEND_API_KEY="",
+            EMAIL_BACKEND="django.core.mail.backends.console.EmailBackend",
+        ):
+            self.assertFalse(is_email_delivery_configured())
+            self.assertFalse(send_shop_email("Chủ đề", "Nội dung", customer.email))
